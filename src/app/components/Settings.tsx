@@ -1,10 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  User, Mail, Phone, MapPin, Calendar, Shield, Bell, 
-  Palette, Globe, Download, Trash2, Save, Eye, EyeOff,
-  Zap, Key, CheckCircle, AlertCircle, ExternalLink, Sparkles,
-  Loader2
-} from 'lucide-react';
+import { User, Mail, ShieldAlert, MapPin, Calendar, Shield, Bell, Zap, Key, CheckCircle, AlertCircle, Eye, EyeOff, Save, Loader2, Sparkles } from 'lucide-react';
 import { useTheme } from '../App';
 import gsap from 'gsap';
 
@@ -18,8 +13,18 @@ export function Settings() {
   const [apiKeyStatus, setApiKeyStatus] = useState<'checking' | 'valid' | 'invalid' | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [notifications, setNotifications] = useState({ email: true, push: false, sms: false });
+  const [userData, setUserData] = useState({ name: '', email: '', role: 'user' });
 
   useEffect(() => {
+    const storedUser = localStorage.getItem('curasense_user');
+    if (storedUser) setUserData(JSON.parse(storedUser));
+
+    const savedKey = localStorage.getItem('hf_api_key');
+    if (savedKey) {
+      setApiKey(savedKey);
+      setApiKeyStatus('valid');
+    }
+
     const ctx = gsap.context(() => {
       gsap.fromTo('.set-card',
         { y: 30, opacity: 0 },
@@ -32,8 +37,16 @@ export function Settings() {
   const handleVerifyApiKey = async () => {
     if (!apiKey.trim()) return;
     setApiKeyStatus('checking');
+    
     setTimeout(() => {
-      setApiKeyStatus((apiKey.startsWith('hf_') && apiKey.length > 20) ? 'valid' : 'invalid');
+      const isValid = apiKey.startsWith('hf_') && apiKey.length > 20;
+      setApiKeyStatus(isValid ? 'valid' : 'invalid');
+      
+      if (isValid) {
+        localStorage.setItem('hf_api_key', apiKey);
+      } else {
+        localStorage.removeItem('hf_api_key');
+      }
     }, 1500);
   };
 
@@ -70,96 +83,82 @@ export function Settings() {
   return (
     <div ref={ref} style={{ fontFamily: I, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
-      {/* ── AI Config ── */}
-      <div className="set-card" style={{ ...glass, background: T.aiBg, border: `1px solid ${T.aiBdr}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <div>
-            <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Sparkles className="w-5 h-5 text-purple-500" /> Enable Full AI Power
-            </h3>
-            <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Configure your Hugging Face API key for real ML models</p>
+      {userData.role === 'admin' && (
+        <div className="set-card" style={{ ...glass, background: T.aiBg, border: `1px solid ${T.aiBdr}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div>
+              <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Sparkles className="w-5 h-5 text-fuchsia-500" /> Admin Global Controls
+              </h3>
+              <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Configure system-wide AI models and API integrations</p>
+            </div>
+            <span style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 700, fontFamily: S, background: 'linear-gradient(135deg,#d946ef,#8b5cf6)', color: '#fff', letterSpacing: '0.05em' }}>ADMIN ONLY</span>
           </div>
-          <span style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 700, fontFamily: S, background: 'linear-gradient(135deg,#a855f7,#6366f1)', color: '#fff', letterSpacing: '0.05em' }}>ADVANCED</span>
-        </div>
 
-        <div style={{ padding: '1rem', background: T.rowBg, borderRadius: '12px', border: `1px dashed ${T.cardBdr}`, marginBottom: '1.25rem', display: 'flex', gap: '12px' }}>
-          <div style={{ padding: '8px', background: 'rgba(139,92,246,0.15)', borderRadius: '8px', flexShrink: 0, alignSelf: 'flex-start' }}><Zap className="w-5 h-5 text-purple-500" /></div>
-          <div>
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: T.head, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              API Key Status
-              {apiKeyStatus === 'valid' && <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.65rem', background: T.succBg, color: T.succTxt, display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle className="w-3 h-3" /> Configured</span>}
-            </h4>
-            <p style={{ fontSize: '0.75rem', color: T.muted, marginBottom: '2px' }}><strong style={{ color: T.succTxt }}>Without API key:</strong> Uses intelligent rule-based fallbacks (highly accurate)</p>
-            <p style={{ fontSize: '0.75rem', color: T.muted }}><strong style={{ color: '#a855f7' }}>With API key:</strong> Uses real Mistral-7B and ResNet-50 models</p>
+          <div style={{ padding: '1rem', background: T.rowBg, borderRadius: '12px', border: `1px dashed ${T.cardBdr}`, marginBottom: '1.25rem', display: 'flex', gap: '12px' }}>
+            <div style={{ padding: '8px', background: 'rgba(139,92,246,0.15)', borderRadius: '8px', flexShrink: 0, alignSelf: 'flex-start' }}><Zap className="w-5 h-5 text-purple-500" /></div>
+            <div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: T.head, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Model Pipeline Status
+                {apiKeyStatus === 'valid' && <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.65rem', background: T.succBg, color: T.succTxt, display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle className="w-3 h-3" /> Online</span>}
+              </h4>
+              <p style={{ fontSize: '0.75rem', color: T.muted, marginBottom: '2px' }}><strong style={{ color: T.succTxt }}>Without API key:</strong> Uses local edge models.</p>
+              <p style={{ fontSize: '0.75rem', color: T.muted }}><strong style={{ color: '#a855f7' }}>With API key:</strong> Uses cloud Hugging Face resources.</p>
+            </div>
           </div>
-        </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}><Key className="w-4 h-4 inline mr-1" style={{ verticalAlign: '-3px' }}/> Hugging Face API Key</label>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={e => { setApiKey(e.target.value); setApiKeyStatus(null); }} placeholder="hf_••••••••••••••••••••" style={{ ...inputStyle, paddingRight: '2.5rem', borderColor: apiKeyStatus === 'valid' ? T.succTxt : apiKeyStatus === 'invalid' ? T.errTxt : T.cardBdr }} />
-              <button onClick={() => setShowApiKey(!showApiKey)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: T.muted, cursor: 'pointer' }}>
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={labelStyle}><Key className="w-4 h-4 inline mr-1" style={{ verticalAlign: '-3px' }}/> Hugging Face API Key</label>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={e => { setApiKey(e.target.value); setApiKeyStatus(null); }} placeholder="hf_••••••••••••••••••••" style={{ ...inputStyle, paddingRight: '2.5rem', borderColor: apiKeyStatus === 'valid' ? T.succTxt : apiKeyStatus === 'invalid' ? T.errTxt : T.cardBdr }} />
+                <button onClick={() => setShowApiKey(!showApiKey)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: T.muted, cursor: 'pointer' }}>
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <button onClick={handleVerifyApiKey} disabled={!apiKey.trim() || apiKeyStatus === 'checking'} style={{ padding: '0 1.25rem', borderRadius: '12px', background: T.btnBg, color: '#fff', fontWeight: 600, fontSize: '0.85rem', cursor: apiKey.trim() ? 'pointer' : 'not-allowed', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', opacity: apiKey.trim() ? 1 : 0.6 }}>
+                {apiKeyStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Verify & Save
               </button>
             </div>
-            <button onClick={handleVerifyApiKey} disabled={!apiKey.trim() || apiKeyStatus === 'checking'} style={{ padding: '0 1.25rem', borderRadius: '12px', background: T.btnBg, color: '#fff', fontWeight: 600, fontSize: '0.85rem', cursor: apiKey.trim() ? 'pointer' : 'not-allowed', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', opacity: apiKey.trim() ? 1 : 0.6 }}>
-              {apiKeyStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Verify & Save
-            </button>
+            {apiKeyStatus === 'invalid' && <p style={{ fontSize: '0.75rem', color: T.errTxt, marginTop: '8px', display: 'flex', gap: '4px' }}><AlertCircle className="w-4 h-4" /> Invalid key. Must start with hf_ and be &gt;20 chars.</p>}
           </div>
-          {apiKeyStatus === 'invalid' && <p style={{ fontSize: '0.75rem', color: T.errTxt, marginTop: '8px', display: 'flex', gap: '4px' }}><AlertCircle className="w-4 h-4" /> Invalid key. Must start with hf_ and be &gt;20 chars.</p>}
         </div>
+      )}
 
-        <div style={{ padding: '0.85rem 1rem', background: T.warnBg, borderRadius: '12px', border: `1px solid ${T.warnTxt}33` }}>
-          <p style={{ fontSize: '0.75rem', color: T.warnTxt }}>⚠️ <strong>Note:</strong> Both modes provide excellent results for preliminary screening. All diagnoses must be verified by a professional.</p>
-        </div>
-      </div>
-
-      {/* ── Profile ── */}
       <div className="set-card" style={glass}>
         <div style={{ marginBottom: '1.25rem' }}>
-          <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}><User className="w-5 h-5 text-blue-500" /> Profile Information</h3>
-          <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Manage your personal information and account details</p>
+          <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <User className="w-5 h-5 text-blue-500" /> Identity Information
+          </h3>
+          <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Manage your verified system identity</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.75rem', fontWeight: 800, fontFamily: S }}>JD</div>
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: userData.role === 'admin' ? 'linear-gradient(135deg,#d946ef,#8b5cf6)' : 'linear-gradient(135deg,#3b82f6,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.75rem', fontWeight: 800, fontFamily: S }}>
+            {userData.name.substring(0, 2).toUpperCase() || 'US'}
+          </div>
           <div>
             <button style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 600, background: T.rowBg, border: `1px solid ${T.cardBdr}`, color: T.text, cursor: 'pointer', marginBottom: '6px' }}>Change Photo</button>
-            <p style={{ fontSize: '0.7rem', color: T.muted }}>JPG, PNG or GIF. Max size 2MB.</p>
+            <p style={{ fontSize: '0.7rem', color: T.muted }}>Verified clearance: {userData.role.toUpperCase()}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1rem' }}>
-          <div><label style={labelStyle}>Full Name</label><input defaultValue="John Doe" style={inputStyle} /></div>
+          <div><label style={labelStyle}>Full Name / Handle</label><input defaultValue={userData.name} style={inputStyle} disabled={userData.role !== 'admin'} /></div>
           <div>
-            <label style={labelStyle}>Email</label>
-            <div style={{ position: 'relative' }}><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: T.muted }}/><input type="email" defaultValue="john@example.com" style={{ ...inputStyle, paddingLeft: '2.5rem' }} /></div>
-          </div>
-          <div>
-            <label style={labelStyle}>Phone</label>
-            <div style={{ position: 'relative' }}><Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: T.muted }}/><input type="tel" defaultValue="+1 (555) 000-0000" style={{ ...inputStyle, paddingLeft: '2.5rem' }} /></div>
-          </div>
-          <div>
-            <label style={labelStyle}>Date of Birth</label>
-            <div style={{ position: 'relative' }}><Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: T.muted }}/><input type="date" defaultValue="1990-01-01" style={{ ...inputStyle, paddingLeft: '2.5rem' }} /></div>
+            <label style={labelStyle}>System Email</label>
+            <div style={{ position: 'relative' }}><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: T.muted }}/><input type="email" defaultValue={userData.email} style={{ ...inputStyle, paddingLeft: '2.5rem' }} disabled /></div>
           </div>
         </div>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={labelStyle}>Address</label>
-          <div style={{ position: 'relative' }}><MapPin className="absolute left-3 top-3 w-4 h-4" style={{ color: T.muted }}/><textarea defaultValue="123 Main St, San Francisco, CA 94102" style={{ ...inputStyle, paddingLeft: '2.5rem', minHeight: '80px', resize: 'vertical' }} /></div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-          <button style={{ padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, background: 'none', border: `1px solid ${T.cardBdr}`, color: T.text, cursor: 'pointer' }}>Cancel</button>
-          <button style={{ padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, background: T.btnBg, color: '#fff', border: 'none', boxShadow: T.btnSh, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Save className="w-4 h-4" /> Save Changes</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+          <button style={{ padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, background: T.btnBg, color: '#fff', border: 'none', boxShadow: T.btnSh, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Save className="w-4 h-4" /> Save Configuration</button>
         </div>
       </div>
 
-      {/* ── Security ── */}
       <div className="set-card" style={glass}>
         <div style={{ marginBottom: '1.25rem' }}>
           <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}><Shield className="w-5 h-5 text-green-500" /> Security & Privacy</h3>
-          <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Manage your password and security preferences</p>
+          <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Manage your encryption keys and passwords</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1.5rem' }}>
           <div>
@@ -172,33 +171,7 @@ export function Settings() {
           <div><label style={labelStyle}>New Password</label><input type="password" placeholder="••••••••" style={inputStyle} /></div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={{ padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, background: T.btnBg, color: '#fff', border: 'none', boxShadow: T.btnSh, cursor: 'pointer' }}>Update Password</button>
-        </div>
-      </div>
-
-      {/* ── Notifications ── */}
-      <div className="set-card" style={glass}>
-        <div style={{ marginBottom: '1.25rem' }}>
-          <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}><Bell className="w-5 h-5 text-orange-400" /> Notifications</h3>
-          <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Choose how you want to receive updates</p>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          {[
-            { id: 'email', label: 'Email Notifications', desc: 'Receive analysis results via email', icon: Mail, color: '#3b82f6' },
-            { id: 'push', label: 'Push Notifications', desc: 'Get instant browser notifications', icon: Bell, color: '#8b5cf6' },
-            { id: 'sms', label: 'SMS Notifications', desc: 'Receive text messages for important updates', icon: Phone, color: '#10b981' }
-          ].map(n => (
-            <label key={n.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: T.rowBg, border: `1px solid ${T.cardBdr}`, borderRadius: '12px', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = T.rowHov} onMouseLeave={e => e.currentTarget.style.background = T.rowBg}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <n.icon className="w-5 h-5" style={{ color: n.color }} />
-                <div>
-                  <div style={{ fontWeight: 600, color: T.head, fontSize: '0.9rem' }}>{n.label}</div>
-                  <div style={{ fontSize: '0.75rem', color: T.muted }}>{n.desc}</div>
-                </div>
-              </div>
-              <input type="checkbox" checked={(notifications as any)[n.id]} onChange={e => setNotifications({...notifications, [n.id]: e.target.checked})} style={{ width: '18px', height: '18px', accentColor: '#8b5cf6', cursor: 'pointer' }} />
-            </label>
-          ))}
+          <button style={{ padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, background: T.btnBg, color: '#fff', border: 'none', boxShadow: T.btnSh, cursor: 'pointer' }}>Update Encryption</button>
         </div>
       </div>
     </div>

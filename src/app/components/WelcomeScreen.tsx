@@ -1,25 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
-import { Zap, ArrowRight, ActivitySquare, User, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { Zap, ArrowRight, ActivitySquare, User, Lock, Mail, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { Card } from './ui/card';
 import gsap from 'gsap';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { useTheme } from '../App';
 import { LoadingScreen } from './LoadingScreen';
+import { login, register, forgotPassword } from '../utils/api';
+import * as THREE from 'three';
 
 interface WelcomeScreenProps {
-  onGetStarted: () => void;
+  onAuthenticate: () => void;
 }
 
-export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
+export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const [authMode, setAuthMode] = useState<'none' | 'login' | 'register'>('none');
+  const [authMode, setAuthMode] = useState<'none' | 'login' | 'register' | 'forgot'>('none');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
 
   useEffect(() => {
+    if (isSuccess) return;
+    
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
       tl.fromTo('.rtext', { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 1.3, stagger: 0.1 })
@@ -43,10 +51,12 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
     }, containerRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [isSuccess]);
 
-  const switchAuthMode = (mode: 'none' | 'login' | 'register') => {
+  const switchAuthMode = (mode: 'none' | 'login' | 'register' | 'forgot') => {
     if (!panelRef.current) return;
+    setError('');
+    setSuccessMsg('');
     gsap.to(panelRef.current, {
       rotateY: 90,
       opacity: 0,
@@ -62,14 +72,38 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
     });
   };
 
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setSuccessMsg('');
     setIsAuthenticating(true);
-    // Simulate God Level processing and loading
-    setTimeout(() => {
+
+    if (authMode === 'forgot') {
+      const response = await forgotPassword(formData.email);
       setIsAuthenticating(false);
-      onGetStarted();
-    }, 3000);
+      if (response.error) {
+        setError(response.error);
+      } else {
+        setSuccessMsg(response.data.message);
+        setTimeout(() => switchAuthMode('login'), 3000);
+      }
+      return;
+    }
+
+    const response = authMode === 'login' 
+      ? await login({ email: formData.email, password: formData.password }) 
+      : await register(formData);
+
+    if (response.error) {
+      setError(response.error);
+      setIsAuthenticating(false);
+    } else {
+      localStorage.setItem('curasense_token', response.data.token);
+      localStorage.setItem('curasense_user', JSON.stringify(response.data.user));
+      setIsAuthenticating(false);
+      setIsSuccess(true);
+      setTimeout(() => onAuthenticate(), 3500);
+    }
   };
 
   const S = "'Michroma', sans-serif";
@@ -107,7 +141,11 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
   const iconStyle = { position: 'absolute' as any, left: '12px', top: '50%', transform: 'translateY(-50%)', color: T.initClr };
 
   if (isAuthenticating) {
-    return <LoadingScreen message="AUTHENTICATING PROTOCOL..." />;
+    return <LoadingScreen message="AUTHORIZING CONNECTION..." />;
+  }
+
+  if (isSuccess) {
+    return <SuccessAnimation />;
   }
 
   return (
@@ -174,10 +212,21 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
             </div>
 
             <div className="w-full" style={{ flex: '0 0 320px', maxWidth: '320px', marginLeft: 'auto' }}>
-              <Card ref={panelRef} className="gpanel relative overflow-hidden p-7 rounded-3xl mb-4" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.cardShadow }}>
+              <Card ref={panelRef} className="gpanel relative overflow-visible p-7 rounded-3xl mb-4" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.cardShadow }}>
                 <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-[55px] pointer-events-none" style={{ background: T.cardGlow }} />
+                
+                {error && (
+                  <div className="absolute -top-14 left-0 w-full p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold flex items-center justify-center gap-2 backdrop-blur-md">
+                    <AlertCircle className="w-4 h-4" /> {error}
+                  </div>
+                )}
+                {successMsg && (
+                  <div className="absolute -top-14 left-0 w-full p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center justify-center gap-2 backdrop-blur-md">
+                    <ShieldCheck className="w-4 h-4" /> {successMsg}
+                  </div>
+                )}
+
                 <div className="relative z-10">
-                  
                   {authMode === 'none' && (
                     <>
                       <div className="flex justify-between items-center mb-8">
@@ -203,9 +252,12 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
                         <User className="w-4 h-4" style={{ color: T.zapClr }} />
                       </div>
                       <h3 style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: T.cardTitle, marginBottom: '1.5rem' }}>Welcome Back</h3>
-                      <div className="flex flex-col gap-4 mb-6">
-                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-4 h-4" /><input type="email" placeholder="Email Address" required style={inpStyle} /></div>
-                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-4 h-4" /><input type="password" placeholder="Password" required style={inpStyle} /></div>
+                      <div className="flex flex-col gap-4 mb-3">
+                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-4 h-4" /><input type="text" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email or System ID" required style={inpStyle} /></div>
+                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-4 h-4" /><input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Password" required style={inpStyle} /></div>
+                      </div>
+                      <div className="flex justify-end mb-4">
+                        <button type="button" onClick={() => switchAuthMode('forgot')} style={{ fontSize: '0.7rem', color: '#a855f7', background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontWeight: 600 }}>Forgot Protocol?</button>
                       </div>
                       <button type="submit" className="mag w-full py-4 rounded-xl text-white font-bold transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] mb-3" style={{ fontFamily: S, fontSize: '0.76rem', letterSpacing: '0.15em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow }}>
                         Authenticate <ArrowRight className="inline w-4 h-4 ml-1" />
@@ -224,15 +276,35 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
                       </div>
                       <h3 style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: T.cardTitle, marginBottom: '1.5rem' }}>Secure Access</h3>
                       <div className="flex flex-col gap-3 mb-6">
-                        <div style={{ position: 'relative' }}><User style={iconStyle} className="w-4 h-4" /><input type="text" placeholder="Full Name" required style={{...inpStyle, padding: '0.7rem 1rem 0.7rem 2.5rem'}} /></div>
-                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-4 h-4" /><input type="email" placeholder="Email Address" required style={{...inpStyle, padding: '0.7rem 1rem 0.7rem 2.5rem'}} /></div>
-                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-4 h-4" /><input type="password" placeholder="Password" required style={{...inpStyle, padding: '0.7rem 1rem 0.7rem 2.5rem'}} /></div>
+                        <div style={{ position: 'relative' }}><User style={iconStyle} className="w-4 h-4" /><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Full Name" required style={{...inpStyle, padding: '0.7rem 1rem 0.7rem 2.5rem'}} /></div>
+                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-4 h-4" /><input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email Address" required style={{...inpStyle, padding: '0.7rem 1rem 0.7rem 2.5rem'}} /></div>
+                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-4 h-4" /><input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Password (Min 8 chars)" required style={{...inpStyle, padding: '0.7rem 1rem 0.7rem 2.5rem'}} /></div>
                       </div>
                       <button type="submit" className="mag w-full py-4 rounded-xl text-white font-bold transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] mb-3" style={{ fontFamily: S, fontSize: '0.76rem', letterSpacing: '0.15em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow }}>
                         Initialize <ArrowRight className="inline w-4 h-4 ml-1" />
                       </button>
                       <div className="text-center">
                         <button type="button" onClick={() => switchAuthMode('none')} style={{ fontSize: '0.7rem', color: T.initClr, background: 'none', border: 'none', cursor: 'pointer', fontFamily: I }}>← Back to Menu</button>
+                      </div>
+                    </form>
+                  )}
+
+                  {authMode === 'forgot' && (
+                    <form onSubmit={handleAuthSubmit}>
+                      <div className="flex justify-between items-center mb-6">
+                        <span style={{ fontFamily: S, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: T.initClr }}>Recovery</span>
+                        <RefreshCw className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <h3 style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: T.cardTitle, marginBottom: '0.5rem' }}>Reset Protocol</h3>
+                      <p style={{ fontSize: '0.75rem', color: T.muted, marginBottom: '1.5rem', lineHeight: 1.5 }}>Enter your registered email or System ID. We will transmit recovery details to your secure inbox.</p>
+                      <div className="flex flex-col gap-4 mb-6">
+                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-4 h-4" /><input type="text" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email or System ID" required style={inpStyle} /></div>
+                      </div>
+                      <button type="submit" className="mag w-full py-4 rounded-xl text-white font-bold transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] mb-3" style={{ fontFamily: S, fontSize: '0.76rem', letterSpacing: '0.15em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 24px rgba(16,185,129,0.3)' }}>
+                        Transmit Request <ArrowRight className="inline w-4 h-4 ml-1" />
+                      </button>
+                      <div className="text-center">
+                        <button type="button" onClick={() => switchAuthMode('login')} style={{ fontSize: '0.7rem', color: T.initClr, background: 'none', border: 'none', cursor: 'pointer', fontFamily: I }}>← Back to Login</button>
                       </div>
                     </form>
                   )}
@@ -254,6 +326,113 @@ export function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SuccessAnimation() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 12;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    containerRef.current.appendChild(renderer.domElement);
+
+    const particleCount = 2000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 20;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+
+      colors[i * 3] = 0;
+      colors[i * 3 + 1] = 0.89;
+      colors[i * 3 + 2] = 1;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 0.15,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    scene.add(particles);
+
+    let animationId: number;
+    const animate = () => {
+      animationId = requestAnimationFrame(animate);
+      particles.rotation.y += 0.005;
+      particles.rotation.z += 0.002;
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline();
+      
+      tl.to(material, { opacity: 0.8, duration: 1 })
+        .to(camera.position, { z: 4, duration: 2, ease: "power2.inOut" }, "-=1")
+        .to(positions, {
+          duration: 1.5,
+          onUpdate: () => {
+            for (let i = 0; i < particleCount; i++) {
+              const i3 = i * 3;
+              positions[i3] *= 0.95;
+              positions[i3+1] *= 0.95;
+              positions[i3+2] *= 0.95;
+            }
+            geometry.attributes.position.needsUpdate = true;
+          },
+          ease: "power3.in"
+        }, "-=1")
+        .to(material.color, { r: 0.06, g: 0.72, b: 0.5, duration: 0.5 })
+        .fromTo('.auth-text', 
+          { opacity: 0, scale: 0.5, y: 20 }, 
+          { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: "back.out(1.7)" }
+        )
+        .to(material, { opacity: 0, duration: 0.5, delay: 0.5 })
+        .to('.auth-text', { opacity: 0, y: -20, duration: 0.4 }, "-=0.5");
+    }, containerRef);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      ctx.revert();
+      if (containerRef.current && renderer.domElement) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
+      geometry.dispose();
+      material.dispose();
+      renderer.dispose();
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#000005] overflow-hidden">
+      <div ref={containerRef} className="absolute inset-0 z-0" />
+      <div className="auth-text relative z-10 flex flex-col items-center">
+        <div className="w-20 h-20 mb-6 rounded-full border-2 border-emerald-400 flex items-center justify-center bg-emerald-400/10 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+          <ShieldCheck className="w-10 h-10 text-emerald-400" />
+        </div>
+        <h2 className="text-3xl tracking-[0.2em] uppercase font-bold text-emerald-400" style={{ fontFamily: "'Michroma', sans-serif" }}>
+          AUTHENTICATED
+        </h2>
+        <p className="text-emerald-400/70 tracking-widest mt-2 text-sm">SECURE CONNECTION ESTABLISHED</p>
       </div>
     </div>
   );
