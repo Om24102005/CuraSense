@@ -9,7 +9,7 @@ import { Settings } from './components/Settings';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Activity, Brain, FileText, History, LayoutDashboard, Settings as SettingsIcon, ShieldAlert, Menu, X } from 'lucide-react';
-import ThreeBackground from './components/ThreeBackground';
+import ScrollThreeBackground from './components/ScrollThreeBackground';
 import { ThemeToggleButton } from './components/ThemeToggleButton';
 import { CustomCursor } from './components/CustomCursor';
 import { UserProfile } from './components/UserProfile';
@@ -187,7 +187,7 @@ export default function App() {
             />
           )}
           <CustomCursor />
-          <ThreeBackground />
+          <ScrollThreeBackground />
           <div className="relative z-10 min-h-screen">
             <WelcomeScreen onAuthenticate={() => setIsAuthenticated(true)} />
           </div>
@@ -210,7 +210,7 @@ export default function App() {
             style={{ background: 'linear-gradient(135deg, #dde8ff 0%, #f5f9ff 35%, #f5eeff 70%, #e8f8f5 100%)', opacity: 0.92 }}
           />
         )}
-        <ThreeBackground />
+        <ScrollThreeBackground />
 
         <div className="relative z-10">
           <header
