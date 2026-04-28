@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Zap, ArrowRight, ActivitySquare, User, Lock, Mail, ShieldCheck, AlertCircle, RefreshCw, Cpu, Database, Globe, Layers, Activity, Network, Fingerprint, ChevronDown } from 'lucide-react';
+import { Zap, ArrowRight, ActivitySquare, User, Lock, Mail, ShieldCheck, AlertCircle, RefreshCw, Cpu, Database, Globe, Layers, Activity, Network, Fingerprint, ChevronDown, TestTube, Crosshair, Dna } from 'lucide-react';
 import { Card } from './ui/card';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -188,7 +188,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
   const inpStyle = { width: '100%', padding: '1rem 1rem 1rem 3rem', background: T.inpBg, border: `1px solid ${T.inpBdr}`, borderRadius: '16px', color: T.text, fontSize: '0.9rem', outline: 'none', transition: 'all 0.3s' };
   const iconStyle = { position: 'absolute' as any, left: '16px', top: '50%', transform: 'translateY(-50%)', color: T.initClr };
 
-  if (isAuthenticating) return <LoadingScreen message="AUTHORIZING CONNECTION..." />;
+  if (isAuthenticating) return <LoadingScreen message="AUTHORIZING CLINICAL CONNECTION..." />;
   if (isSuccess) return <SuccessAnimation />;
 
   return (
@@ -202,13 +202,13 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
             </div>
             <div>
               <div style={{ fontFamily: S, fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: T.logoName }}>CuraSense</div>
-              <div style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.20em', textTransform: 'uppercase', color: T.logoSub }}>Protocol_v2</div>
+              <div style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.20em', textTransform: 'uppercase', color: T.logoSub }}>Diagnostic_v2</div>
             </div>
           </div>
           <div className="flex items-center gap-6">
             <ThemeToggleButton />
             <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 rounded-full backdrop-blur-xl" style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: T.onlineBg, color: T.onlineClr, border: `1px solid ${T.onlineBdr}` }}>
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: T.onlineClr }} /> System Online
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: T.onlineClr }} /> Medical Servers Online
             </div>
           </div>
         </header>
@@ -223,13 +223,13 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
               <div className="uline h-[2px] mt-8 mb-8 rounded-full" style={{ maxWidth: '300px', background: `linear-gradient(90deg, ${T.divider}, transparent)` }} />
               
               <p className="fade-up text-xl" style={{ fontWeight: 400, lineHeight: 1.8, color: T.body, maxWidth: '600px' }}>
-                Harness the architecture of neural networks to process symptoms, radiological scans,
-                and unstructured lab data — delivering absolute diagnostic clarity.
+                Harness the architecture of deep neural networks to process biomarker data, radiological scans,
+                and genomic structures — delivering absolute diagnostic clarity for complex pathologies.
               </p>
               
               <div className="fade-up mt-12 flex items-center gap-6">
-                <button onClick={() => scrollToSection('section-features')} className="mag px-8 py-4 rounded-full font-bold text-sm tracking-widest uppercase transition-all" style={{ background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.logoName, fontFamily: S }}>
-                  Explore Framework <ChevronDown className="inline w-4 h-4 ml-2" />
+                <button onClick={() => scrollToSection('section-dna-analysis')} className="mag px-8 py-4 rounded-full font-bold text-sm tracking-widest uppercase transition-all" style={{ background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.logoName, fontFamily: S }}>
+                  Explore Medical Framework <ChevronDown className="inline w-4 h-4 ml-2" />
                 </button>
               </div>
             </div>
@@ -253,16 +253,16 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                   {authMode === 'none' && (
                     <>
                       <div className="flex justify-between items-center mb-10">
-                        <span style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.25em', textTransform: 'uppercase', color: T.initClr }}>Terminal Access</span>
+                        <span style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.25em', textTransform: 'uppercase', color: T.initClr }}>Provider Access</span>
                         <Zap className="w-5 h-5" style={{ color: T.zapClr }} />
                       </div>
                       <h3 style={{ fontFamily: S, fontSize: '2.5rem', fontWeight: 900, lineHeight: 1.1, color: T.cardTitle, marginBottom: '2.5rem' }}>Access<br />Protocol</h3>
                       <div className="flex flex-col gap-4">
                         <button onClick={() => switchAuthMode('login')} className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97]" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow }}>
-                          Login
+                          Clinical Login
                         </button>
                         <button onClick={() => switchAuthMode('register')} className="mag w-full py-5 rounded-2xl font-bold transition-all hover:bg-opacity-80 hover:scale-[1.03] active:scale-[0.97]" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.cardTitle }}>
-                          Create Account
+                          Register Facility
                         </button>
                       </div>
                     </>
@@ -276,11 +276,11 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                       </div>
                       <h3 style={{ fontFamily: S, fontSize: '1.8rem', fontWeight: 900, color: T.cardTitle, marginBottom: '2rem' }}>Welcome Back</h3>
                       <div className="flex flex-col gap-5 mb-4">
-                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-5 h-5" /><input type="text" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email or System ID" required style={inpStyle} /></div>
-                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-5 h-5" /><input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Password" required style={inpStyle} /></div>
+                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-5 h-5" /><input type="text" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Provider Email or ID" required style={inpStyle} /></div>
+                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-5 h-5" /><input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Passkey" required style={inpStyle} /></div>
                       </div>
                       <div className="flex justify-end mb-6">
-                        <button type="button" onClick={() => switchAuthMode('forgot')} style={{ fontSize: '0.8rem', color: '#a855f7', background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontWeight: 600 }}>Forgot Protocol?</button>
+                        <button type="button" onClick={() => switchAuthMode('forgot')} style={{ fontSize: '0.8rem', color: '#a855f7', background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontWeight: 600 }}>Forgot Credentials?</button>
                       </div>
                       <button type="submit" className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow }}>
                         Authenticate <ArrowRight className="inline w-5 h-5 ml-2" />
@@ -294,14 +294,14 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                   {authMode === 'register' && (
                     <form onSubmit={handleAuthSubmit}>
                       <div className="flex justify-between items-center mb-8">
-                        <span style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.25em', textTransform: 'uppercase', color: T.initClr }}>Registration</span>
+                        <span style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.25em', textTransform: 'uppercase', color: T.initClr }}>Facility Registration</span>
                         <ShieldCheck className="w-5 h-5" style={{ color: T.zapClr }} />
                       </div>
                       <h3 style={{ fontFamily: S, fontSize: '1.8rem', fontWeight: 900, color: T.cardTitle, marginBottom: '2rem' }}>Secure Access</h3>
                       <div className="flex flex-col gap-5 mb-8">
-                        <div style={{ position: 'relative' }}><User style={iconStyle} className="w-5 h-5" /><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Full Name" required style={inpStyle} /></div>
-                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-5 h-5" /><input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email Address" required style={inpStyle} /></div>
-                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-5 h-5" /><input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Password (Min 8)" required style={inpStyle} /></div>
+                        <div style={{ position: 'relative' }}><User style={iconStyle} className="w-5 h-5" /><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Provider Name" required style={inpStyle} /></div>
+                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-5 h-5" /><input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Clinical Email" required style={inpStyle} /></div>
+                        <div style={{ position: 'relative' }}><Lock style={iconStyle} className="w-5 h-5" /><input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Passkey (Min 8)" required style={inpStyle} /></div>
                       </div>
                       <button type="submit" className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow }}>
                         Initialize <ArrowRight className="inline w-5 h-5 ml-2" />
@@ -319,9 +319,9 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                         <RefreshCw className="w-5 h-5 text-emerald-500" />
                       </div>
                       <h3 style={{ fontFamily: S, fontSize: '1.8rem', fontWeight: 900, color: T.cardTitle, marginBottom: '1rem' }}>Reset Protocol</h3>
-                      <p style={{ fontSize: '0.9rem', color: T.secText, marginBottom: '2rem', lineHeight: 1.6 }}>Enter your registered email or System ID. We will transmit recovery details to your secure inbox.</p>
+                      <p style={{ fontSize: '0.9rem', color: T.secText, marginBottom: '2rem', lineHeight: 1.6 }}>Enter your registered clinical email. We will transmit encrypted recovery keys to your secure inbox.</p>
                       <div className="flex flex-col gap-5 mb-8">
-                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-5 h-5" /><input type="text" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email or System ID" required style={inpStyle} /></div>
+                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-5 h-5" /><input type="text" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Clinical Email" required style={inpStyle} /></div>
                       </div>
                       <button type="submit" className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 24px rgba(16,185,129,0.3)' }}>
                         Transmit Request <ArrowRight className="inline w-5 h-5 ml-2" />
@@ -338,12 +338,47 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
         </div>
       </div>
 
+      <div id="section-dna-analysis" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
+        <div className="max-w-[1600px] w-full px-8 mx-auto flex flex-col lg:flex-row items-center gap-20">
+          <div className="w-full lg:w-1/2">
+            <div className="sec-title mb-8">
+              <h2 style={{ fontFamily: S, fontSize: '4rem', fontWeight: 900, color: T.secTitle, lineHeight: 1.1 }}>GENOMIC &<br/>MOLECULAR SEQUENCING</h2>
+            </div>
+            <p className="sec-card mb-10" style={{ fontSize: '1.3rem', color: T.secText, lineHeight: 1.8 }}>
+              At the core of CuraSense is an advanced biochemical mapping engine. By analyzing DNA degradation, telomere shortening, and transcriptomic profiles, the system identifies pre-symptomatic disease states years before physiological manifestation.
+            </p>
+            <ul className="space-y-6">
+              {[
+                'Automated Pharmacogenomic profiling for targeted treatments.',
+                'Real-time protein misfolding detection using predictive structural algorithms.',
+                'Microbiome taxonomy correlation with autoimmune disorders.'
+              ].map((item, i) => (
+                <li key={i} className="sec-card flex items-start gap-6 p-6 rounded-2xl" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
+                  <TestTube className="w-8 h-8 shrink-0 mt-1" style={{ color: T.logoSub }} />
+                  <span style={{ fontSize: '1.2rem', color: T.secTitle, fontWeight: 500, lineHeight: 1.5 }}>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="w-full lg:w-1/2 flex justify-center">
+             <div className="sec-card p-12 rounded-[3rem] text-center w-full max-w-lg relative overflow-hidden" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
+                <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at top right, ${T.cardGlow}, transparent 70%)` }} />
+                <Activity className="w-24 h-24 mx-auto mb-8 relative z-10" style={{ color: T.logoSub }} />
+                <h3 className="relative z-10" style={{ fontFamily: S, fontSize: '2rem', fontWeight: 900, color: T.secTitle, marginBottom: '1.5rem' }}>CRISPR DATA INGESTION</h3>
+                <p className="relative z-10" style={{ fontSize: '1.1rem', color: T.secText, lineHeight: 1.8 }}>
+                  The engine dynamically cross-references patient nucleotide sequences against global oncological databases, instantly flagging high-risk hereditary mutations (BRCA1/2, TP53, PTEN) with 99.8% specificity.
+                </p>
+             </div>
+          </div>
+        </div>
+      </div>
+
       <div id="section-stats" className="scroll-section min-h-screen relative flex flex-col justify-center items-center py-32">
         <div ref={statsRef} className="max-w-[1600px] w-full px-8 mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
           {[
-            { val: '99.9', label: 'DIAGNOSTIC ACCURACY %', icon: Activity },
-            { val: '150', label: 'MILLION DATA POINTS', icon: Database },
-            { val: '12', label: 'MILLISECOND LATENCY', icon: Zap }
+            { val: '99.9', label: 'CLINICAL SPECIFICITY %', icon: Activity },
+            { val: '240', label: 'MILLION BIOMARKERS SCANNED', icon: Database },
+            { val: '12', label: 'MILLISECOND INFERENCE', icon: Zap }
           ].map((stat, i) => (
             <div key={i} className="sec-card flex flex-col items-center text-center p-12 rounded-[3rem] backdrop-blur-xl" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
               <stat.icon className="w-16 h-16 mb-8" style={{ color: T.logoSub }} />
@@ -362,19 +397,19 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
       <div id="section-features" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
         <div className="max-w-[1600px] w-full px-8 mx-auto">
           <div className="sec-title mb-24 max-w-4xl">
-            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle, lineHeight: 1.1, marginBottom: '2rem' }}>TRIPLE VECTOR<br/>ANALYSIS</h2>
-            <p style={{ fontSize: '1.5rem', color: T.secText, lineHeight: 1.6 }}>The CuraSense Protocol operates on three simultaneous modalities to ensure complete diagnostic superiority.</p>
+            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle, lineHeight: 1.1, marginBottom: '2rem' }}>TRIPLE VECTOR<br/>DIAGNOSTICS</h2>
+            <p style={{ fontSize: '1.5rem', color: T.secText, lineHeight: 1.6 }}>The CuraSense Protocol operates on three simultaneous clinical modalities to ensure complete diagnostic superiority and eliminate human observer error.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {[
-              { title: 'SYMPTOMATICS', desc: 'NLP-driven contextual analysis of patient reported conditions mapped against global epidemiological databases.', icon: ActivitySquare },
-              { title: 'RADIOLOGY', desc: 'Convolutional neural networks detecting micro-fractures, tumors, and anomalies in X-Ray, MRI, and CT scans.', icon: Layers },
-              { title: 'PATHOLOGY', desc: 'Automated extraction and risk-assessment of complex blood work, genetic markers, and biochemical reports.', icon: Database }
+              { title: 'SYMPTOMATICS & NLP', desc: 'Natural Language Processing algorithms parse patient histories, clinical notes, and physical symptoms, cross-referencing against real-time epidemiological tracking.', icon: ActivitySquare },
+              { title: 'AI RADIOLOGY', desc: 'Deep convolutional neural networks process DICOM images, identifying micro-fractures, subtle hemorrhages, and early-stage neoplastic growth in MRI, CT, and PET scans.', icon: Layers },
+              { title: 'DIGITAL PATHOLOGY', desc: 'Automated ingestion of comprehensive metabolic panels, CBCs, and immunohistochemistry reports, identifying critical threshold deviations.', icon: Database }
             ].map((ft, i) => (
               <div key={i} className="sec-card p-12 rounded-[2.5rem] relative overflow-hidden group" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" style={{ background: `radial-gradient(circle at center, ${T.cardGlow}, transparent 70%)` }} />
                 <ft.icon className="w-16 h-16 mb-10 relative z-10" style={{ color: T.logoSub }} />
-                <h3 className="relative z-10" style={{ fontFamily: S, fontSize: '1.8rem', fontWeight: 900, color: T.secTitle, marginBottom: '1.5rem', letterSpacing: '0.1em' }}>{ft.title}</h3>
+                <h3 className="relative z-10" style={{ fontFamily: S, fontSize: '1.6rem', fontWeight: 900, color: T.secTitle, marginBottom: '1.5rem', letterSpacing: '0.1em' }}>{ft.title}</h3>
                 <p className="relative z-10" style={{ fontSize: '1.1rem', color: T.secText, lineHeight: 1.8 }}>{ft.desc}</p>
               </div>
             ))}
@@ -382,19 +417,54 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
         </div>
       </div>
 
+      <div id="section-predictive" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
+        <div className="max-w-[1600px] w-full px-8 mx-auto flex flex-col lg:flex-row-reverse items-center gap-20">
+          <div className="w-full lg:w-1/2">
+            <div className="sec-title mb-8">
+              <h2 style={{ fontFamily: S, fontSize: '4rem', fontWeight: 900, color: T.secTitle, lineHeight: 1.1 }}>PREDICTIVE<br/>PATHOLOGY</h2>
+            </div>
+            <p className="sec-card mb-10" style={{ fontSize: '1.3rem', color: T.secText, lineHeight: 1.8 }}>
+              Moving beyond reactive medicine, the platform utilizes longitudinal data tracking to forecast disease trajectory. By analyzing historical patient timelines, the AI projects physiological degradation and recommends preventative interventions.
+            </p>
+            <ul className="space-y-6">
+              {[
+                'Cardiovascular Event Prediction (Myocardial Infarction timelines).',
+                'Metabolic Syndrome tracking and diabetic neuropathy forecasting.',
+                'Neurodegenerative decline modeling (Alzheimer’s, Parkinson’s indicators).'
+              ].map((item, i) => (
+                <li key={i} className="sec-card flex items-start gap-6 p-6 rounded-2xl" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
+                  <Crosshair className="w-8 h-8 shrink-0 mt-1" style={{ color: T.logoSub }} />
+                  <span style={{ fontSize: '1.2rem', color: T.secTitle, fontWeight: 500, lineHeight: 1.5 }}>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="w-full lg:w-1/2 flex justify-center">
+             <div className="sec-card p-12 rounded-[3rem] text-center w-full max-w-lg relative overflow-hidden" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
+                <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at top left, ${T.cardGlow}, transparent 70%)` }} />
+                <Network className="w-24 h-24 mx-auto mb-8 relative z-10" style={{ color: T.logoSub }} />
+                <h3 className="relative z-10" style={{ fontFamily: S, fontSize: '2rem', fontWeight: 900, color: T.secTitle, marginBottom: '1.5rem' }}>LONGITUDINAL TENSORS</h3>
+                <p className="relative z-10" style={{ fontSize: '1.1rem', color: T.secText, lineHeight: 1.8 }}>
+                  Continuous state-space modeling continuously recalculates patient risk profiles based on ambient health data, wearable telemetry, and newly published clinical trials.
+                </p>
+             </div>
+          </div>
+        </div>
+      </div>
+
       <div id="section-howitworks" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
         <div className="max-w-[1600px] w-full px-8 mx-auto">
           <div className="sec-title text-center mb-24">
-            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle }}>EXECUTION PIPELINE</h2>
+            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle }}>CLINICAL PIPELINE</h2>
           </div>
           <div className="relative">
             <div className="absolute top-1/2 left-0 w-full h-1 -translate-y-1/2 hidden lg:block" style={{ background: `linear-gradient(90deg, transparent, ${T.divider}, transparent)` }} />
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
               {[
-                { step: '01', title: 'INGESTION', desc: 'Secure upload of multi-format medical data into the encrypted CuraSense core.' },
-                { step: '02', title: 'NORMALIZATION', desc: 'Data is standardized, artifacts removed, and tensors mapped for neural processing.' },
-                { step: '03', title: 'INFERENCE', desc: 'Parallel processing across specialized models for instantaneous anomaly detection.' },
-                { step: '04', title: 'SYNTHESIS', desc: 'Generation of a unified, comprehensive diagnostic report with confidence intervals.' }
+                { step: '01', title: 'HL7 / FHIR INGESTION', desc: 'Secure upload of multi-format medical data, EHR records, and lab results into the encrypted core.' },
+                { step: '02', title: 'DATA NORMALIZATION', desc: 'Biometric standardizing, artifact removal in scans, and tensor mapping for neural processing.' },
+                { step: '03', title: 'DIAGNOSTIC INFERENCE', desc: 'Parallel processing across specialized oncological, neurological, and cardiovascular models.' },
+                { step: '04', title: 'CLINICAL SYNTHESIS', desc: 'Generation of a unified diagnostic report with ICD-10 codes and evidence-based interventions.' }
               ].map((step, i) => (
                 <div key={i} className="sec-card relative flex flex-col items-center text-center z-10">
                   <div className="w-24 h-24 rounded-full flex items-center justify-center mb-8 backdrop-blur-xl" style={{ background: T.cardBg, border: `2px solid ${T.logoSub}`, fontFamily: S, fontSize: '2rem', fontWeight: 900, color: T.secTitle }}>
@@ -409,54 +479,20 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
         </div>
       </div>
 
-      <div id="section-architecture" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
-        <div className="max-w-[1600px] w-full px-8 mx-auto flex flex-col lg:flex-row items-center gap-20">
-          <div className="w-full lg:w-1/2">
-            <div className="sec-card aspect-square rounded-[3rem] w-full flex items-center justify-center relative overflow-hidden" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
-              <Cpu className="w-48 h-48 absolute opacity-10" style={{ color: T.logoSub }} />
-              <div className="grid grid-cols-3 gap-6 relative z-10 p-12">
-                {[...Array(9)].map((_, i) => (
-                  <div key={i} className="w-20 h-20 rounded-2xl animate-pulse" style={{ background: T.secBtnBg, border: `1px solid ${T.logoSub}`, animationDelay: `${i * 0.2}s` }} />
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="w-full lg:w-1/2">
-            <div className="sec-title mb-8">
-              <h2 style={{ fontFamily: S, fontSize: '4rem', fontWeight: 900, color: T.secTitle, lineHeight: 1.1 }}>TENSOR OPTIMIZED<br/>ARCHITECTURE</h2>
-            </div>
-            <p className="sec-card mb-10" style={{ fontSize: '1.3rem', color: T.secText, lineHeight: 1.8 }}>
-              Built on proprietary transformer models, CuraSense utilizes quantum-resistant encryption protocols during inference. The distributed node network ensures zero downtime and absolute data sovereignty.
-            </p>
-            <ul className="space-y-6">
-              {[
-                'Distributed GPU clusters for zero-latency processing',
-                'Continuous learning loop fed by verified clinical outcomes',
-                'Advanced edge-computing capabilities for offline scenarios'
-              ].map((item, i) => (
-                <li key={i} className="sec-card flex items-center gap-6 p-6 rounded-2xl" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
-                  <div className="w-3 h-3 rounded-full" style={{ background: T.logoSub, boxShadow: `0 0 10px ${T.logoSub}` }} />
-                  <span style={{ fontSize: '1.2rem', color: T.secTitle, fontWeight: 500 }}>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
       <div id="section-diseases" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
         <div className="max-w-[1600px] w-full px-8 mx-auto text-center">
           <div className="sec-title mb-24">
-            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle }}>CLINICAL SCOPE</h2>
-            <p className="mt-6" style={{ fontSize: '1.5rem', color: T.secText, maxWidth: '800px', margin: '2rem auto' }}>Comprehensive detection matrices covering thousands of pathologies.</p>
+            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle }}>SUBSPECIALTY SCOPE</h2>
+            <p className="mt-6" style={{ fontSize: '1.5rem', color: T.secText, maxWidth: '800px', margin: '2rem auto' }}>Comprehensive diagnostic matrices covering over 14,000 distinct pathologies.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
               'ONCOLOGY', 'NEUROLOGY', 'CARDIOLOGY', 'PULMONOLOGY',
-              'DERMATOLOGY', 'ENDOCRINOLOGY', 'GASTROENTEROLOGY', 'IMMUNOLOGY'
+              'DERMATOLOGY', 'ENDOCRINOLOGY', 'GASTROENTEROLOGY', 'IMMUNOLOGY',
+              'HEMATOLOGY', 'RHEUMATOLOGY', 'NEPHROLOGY', 'INFECTIOUS DISEASE'
             ].map((dept, i) => (
               <div key={i} className="sec-card mag py-10 px-6 rounded-3xl flex items-center justify-center cursor-pointer transition-all hover:bg-opacity-80" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
-                <span style={{ fontFamily: S, fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.15em', color: T.secTitle }}>{dept}</span>
+                <span style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 800, letterSpacing: '0.15em', color: T.secTitle }}>{dept}</span>
               </div>
             ))}
           </div>
@@ -466,21 +502,21 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
       <div id="section-trust" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
         <div className="max-w-[1600px] w-full px-8 mx-auto">
           <div className="sec-title mb-20 text-center">
-            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle }}>MILITARY-GRADE<br/>SECURITY</h2>
+            <h2 style={{ fontFamily: S, fontSize: '4.5rem', fontWeight: 900, color: T.secTitle }}>MEDICAL-GRADE<br/>SECURITY</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
             <div className="sec-card p-16 rounded-[3rem]" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
               <Fingerprint className="w-20 h-20 mb-10" style={{ color: T.logoSub }} />
               <h3 style={{ fontFamily: S, fontSize: '2.5rem', fontWeight: 900, color: T.secTitle, mb: '2rem' }}>HIPAA & GDPR COMPLIANT</h3>
               <p className="mt-6" style={{ fontSize: '1.3rem', color: T.secText, lineHeight: 1.8 }}>
-                Every data point processed by CuraSense undergoes AES-256 encryption at rest and TLS 1.3 in transit. Patient identity is irreversibly obfuscated prior to inference processing.
+                Every data point processed by CuraSense undergoes AES-256 encryption at rest and TLS 1.3 in transit. Patient identity (PHI) is irreversibly obfuscated and detached from biometric payloads prior to inference processing.
               </p>
             </div>
             <div className="sec-card p-16 rounded-[3rem]" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}` }}>
               <Globe className="w-20 h-20 mb-10" style={{ color: T.logoSub }} />
-              <h3 style={{ fontFamily: S, fontSize: '2.5rem', fontWeight: 900, color: T.secTitle, mb: '2rem' }}>DECENTRALIZED VAULTS</h3>
+              <h3 style={{ fontFamily: S, fontSize: '2.5rem', fontWeight: 900, color: T.secTitle, mb: '2rem' }}>DECENTRALIZED HEALTH VAULTS</h3>
               <p className="mt-6" style={{ fontSize: '1.3rem', color: T.secText, lineHeight: 1.8 }}>
-                Diagnostic records are fragmented and stored across geographically isolated, blockchain-verified nodes, eliminating any single point of failure and ensuring absolute data integrity.
+                Diagnostic records are fragmented and stored across geographically isolated, blockchain-verified clinical nodes, eliminating any single point of failure and ensuring absolute data sovereignty for healthcare providers.
               </p>
             </div>
           </div>
@@ -491,9 +527,9 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
         <div className="max-w-[1200px] w-full px-8 mx-auto">
           <div className="sec-title">
             <h2 style={{ fontFamily: S, fontSize: 'clamp(4rem, 8vw, 7rem)', fontWeight: 900, color: T.secTitle, lineHeight: 1 }}>SYSTEM READY</h2>
-            <p className="mt-10 mb-16" style={{ fontSize: '1.6rem', color: T.secText, lineHeight: 1.6 }}>Initiate sequence to deploy the most advanced diagnostic framework ever created.</p>
+            <p className="mt-10 mb-16" style={{ fontSize: '1.6rem', color: T.secText, lineHeight: 1.6 }}>Initiate sequence to deploy the most advanced clinical diagnostic framework.</p>
             <button onClick={() => scrollToSection('section-hero')} className="mag px-16 py-8 rounded-full font-bold transition-all hover:scale-[1.05]" style={{ fontFamily: S, fontSize: '1.5rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, color: '#fff' }}>
-              INITIALIZE SYSTEM
+              INITIALIZE MEDICAL AI
             </button>
           </div>
         </div>
@@ -604,7 +640,7 @@ function SuccessAnimation() {
         <h2 className="text-3xl tracking-[0.2em] uppercase font-bold text-emerald-400" style={{ fontFamily: "'Michroma', sans-serif" }}>
           AUTHENTICATED
         </h2>
-        <p className="text-emerald-400/70 tracking-widest mt-2 text-sm">SECURE CONNECTION ESTABLISHED</p>
+        <p className="text-emerald-400/70 tracking-widest mt-2 text-sm">SECURE CLINICAL CONNECTION ESTABLISHED</p>
       </div>
     </div>
   );
