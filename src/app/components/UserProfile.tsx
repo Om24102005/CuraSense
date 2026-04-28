@@ -31,6 +31,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
     }
   }, []);
 
+  // 3D Canvas Rendering
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
 
@@ -44,13 +45,16 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
     canvasRef.current.appendChild(renderer.domElement);
 
     const geo = new THREE.TorusKnotGeometry(1.2, 0.4, 100, 16);
+    
+    // FIXED: Removed AdditiveBlending which causes extreme visibility issues between themes.
+    // Increased opacity and utilized strict hex colors to guarantee visibility.
     const mat = new THREE.MeshBasicMaterial({ 
-      color: userData.role === 'admin' ? 0xd946ef : (isDark ? 0x00e5ff : 0x8b5cf6), 
+      color: userData.role === 'admin' ? 0xd946ef : (isDark ? 0x22d3ee : 0x8b5cf6), 
       wireframe: true,
       transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending
+      opacity: 0.95
     });
+    
     const mesh = new THREE.Mesh(geo, mat);
     scene.add(mesh);
 
@@ -65,7 +69,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
 
     gsap.fromTo(menuRef.current, 
       { opacity: 0, y: -20, scale: 0.95 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: 'back.out(1.5)' }
+      { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.2)' }
     );
 
     return () => {
@@ -86,6 +90,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
 
   return (
     <div className="relative">
+      {/* Navbar Trigger Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105"
@@ -96,9 +101,10 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
         }}
       >
         <User className="w-4 h-4" />
-        {userData.name.split(' ')[0]}
+        <span style={{ color: 'inherit' }}>{userData.name.split(' ')[0]}</span>
       </button>
 
+      {/* Dropdown Menu */}
       {isOpen && (
         <div 
           ref={menuRef}
@@ -106,16 +112,17 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
           style={{ 
             background: 'var(--bg-card)', 
             border: '1px solid var(--border-color)', 
-            boxShadow: isDark ? '0 20px 40px rgba(0,0,0,0.6)' : '0 10px 40px rgba(0,0,0,0.1)', 
+            boxShadow: isDark ? '0 20px 40px rgba(0,0,0,0.8)' : '0 10px 40px rgba(0,0,0,0.1)', 
             backdropFilter: 'blur(24px)' 
           }}
         >
-          <div className="p-5 border-b relative overflow-hidden" style={{ borderColor: 'var(--border-color)', background: userData.role === 'admin' ? 'rgba(217,70,239,0.05)' : 'rgba(139,92,246,0.05)' }}>
-            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-20 transform translate-x-1/2 -translate-y-1/2 pointer-events-none ${userData.role === 'admin' ? 'bg-fuchsia-500' : 'bg-purple-500'}`} />
+          {/* Header Area */}
+          <div className="p-5 border-b relative overflow-hidden" style={{ borderColor: 'var(--border-color)', background: userData.role === 'admin' ? 'rgba(217,70,239,0.08)' : 'rgba(139,92,246,0.08)' }}>
+            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-30 transform translate-x-1/2 -translate-y-1/2 pointer-events-none ${userData.role === 'admin' ? 'bg-fuchsia-500' : (isDark ? 'bg-cyan-500' : 'bg-purple-500')}`} />
             
             <div className="flex justify-between items-start mb-4 relative z-10">
-              <div ref={canvasRef} className="rounded-full overflow-hidden" style={{ width: '60px', height: '60px', background: 'var(--bg-base)', border: '1px solid var(--border-color)' }} />
-              <button onClick={() => setIsOpen(false)} className="p-1 rounded-lg hover:bg-white/10 transition-colors" style={{ color: 'var(--text-muted)' }}>
+              <div ref={canvasRef} className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: '60px', height: '60px', background: 'var(--bg-base)', border: '1px solid var(--border-color)' }} />
+              <button onClick={() => setIsOpen(false)} className="p-1 rounded-lg transition-colors hover:bg-black/10 dark:hover:bg-white/10" style={{ color: 'var(--text-muted)' }}>
                  <X className="w-5 h-5" />
               </button>
             </div>
@@ -131,6 +138,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
             </div>
           </div>
 
+          {/* Body Area */}
           <div className="p-4">
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="p-3 rounded-xl text-center" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}>
@@ -147,20 +155,21 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
               <button 
                 onClick={() => handleNavigation('history')} 
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1" 
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-surface)' }}
+                style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
               >
                 <History className="w-4 h-4" /> View Full History
               </button>
               <button 
                 onClick={() => handleNavigation('settings')} 
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1" 
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-surface)' }}
+                style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
               >
                 <Settings className="w-4 h-4" /> Account Settings
               </button>
               <button 
                 onClick={onLogout} 
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1 hover:bg-red-500/10 text-red-400"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all hover:translate-x-1 hover:bg-red-500/10"
+                style={{ color: '#ef4444' }}
               >
                 <LogOut className="w-4 h-4" /> Secure Sign Out
               </button>
