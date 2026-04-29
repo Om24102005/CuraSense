@@ -1,0 +1,30 @@
+# Environment variables - NEVER commit these
+.env
+.env.local
+.env*.local
+backend/.env
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/__pycache__/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
