@@ -4,6 +4,7 @@ import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
 import { LoadingScreen } from './LoadingScreen';
+import { API_BASE_URL } from '../../utils/api';
 
 interface ReportAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
@@ -53,7 +54,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
 
     try {
       // LIVE API CALL TO FASTAPI BACKEND
-      const response = await fetch("http://localhost:8000/api/v1/diagnostics/lab-report", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/diagnostics/lab-report`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_API_TOKEN}` },
         body: JSON.stringify({ patient_id: "demo-user", report_text: reportText })
