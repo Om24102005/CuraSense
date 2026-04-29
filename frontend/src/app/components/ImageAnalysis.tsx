@@ -4,6 +4,7 @@ import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
 import { LoadingScreen } from './LoadingScreen';
+import { API_BASE_URL } from '../../utils/api';
 
 interface ImageAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
@@ -80,7 +81,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
       formData.append("scan_type", scanType);
       formData.append("file", selectedImage);
 
-      const response = await fetch("http://localhost:8000/api/v1/diagnostics/imaging", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/diagnostics/imaging`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${import.meta.env.VITE_API_TOKEN}` },
         body: formData
