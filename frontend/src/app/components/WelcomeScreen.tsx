@@ -215,10 +215,10 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
 
         <div className="flex-1 flex items-center max-w-[1600px] mx-auto w-full mt-12">
           <div className="w-full flex flex-col lg:flex-row justify-between items-center gap-16">
-            <div className="w-full max-w-3xl" style={{ perspective: '1000px' }}>
-              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3.2rem, 6.5vw, 6.5rem)', fontWeight: 900, lineHeight: 0.95, letterSpacing: '0.02em', marginBottom: '0.1em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h1a}, ${T.h1b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h1a }) }}>CLINICAL</h1>
-              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3.2rem, 6.5vw, 6.5rem)', fontWeight: 900, lineHeight: 0.95, letterSpacing: '0.02em', marginBottom: '0.1em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h2a}, ${T.h2b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h2a }) }}>PRECISION</h1>
-              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 5.5vw, 5.5rem)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '0.01em', marginBottom: '1rem', ...(isDark ? { background: `linear-gradient(100deg, ${T.h3a}, ${T.h3b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h3a }) }}>REDEFINED.</h1>
+            <div className="w-full lg:flex-1 max-w-[900px]" style={{ perspective: '1000px' }}>
+              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3.2rem, 6.5vw, 6.5rem)', fontWeight: 900, lineHeight: 0.95, letterSpacing: '0.02em', marginBottom: '0.1em', paddingRight: '0.2em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h1a}, ${T.h1b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h1a }) }}>CLINICAL</h1>
+              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3.2rem, 6.5vw, 6.5rem)', fontWeight: 900, lineHeight: 0.95, letterSpacing: '0.02em', marginBottom: '0.1em', paddingRight: '0.2em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h2a}, ${T.h2b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h2a }) }}>PRECISION</h1>
+              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 5.5vw, 5.5rem)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '0.01em', marginBottom: '1rem', paddingRight: '0.2em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h3a}, ${T.h3b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h3a }) }}>REDEFINED.</h1>
               
               <div className="uline h-[2px] mt-8 mb-8 rounded-full" style={{ maxWidth: '300px', background: `linear-gradient(90deg, ${T.divider}, transparent)` }} />
               
