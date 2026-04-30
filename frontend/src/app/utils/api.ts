@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:8000';
 
 interface ApiResponse<T> {
   data?: T;
