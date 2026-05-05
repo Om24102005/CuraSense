@@ -242,7 +242,7 @@ app.get('/admin/predictions', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Secure server running on port ${PORT}`);
 });
