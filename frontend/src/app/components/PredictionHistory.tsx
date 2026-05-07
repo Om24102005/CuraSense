@@ -53,11 +53,15 @@ export function PredictionHistory({ predictions, onLike }: PredictionHistoryProp
   const typeLabels: Record<string, string> = { symptom: 'Symptom Analysis', image: 'Image Analysis', report: 'Report Analysis' };
   const typeIcons: Record<string, JSX.Element> = { symptom: <Stethoscope className="w-4 h-4" />, image: <Activity className="w-4 h-4" />, report: <FileText className="w-4 h-4" /> };
 
-  const formatDate = (date: Date) => {
-    const now = new Date(); const diff = now.getTime() - date.getTime();
+  const formatDate = (date: Date | string | number | null | undefined) => {
+    // MongoDB returns timestamps as ISO strings — coerce to Date here so
+    // callers don't have to. Bail safely if the value is missing or unparseable.
+    const d = date instanceof Date ? date : new Date(date as any);
+    if (isNaN(d.getTime())) return '—';
+    const now = new Date(); const diff = now.getTime() - d.getTime();
     const mins = Math.floor(diff / 60000); const hrs = Math.floor(diff / 3600000); const days = Math.floor(diff / 86400000);
     if (mins < 1) return 'Just now'; if (mins < 60) return `${mins}m ago`; if (hrs < 24) return `${hrs}h ago`; if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const avgConfidence = predictions.length > 0 ? Math.round(predictions.reduce((s, p) => s + p.confidence, 0) / predictions.length) : 0;

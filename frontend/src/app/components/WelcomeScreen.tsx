@@ -6,8 +6,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { useTheme } from '../App';
 import { LoadingScreen } from './LoadingScreen';
-import { login, register, forgotPassword } from '../utils/api';
+import { login, register, forgotPassword, verifyResetCode, resetPassword } from '../utils/api';
 import * as THREE from 'three';
+import ScrollStory from './ScrollStory';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -27,7 +28,40 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  /* ── Three-stage reset flow ──
+     'idle'     → email input screen
+     'code'     → code entry screen (after email submitted, code emailed)
+     'password' → new password screen (after code verified). Skip is here.
+     'done'     → success card → auto-redirect to login
+
+     The code itself never leaves the backend; the user gets it via email.
+     /verify-reset-code confirms the typed code before we reveal the
+     password screen, so users can't skip ahead by guessing. */
+  type ResetStage = 'idle' | 'code' | 'password' | 'done';
+  const [resetStage, setResetStage] = useState<ResetStage>('idle');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMaskedEmail, setResetMaskedEmail] = useState('');
+  // Code returned from /forgot-password — displayed on the verify screen
+  // since we don't ship an email service.
+  const [resetCode, setResetCode] = useState<string | null>(null);
+  const [typedCode, setTypedCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+
+  /* Wipe the reset-flow state. Called by Skip-for-now (on the password
+     screen) and Back-to-Login (on every screen). */
+  const cancelReset = () => {
+    setResetStage('idle');
+    setResetEmail('');
+    setResetMaskedEmail('');
+    setResetCode(null);
+    setTypedCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setError('');
+    setSuccessMsg('');
+  };
 
   useEffect(() => {
     if (isSuccess) return;
@@ -56,22 +90,32 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
       const sections = document.querySelectorAll('.scroll-section');
       sections.forEach((sec, i) => {
         if (i === 0) return;
-        
-        gsap.fromTo(sec.querySelectorAll('.sec-title'),
-          { y: 100, opacity: 0 },
-          { 
-            y: 0, opacity: 1, duration: 1.5, ease: 'expo.out',
-            scrollTrigger: { trigger: sec, start: 'top 75%' }
-          }
-        );
 
-        gsap.fromTo(sec.querySelectorAll('.sec-card'),
-          { y: 60, opacity: 0, scale: 0.95 },
-          {
-            y: 0, opacity: 1, scale: 1, duration: 1.2, stagger: 0.1, ease: 'power3.out',
-            scrollTrigger: { trigger: sec, start: 'top 70%' }
-          }
-        );
+        // Some sections have no .sec-title or .sec-card (e.g. section-hero
+        // is intentionally hand-built). Skip the tween if the selector
+        // returns nothing — otherwise GSAP warns once per ScrollTrigger
+        // refresh, which is on every rAF tick when scrub is active.
+        const titles = sec.querySelectorAll('.sec-title');
+        if (titles.length) {
+          gsap.fromTo(titles,
+            { y: 100, opacity: 0 },
+            {
+              y: 0, opacity: 1, duration: 1.5, ease: 'expo.out',
+              scrollTrigger: { trigger: sec, start: 'top 75%' }
+            }
+          );
+        }
+
+        const cards = sec.querySelectorAll('.sec-card');
+        if (cards.length) {
+          gsap.fromTo(cards,
+            { y: 60, opacity: 0, scale: 0.95 },
+            {
+              y: 0, opacity: 1, scale: 1, duration: 1.2, stagger: 0.1, ease: 'power3.out',
+              scrollTrigger: { trigger: sec, start: 'top 70%' }
+            }
+          );
+        }
       });
 
       document.querySelectorAll('.stat-number').forEach((el) => {
@@ -125,13 +169,71 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
     setIsAuthenticating(true);
 
     if (authMode === 'forgot') {
-      const response = await forgotPassword(formData.email);
-      setIsAuthenticating(false);
-      if (response.error) setError(response.error);
-      else {
-        setSuccessMsg(response.data.message);
-        setTimeout(() => switchAuthMode('login'), 3000);
+      /* Three-stage submit flow:
+           idle    → call /forgot-password (emails the code) → advance to 'code'
+           code    → call /verify-reset-code (checks the typed code) → advance to 'password'
+           password→ call /reset-password (sets the new password) → advance to 'done' */
+
+      // ── Stage 1 → 2: generate the code ───────────────────────────────
+      if (resetStage === 'idle') {
+        const response = await forgotPassword(formData.email);
+        setIsAuthenticating(false);
+        if (response.error) {
+          setError(response.error);
+          return;
+        }
+        const data = response.data as any;
+        setResetEmail(String(data?.email || formData.email));
+        setResetMaskedEmail(String(data?.maskedEmail || ''));
+        setResetCode(typeof data?.code === 'string' ? data.code : null);
+        setSuccessMsg('');
+        setResetStage('code');
+        return;
       }
+
+      // ── Stage 2 → 3: verify the typed code ───────────────────────────
+      if (resetStage === 'code') {
+        if (!typedCode.trim() || typedCode.trim().length !== 6) {
+          setIsAuthenticating(false);
+          setError('Enter the 6-digit code from your email.');
+          return;
+        }
+        const v = await verifyResetCode(resetEmail, typedCode.trim());
+        setIsAuthenticating(false);
+        if (v.error) {
+          setError(v.error);
+          return;
+        }
+        setSuccessMsg('');
+        setResetStage('password');
+        return;
+      }
+
+      // ── Stage 3 → done: set the new password ─────────────────────────
+      if (resetStage === 'password') {
+        if (newPassword.length < 6) {
+          setIsAuthenticating(false);
+          setError('Password must be at least 6 characters.');
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          setIsAuthenticating(false);
+          setError('Passwords do not match.');
+          return;
+        }
+        const r = await resetPassword(resetEmail, typedCode.trim(), newPassword);
+        setIsAuthenticating(false);
+        if (r.error) {
+          setError(r.error);
+          return;
+        }
+        setSuccessMsg('Password updated. Returning to login…');
+        setResetStage('done');
+        setTimeout(() => { cancelReset(); switchAuthMode('login'); }, 1800);
+        return;
+      }
+
+      setIsAuthenticating(false);
       return;
     }
 
@@ -319,16 +421,178 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                         <RefreshCw className="w-5 h-5 text-emerald-500" />
                       </div>
                       <h3 style={{ fontFamily: S, fontSize: '1.8rem', fontWeight: 900, color: T.cardTitle, marginBottom: '1rem' }}>Reset Protocol</h3>
-                      <p style={{ fontSize: '0.9rem', color: T.secText, marginBottom: '2rem', lineHeight: 1.6 }}>Enter your registered clinical email. We will transmit encrypted recovery keys to your secure inbox.</p>
-                      <div className="flex flex-col gap-5 mb-8">
-                        <div style={{ position: 'relative' }}><Mail style={iconStyle} className="w-5 h-5" /><input type="text" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Clinical Email" required style={inpStyle} /></div>
-                      </div>
-                      <button type="submit" className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 24px rgba(16,185,129,0.3)' }}>
-                        Transmit Request <ArrowRight className="inline w-5 h-5 ml-2" />
-                      </button>
-                      <div className="text-center">
-                        <button type="button" onClick={() => switchAuthMode('login')} style={{ fontSize: '0.8rem', color: T.initClr, background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontWeight: 600 }}>← Back to Login</button>
-                      </div>
+                      <p style={{ fontSize: '0.9rem', color: T.secText, marginBottom: '2rem', lineHeight: 1.6 }}>
+                        {resetStage === 'idle'     && "Enter your registered email and we'll send a 6-digit code."}
+                        {resetStage === 'code'     && `Code sent to ${resetMaskedEmail || 'your inbox'}. Check your email and type it below.`}
+                        {resetStage === 'password' && "Code verified. Choose a new password — or skip to keep the old one."}
+                        {resetStage === 'done'     && "Password updated successfully."}
+                      </p>
+
+                      {/* ── STAGE 1 — EMAIL ── */}
+                      {resetStage === 'idle' && (
+                        <>
+                          <div className="flex flex-col gap-5 mb-8">
+                            <div style={{ position: 'relative' }}>
+                              <Mail style={iconStyle} className="w-5 h-5" />
+                              <input
+                                type="text"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                placeholder="Registered Email"
+                                required
+                                style={inpStyle}
+                              />
+                            </div>
+                          </div>
+                          <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 24px rgba(16,185,129,0.3)', opacity: isAuthenticating ? 0.6 : 1 }}>
+                            {isAuthenticating ? 'Sending…' : <>Send Code <ArrowRight className="inline w-5 h-5 ml-2" /></>}
+                          </button>
+                        </>
+                      )}
+
+                      {/* ── STAGE 2 — CODE (no skip here) ── */}
+                      {resetStage === 'code' && (
+                        <>
+                          {/* Single code-display card — shown to the user
+                              since there's no email infrastructure. */}
+                          <div style={{
+                            padding: '1.1rem',
+                            borderRadius: '14px',
+                            background: 'rgba(16,185,129,0.08)',
+                            border: '1px solid rgba(16,185,129,0.30)',
+                            marginBottom: '1.25rem',
+                            textAlign: 'center',
+                          }}>
+                            <div style={{ fontFamily: S, fontSize: '0.65rem', letterSpacing: '0.25em', color: '#10b981', marginBottom: '8px', fontWeight: 700 }}>
+                              YOUR RESET CODE
+                            </div>
+                            <div style={{
+                              fontFamily: S,
+                              fontSize: '2.2rem',
+                              fontWeight: 900,
+                              letterSpacing: '0.4em',
+                              color: '#fff',
+                              textShadow: '0 0 20px rgba(16,185,129,0.5)',
+                              userSelect: 'all',
+                            }}>
+                              {resetCode}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: T.secText, marginTop: '6px', opacity: 0.7 }}>
+                              {resetMaskedEmail ? `${resetMaskedEmail} · ` : ''}valid for 30 minutes
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-4 mb-6">
+                            <div style={{ position: 'relative' }}>
+                              <ShieldCheck style={iconStyle} className="w-5 h-5" />
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                autoFocus
+                                value={typedCode}
+                                onChange={(e) => setTypedCode(e.target.value.replace(/\D/g, ''))}
+                                placeholder="6-digit code from email"
+                                required
+                                style={{ ...inpStyle, letterSpacing: '0.3em', textAlign: 'center', fontSize: '1.1rem' }}
+                              />
+                            </div>
+                          </div>
+
+                          <button type="submit" disabled={isAuthenticating || typedCode.length !== 6} className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)', opacity: (isAuthenticating || typedCode.length !== 6) ? 0.5 : 1 }}>
+                            {isAuthenticating ? 'Verifying…' : <>Verify Code <ArrowRight className="inline w-5 h-5 ml-2" /></>}
+                          </button>
+                          {/* No skip on this screen — user must verify the code first */}
+                        </>
+                      )}
+
+                      {/* ── STAGE 3 — PASSWORD (skip lives here) ── */}
+                      {resetStage === 'password' && (
+                        <>
+                          <div className="flex flex-col gap-4 mb-6">
+                            <div style={{ position: 'relative' }}>
+                              <Lock style={iconStyle} className="w-5 h-5" />
+                              <input
+                                type="password"
+                                autoFocus
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="New Password (min 6)"
+                                required
+                                style={inpStyle}
+                              />
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                              <Lock style={iconStyle} className="w-5 h-5" />
+                              <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="Confirm Password"
+                                required
+                                style={inpStyle}
+                              />
+                            </div>
+                          </div>
+
+                          <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)', opacity: isAuthenticating ? 0.6 : 1 }}>
+                            {isAuthenticating ? 'Updating…' : <>Reset Password <ArrowRight className="inline w-5 h-5 ml-2" /></>}
+                          </button>
+
+                          {/* Skip — only available on the password screen.
+                              Drops the user back at login without changing the password. */}
+                          <button
+                            type="button"
+                            onClick={() => { cancelReset(); switchAuthMode('login'); }}
+                            className="w-full py-3 rounded-2xl font-bold transition-all"
+                            style={{
+                              fontFamily: S,
+                              fontSize: '0.75rem',
+                              letterSpacing: '0.18em',
+                              textTransform: 'uppercase',
+                              color: T.initClr,
+                              background: 'transparent',
+                              border: `1px solid ${T.cardBdr || 'rgba(255,255,255,0.15)'}`,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Skip for now
+                          </button>
+                        </>
+                      )}
+
+                      {/* ── STAGE 4 — DONE ── */}
+                      {resetStage === 'done' && (
+                        <div style={{
+                          padding: '1.4rem',
+                          borderRadius: '14px',
+                          background: 'rgba(16,185,129,0.10)',
+                          border: '1px solid rgba(16,185,129,0.35)',
+                          textAlign: 'center',
+                          marginBottom: '1rem',
+                        }}>
+                          <div style={{ fontSize: '2.4rem', marginBottom: '8px' }}>✓</div>
+                          <div style={{ fontFamily: S, fontSize: '0.9rem', fontWeight: 700, color: '#10b981', marginBottom: '6px' }}>
+                            PASSWORD UPDATED
+                          </div>
+                          <p style={{ fontSize: '0.78rem', color: T.secText }}>
+                            {successMsg || 'Returning to login…'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Back-to-login link is always visible except on the success screen */}
+                      {resetStage !== 'done' && (
+                        <div className="text-center mt-2">
+                          <button
+                            type="button"
+                            onClick={() => { cancelReset(); switchAuthMode('login'); }}
+                            style={{ fontSize: '0.8rem', color: T.initClr, background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontWeight: 600 }}
+                          >
+                            ← Back to Login
+                          </button>
+                        </div>
+                      )}
                     </form>
                   )}
                 </div>
@@ -337,6 +601,15 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
           </div>
         </div>
       </div>
+
+      {/* ── SCROLLYTELLING REEL ──
+          Pinned narrative section. The visual stays fixed in the
+          viewport while the user scrolls; each scroll-step swaps to
+          the next scene (Capture → Reason → Resolve → Remember) with
+          its own animation and a caption explaining what's happening.
+          Lives between the hero and the DNA section so it's the first
+          thing a visitor sees after the headline. */}
+      <ScrollStory />
 
       <div id="section-dna-analysis" className="scroll-section min-h-screen relative flex flex-col justify-center py-32">
         <div className="max-w-[1600px] w-full px-8 mx-auto flex flex-col lg:flex-row items-center gap-20">

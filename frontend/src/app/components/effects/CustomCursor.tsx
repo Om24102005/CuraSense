@@ -122,7 +122,21 @@ export default function CustomCursor() {
 
   return (
     <>
-      {/* Main cursor */}
+      {/*
+        ── CURSOR REDESIGN ─────────────────────────────────────────────
+        Three layers, all visible (no mixBlendMode: difference, which was
+        what made the cursor disappear against the dark navy/violet bg):
+
+          1. Core dot     — pure white, sharp, bright. Reads on any bg.
+          2. Aurora halo  — radial cyan→violet glow ring around the core.
+          3. Follower     — thin cyan ring with elastic damping.
+          4. Trail        — soft cyan blur a few px behind the core.
+
+        Click → core scales down, halo flashes brighter; hover on links
+        → halo grows to ~3× and shifts violet.
+      */}
+
+      {/* 1+2. Core + aurora halo (translated as a single unit by JS) */}
       <div
         ref={cursorRef}
         className="pointer-events-none fixed z-[99999]"
@@ -130,22 +144,25 @@ export default function CustomCursor() {
           transform: 'translate(0, 0)',
           left: 0,
           top: 0,
-          width: isHovering ? 40 : 8,
-          height: isHovering ? 40 : 8,
+          width: isHovering ? 38 : 14,
+          height: isHovering ? 38 : 14,
+          marginLeft: isHovering ? -19 : -7,
+          marginTop: isHovering ? -19 : -7,
           borderRadius: '50%',
+          // Layered radial: bright white core → cyan mid → violet edge → transparent
           background: isHovering
-            ? 'var(--accent-violet)'
-            : 'var(--accent-cyan)',
-          mixBlendMode: 'difference',
-          transition: 'width 0.2s, height 0.2s, background 0.3s',
-          opacity: isClicking ? 0.3 : 0.8,
+            ? 'radial-gradient(circle, #ffffff 0%, #ffffff 18%, var(--accent-violet, #a855f7) 55%, transparent 75%)'
+            : 'radial-gradient(circle, #ffffff 0%, #ffffff 35%, var(--accent-cyan, #22d3ee) 60%, transparent 90%)',
+          transition: 'width 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), height 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.22s, background 0.3s',
+          opacity: isClicking ? 1 : 0.95,
           boxShadow: isHovering
-            ? '0 0 30px var(--accent-violet)'
-            : '0 0 10px var(--accent-cyan)',
+            ? '0 0 24px 4px var(--accent-violet, #a855f7), 0 0 80px 20px rgba(168, 85, 247, 0.45)'
+            : '0 0 16px 3px var(--accent-cyan, #22d3ee), 0 0 48px 12px rgba(34, 211, 238, 0.35)',
+          filter: isClicking ? 'brightness(1.4) saturate(1.4)' : 'brightness(1.1)',
         }}
       />
 
-      {/* Follower ring */}
+      {/* 3. Follower ring — thin chromatic outline that lags behind */}
       <div
         ref={followerRef}
         className="pointer-events-none fixed z-[99998]"
@@ -153,16 +170,19 @@ export default function CustomCursor() {
           transform: 'translate(-50%, -50%)',
           left: 0,
           top: 0,
-          width: isHovering ? 60 : 30,
-          height: isHovering ? 60 : 30,
+          width: isHovering ? 64 : 36,
+          height: isHovering ? 64 : 36,
           borderRadius: '50%',
-          border: `1.5px solid var(--accent-violet)`,
-          opacity: 0.4,
-          transition: 'width 0.3s, height 0.3s',
+          border: `1.5px solid var(--accent-cyan, #22d3ee)`,
+          opacity: isHovering ? 0.85 : 0.55,
+          boxShadow: isHovering
+            ? '0 0 24px var(--accent-violet, #a855f7), inset 0 0 12px rgba(168, 85, 247, 0.25)'
+            : '0 0 12px var(--accent-cyan, #22d3ee), inset 0 0 6px rgba(34, 211, 238, 0.20)',
+          transition: 'width 0.3s, height 0.3s, opacity 0.3s, box-shadow 0.3s, border-color 0.3s',
         }}
       />
 
-      {/* Trail */}
+      {/* 4. Soft cyan trail — a blurred dot a few px behind for motion smear */}
       <div
         ref={trailRef}
         className="pointer-events-none fixed z-[99997]"
@@ -170,12 +190,12 @@ export default function CustomCursor() {
           transform: 'translate(-50%, -50%)',
           left: 0,
           top: 0,
-          width: 4,
-          height: 4,
+          width: 12,
+          height: 12,
           borderRadius: '50%',
-          background: 'var(--accent-cyan)',
-          opacity: 0.2,
-          filter: 'blur(2px)',
+          background: 'var(--accent-cyan, #22d3ee)',
+          opacity: 0.45,
+          filter: 'blur(6px)',
         }}
       />
     </>

@@ -1,13 +1,17 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import uvicorn
 
-from ai_core import analyze_symptoms_with_mistral, classify_medical_image_with_resnet, parse_lab_report
+from ai_core import analyze_symptoms_with_mistral, classify_medical_image_with_resnet, analyze_lab_report
 
-load_dotenv()
+# Load .env from the backend root (../) so a single env file feeds
+# both this Python service and the Node service in ../node.
+load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
+load_dotenv()  # also pick up a local .env if present
 GATEWAY_SECRET = os.getenv("GATEWAY_SECRET", "")
 
 app = FastAPI(title="CuraSense AI Gateway")
@@ -41,12 +45,18 @@ class LabReportPayload(BaseModel):
 
 @app.post("/api/v1/diagnostics/symptoms")
 async def process_symptoms(payload: SymptomPayload, token: str = Depends(verify_gateway_auth)):
-    """Routes text to Mistral-7B"""
-    triage_result = analyze_symptoms_with_mistral(payload.symptoms)
+    """
+    Mistral-powered structured triage. Returns conditions with
+    probabilities, urgency level, and recommendations — same depth
+    as the lab-report endpoint. The legacy `result` field is kept
+    as a string so older callers don't break.
+    """
+    analysis = analyze_symptoms_with_mistral(payload.symptoms)
     return {
         "status": "success",
         "module": "NLP Symptom Triage",
-        "result": triage_result
+        "analysis": analysis,
+        "result": analysis.get("assessment", ""),  # legacy text field
     }
 
 @app.post("/api/v1/diagnostics/imaging")
@@ -62,12 +72,18 @@ async def process_imaging(patient_id: str = Form(...), scan_type: str = Form("sc
 
 @app.post("/api/v1/diagnostics/lab-report")
 async def process_lab_report(payload: LabReportPayload, token: str = Depends(verify_gateway_auth)):
-    """Routes raw text to the Bio-Parser"""
-    parsed_data = parse_lab_report(payload.report_text)
+    """
+    Mistral-powered clinical lab analysis.
+    Returns biomarkers (with normal ranges + status), a clinical
+    assessment, urgency, and recommendations — same model and depth
+    as the Symptoms tab, plus the structured data the UI uses for
+    health bars.
+    """
+    analysis = analyze_lab_report(payload.report_text)
     return {
         "status": "success",
-        "module": "NLP Bio-Parser",
-        "structured_data": parsed_data
+        "module": "Clinical Lab AI",
+        "analysis": analysis,
     }
 
 if __name__ == "__main__":

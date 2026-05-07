@@ -328,3 +328,99 @@ button:not([id="theme-toggle"]) {
     backdrop-filter: blur(16px) !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   UNIVERSAL INTERACTION FEEDBACK
+   Applied app-wide so every clickable element gets premium
+   tactile response without per-component wiring. Pairs with
+   InteractionLayer.tsx (which handles ripples + curtains).
+   ═══════════════════════════════════════════════════════ */
+
+/* Smooth press scale on every button + button-role element.
+   The cubic-bezier matches macOS spring-back; ~95% scale on
+   active is just enough to feel tactile without visual jump. */
+button,
+[role="button"],
+a[href],
+input[type="submit"],
+input[type="button"],
+.cs-tactile {
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+  will-change: transform;
+  transform-origin: center;
+}
+
+button:active:not(:disabled),
+[role="button"]:active,
+a[href]:active,
+input[type="submit"]:active,
+input[type="button"]:active,
+.cs-tactile:active {
+  transform: scale(0.96);
+  transition-duration: 0.08s, 0.1s, 0.1s, 0.1s, 0.1s;
+}
+
+/* Disabled buttons: kill the transform feedback so they feel inert. */
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  transform: none !important;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Focus-visible glow — keyboard users get a premium ring,
+   mouse users see nothing (focus-visible is mouse-aware). */
+button:focus-visible,
+[role="button"]:focus-visible,
+a[href]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--bg-base, #000),
+    0 0 0 4px var(--accent-violet, #a855f7),
+    0 0 24px var(--accent-violet, #a855f7);
+  border-radius: 8px;
+  transition: box-shadow 0.18s ease;
+}
+
+/* Premium link hover — text-decoration-thickness animates,
+   and a subtle glow. Skip on nav buttons (they have own hover). */
+a:not([data-no-hover]):hover {
+  text-shadow: 0 0 12px currentColor;
+}
+
+/* Inputs: focus state with cyan accent rather than browser default */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent-cyan, #00e5ff);
+  box-shadow: 0 0 0 1px var(--accent-cyan, #00e5ff),
+              0 0 16px color-mix(in srgb, var(--accent-cyan, #00e5ff) 30%, transparent);
+}
+
+/* Selection styling — premium feel even when copying text */
+::selection {
+  background: color-mix(in srgb, var(--accent-violet, #a855f7) 50%, transparent);
+  color: var(--text-primary, #fff);
+  text-shadow: 0 0 8px var(--accent-violet, #a855f7);
+}
+
+/* Reduce motion: respect the OS setting and kill bouncy effects */
+@media (prefers-reduced-motion: reduce) {
+  button,
+  [role="button"],
+  a[href],
+  .cs-tactile {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+

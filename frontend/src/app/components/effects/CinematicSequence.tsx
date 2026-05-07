@@ -5,13 +5,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getProject, types } from '@theatre/core';
-import studio from '@theatre/studio';
 import gsap from 'gsap';
 
-// Only enable studio in dev
-if (import.meta.env?.DEV) {
-  studio.initialize();
-}
+// @theatre/studio (the dev visual editor) is not loaded — we only
+// use the timeline runtime from @theatre/core. Keeping studio here
+// caused a "studio without core" error because the studio module
+// initialised before core finished evaluating in Vite's dev build.
 
 interface CinematicSequenceProps {
   onComplete?: () => void;
@@ -80,7 +79,14 @@ export default function CinematicSequence({ onComplete }: CinematicSequenceProps
       ref={containerRef}
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
       style={{
-        background: 'radial-gradient(ellipse at center, var(--glow-violet, rgba(139,92,246,0.3)), var(--bg-base, #000005) 70%)',
+        // Layered backdrop:
+        //  1) opaque deep black floor so the dashboard behind is fully blacked out
+        //  2) a subtle violet halo at the centre for visual interest behind the title
+        //  3) backdrop-filter blurs whatever's underneath as a safety net
+        background:
+          'radial-gradient(ellipse at center, rgba(40, 15, 80, 0.55), rgba(0, 0, 4, 0.98) 65%), #000004',
+        backdropFilter: 'blur(24px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(160%)',
       }}
     >
       {/* Particle overlay */}

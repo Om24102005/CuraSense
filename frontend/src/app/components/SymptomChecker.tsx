@@ -4,6 +4,7 @@ import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
 import { LoadingScreen } from './LoadingScreen';
+import MarkdownText from './effects/MarkdownText';
 
 const SYMPTOMS = [
   { id: 'fever',           name: 'Fever',              category: 'General' },
@@ -93,12 +94,18 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
       if (!response.ok) throw new Error("API Gateway Offline");
       const data = await response.json();
 
-      // Mapping Mistral's raw text to UI schema
+      // Backend now returns structured triage:
+      //   { analysis: { assessment, confidence, urgency, conditions[], recommendations[] }, result }
+      const a = (data.analysis || {}) as any;
       const mappedResult = {
-        diagnosis: "AI Triage Assessment",
-        confidence: Math.floor(Math.random() * (98 - 75 + 1)) + 75, // Simulating confidence scoring for text
-        details: data.result, // Raw Mistral Output
-        recommendations: ["Review AI notes carefully.", "Monitor vitals.", "Consult a physician if symptoms worsen."]
+        diagnosis: 'AI Triage Assessment',
+        confidence: typeof a.confidence === 'number' ? a.confidence : 80,
+        details: a.assessment || data.result || '',
+        urgency: (a.urgency || 'medium') as 'low' | 'medium' | 'high' | 'emergency',
+        conditions: Array.isArray(a.conditions) ? a.conditions : [],
+        recommendations: Array.isArray(a.recommendations) && a.recommendations.length
+          ? a.recommendations
+          : ['Review AI notes carefully.', 'Monitor vitals.', 'Consult a physician if symptoms worsen.'],
       };
 
       setResult(mappedResult);
@@ -106,14 +113,26 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
 
     } catch (error) {
       console.error(error);
-      // Fallback if local server isn't running
       setResult({
-        diagnosis: 'Connection Error', confidence: 0, details: 'Could not connect to AI Core. Ensure Python backend is running on port 8000.', recommendations: []
+        diagnosis: 'Connection Error',
+        confidence: 0,
+        details: 'Could not connect to AI Core. Ensure Python backend is running on port 8000.',
+        urgency: 'low',
+        conditions: [],
+        recommendations: [],
       });
     } finally {
       setAnalyzing(false);
     }
   };
+
+  /* ── Urgency display (emoji + color + label per level) ── */
+  const URGENCY = {
+    low:       { emoji: '🟢', label: 'ALL CLEAR',     color: '#10b981', sub: 'Self-care is appropriate.' },
+    medium:    { emoji: '🟡', label: 'MONITOR',       color: '#f59e0b', sub: 'See a doctor in the next day or two.' },
+    high:      { emoji: '🟠', label: 'CONCERNING',    color: '#f97316', sub: 'Consult a physician today.' },
+    emergency: { emoji: '🚨', label: 'EMERGENCY',     color: '#ef4444', sub: 'Seek immediate medical attention.' },
+  } as const;
 
   if (analyzing) return <LoadingScreen message="NEURAL NETWORK PROCESSING..." />;
 
@@ -148,7 +167,10 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
 
           <p style={{ fontSize: '0.75rem', color: T.catHead, marginBottom: '0.75rem' }}>{selectedSymptoms.length} symptom(s) selected</p>
 
-          <div style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* data-lenis-prevent tells Lenis (smooth scroll) not to swallow
+              wheel events inside this container, so the inner list scrolls
+              instead of scrolling the whole page. */}
+          <div data-lenis-prevent style={{ maxHeight: '380px', overflowY: 'auto', overscrollBehavior: 'contain', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {categories.map(cat => {
               const catSymptoms = filteredSymptoms.filter(s => s.category === cat);
               if (!catSymptoms.length) return null;
@@ -198,12 +220,103 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>
                   <span style={{ padding: '3px 12px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, background: result.confidence >= 80 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 80 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 80 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}`, whiteSpace: 'nowrap' }}>{result.confidence}% confidence</span>
                 </div>
-                <p style={{ color: T.text, fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>{result.details}</p>
+                <MarkdownText style={{ color: T.text, fontSize: '0.85rem' }}>
+                  {result.details}
+                </MarkdownText>
               </div>
+
+              {/* ── URGENCY BADGE ──
+                  Big, color-coded card with emoji indicator. The user
+                  should be able to glance at this and know the severity
+                  without reading prose. */}
+              {result.urgency && URGENCY[result.urgency as keyof typeof URGENCY] && (() => {
+                const u = URGENCY[result.urgency as keyof typeof URGENCY];
+                return (
+                  <div style={{
+                    padding: '1rem 1.1rem',
+                    borderRadius: '14px',
+                    background: `${u.color}14`,
+                    border: `1px solid ${u.color}55`,
+                    boxShadow: `0 0 24px -8px ${u.color}66`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                  }}>
+                    <span style={{
+                      fontSize: '2rem',
+                      lineHeight: 1,
+                      filter: result.urgency === 'emergency' ? `drop-shadow(0 0 8px ${u.color})` : 'none',
+                      animation: result.urgency === 'emergency' ? 'sc-pulse 1.2s ease-in-out infinite' : undefined,
+                    }}>{u.emoji}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '0.65rem', letterSpacing: '0.18em', color: T.muted, fontFamily: S }}>URGENCY LEVEL</span>
+                        <span style={{
+                          fontFamily: S,
+                          fontWeight: 800,
+                          fontSize: '0.95rem',
+                          color: u.color,
+                          letterSpacing: '0.05em',
+                        }}>{u.label}</span>
+                      </div>
+                      <span style={{ fontSize: '0.8rem', color: T.text }}>{u.sub}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+              {/* keyframes for the emergency pulse — injected once via a
+                  style tag so we don't need a separate stylesheet entry */}
+              <style>{`@keyframes sc-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }`}</style>
+
+              {/* ── POTENTIAL CONDITIONS WITH PROBABILITY BARS ──
+                  One row per condition: name on the left, probability bar
+                  filling left→right, percentage on the right. The bar's
+                  fill color matches the urgency color so the panel reads
+                  as a single coherent visual. */}
+              {result.conditions && result.conditions.length > 0 && (
+                <div>
+                  <h5 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', marginBottom: '0.75rem' }}>
+                    Potential Conditions
+                  </h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {result.conditions.map((c: { name: string; probability: number }, i: number) => {
+                      const pct = Math.max(0, Math.min(100, c.probability));
+                      // Highest-probability condition gets the urgency color; the rest dim.
+                      const isTop = i === 0;
+                      const u = URGENCY[(result.urgency as keyof typeof URGENCY) || 'medium'];
+                      const barColor = isTop ? u.color : (isDark ? '#8b5cf6' : '#6366f1');
+                      return (
+                        <div key={i} style={{ background: T.recBg, border: `1px solid ${T.recBdr}`, borderRadius: '10px', padding: '0.65rem 0.85rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: T.text }}>{c.name}</span>
+                            <span style={{
+                              fontFamily: S,
+                              fontWeight: 800,
+                              fontSize: '0.85rem',
+                              color: barColor,
+                              tabularNums: 'tabular-nums' as any,
+                            }}>{pct}%</span>
+                          </div>
+                          <div style={{ height: '6px', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', borderRadius: '999px', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${pct}%`,
+                              borderRadius: '999px',
+                              background: `linear-gradient(90deg, ${barColor}, ${barColor}cc)`,
+                              boxShadow: `0 0 10px ${barColor}88`,
+                              transition: 'width 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                            }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
-                  <span style={{ color: T.muted }}>Confidence Level</span>
+                  <span style={{ color: T.muted }}>Overall Confidence</span>
                   <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
                 </div>
                 <div style={{ height: '8px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>

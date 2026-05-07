@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:8000';
+// Default to the Node API port (5001). The Python AI service runs on
+// 8000 and is reached via VITE_API_BASE_URL, NOT this constant.
+const API_BASE_URL = import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:5001';
 
 interface ApiResponse<T> {
   data?: T;
@@ -54,6 +56,20 @@ export async function forgotPassword(email: string) {
   return fetchAPI('/forgot-password', {
     method: 'POST',
     body: JSON.stringify({ email }),
+  });
+}
+
+export async function verifyResetCode(email: string, code: string) {
+  return fetchAPI<{ valid: boolean; email: string }>('/verify-reset-code', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  });
+}
+
+export async function resetPassword(email: string, code: string, password: string) {
+  return fetchAPI<{ success: boolean; message: string }>('/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, password }),
   });
 }
 

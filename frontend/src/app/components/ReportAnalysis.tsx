@@ -4,6 +4,7 @@ import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
 import { LoadingScreen } from './LoadingScreen';
+import MarkdownText from './effects/MarkdownText';
 
 interface ReportAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
@@ -62,24 +63,19 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
       if (!response.ok) throw new Error("API Gateway Offline");
       const data = await response.json();
 
-      // Ensure data.structured_data is parsed safely
-      let extractedData = data.structured_data;
-      if (typeof extractedData === 'string') {
-        try { extractedData = JSON.parse(extractedData); } catch (e) { extractedData = { Raw_Dump: extractedData }; }
-      }
+      // New shape from /lab-report endpoint:
+      //   { status, module, analysis: { assessment, confidence, urgency, biomarkers[], recommendations[] } }
+      const a = (data.analysis || {}) as any;
 
-      // Map parsed JSON into UI keys
       const mappedResult = {
-        diagnosis: "NLP Biomarker Extraction",
-        confidence: 94,
-        details: "Parameters successfully extracted from unstructured text report.",
-        recommendations: ["Verify extracted values against original document.", "Flag abnormal values for physician review."],
-        keyFindings: Object.keys(extractedData).map(key => ({
-          parameter: key,
-          value: typeof extractedData[key] === 'object' ? JSON.stringify(extractedData[key]) : String(extractedData[key]),
-          status: 'Review',
-          normal: 'N/A'
-        }))
+        diagnosis: 'Clinical Lab Analysis',
+        confidence: typeof a.confidence === 'number' ? a.confidence : 80,
+        details: a.assessment || 'No assessment returned.',
+        urgency: a.urgency || 'medium',
+        recommendations: Array.isArray(a.recommendations) && a.recommendations.length
+          ? a.recommendations
+          : ['Review extracted values with a physician.'],
+        biomarkers: Array.isArray(a.biomarkers) ? a.biomarkers : [],
       };
 
       setResult(mappedResult);
@@ -88,11 +84,124 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
     } catch (error) {
       console.error(error);
       setResult({
-        diagnosis: 'Processing Error', confidence: 0, details: 'Bio-Parser Offline. Ensure Python backend is running.', recommendations: [], keyFindings: []
+        diagnosis: 'Processing Error',
+        confidence: 0,
+        details: 'AI analyst offline. Ensure the Python backend is running on port 8000 and that MISTRAL_API_KEY or GROQ_API_KEY is set in backend/.env.',
+        urgency: 'low',
+        recommendations: [],
+        biomarkers: [],
       });
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  /* ── Color tokens for biomarker status ── */
+  const STATUS = {
+    normal:   { color: '#10b981', label: 'NORMAL'   },
+    low:      { color: '#f59e0b', label: 'LOW'      },
+    high:     { color: '#f59e0b', label: 'HIGH'     },
+    critical: { color: '#ef4444', label: 'CRITICAL' },
+  } as const;
+
+  /* ── Health bar for one biomarker ──
+     Visual range = normal_min/max ± one normal-range-width on each side,
+     so the green "normal" zone always sits in the middle and the marker
+     lands proportionally inside or outside it. */
+  const renderBiomarker = (b: any, i: number) => {
+    const { name, value, unit, normal_min, normal_max, status } = b;
+    const span = Math.max(1, normal_max - normal_min);
+    const visualMin = normal_min - span;
+    const visualMax = normal_max + span;
+    const clamp = (n: number) => Math.max(0, Math.min(100, n));
+    const pos = clamp(((value - visualMin) / (visualMax - visualMin)) * 100);
+    const normalStart = clamp(((normal_min - visualMin) / (visualMax - visualMin)) * 100);
+    const normalEnd = clamp(((normal_max - visualMin) / (visualMax - visualMin)) * 100);
+    const s = STATUS[status as keyof typeof STATUS] || STATUS.normal;
+
+    return (
+      <div key={i} style={{
+        padding: '0.85rem 1rem',
+        borderRadius: '12px',
+        background: T.findBg,
+        border: `1px solid ${s.color}22`,
+      }}>
+        {/* Header row: name + status pill */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: T.text }}>{name}</span>
+          <span style={{
+            padding: '2px 9px',
+            borderRadius: '999px',
+            fontSize: '0.65rem',
+            fontWeight: 800,
+            fontFamily: S,
+            letterSpacing: '0.08em',
+            background: `${s.color}22`,
+            color: s.color,
+            border: `1px solid ${s.color}55`,
+          }}>{s.label}</span>
+        </div>
+
+        {/* Value */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '0.55rem' }}>
+          <span style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 700, color: s.color }}>
+            {Number.isInteger(value) ? value : Number(value).toFixed(1)}
+          </span>
+          <span style={{ fontSize: '0.75rem', color: T.muted }}>{unit}</span>
+        </div>
+
+        {/* Range bar */}
+        <div style={{
+          position: 'relative',
+          height: '8px',
+          borderRadius: '999px',
+          background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+          overflow: 'visible',
+        }}>
+          {/* Normal-zone highlight */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${normalStart}%`,
+            width: `${normalEnd - normalStart}%`,
+            background: 'linear-gradient(90deg, rgba(16,185,129,0.35), rgba(16,185,129,0.55), rgba(16,185,129,0.35))',
+            borderRadius: '999px',
+          }} />
+
+          {/* Value marker */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: `${pos}%`,
+            transform: 'translate(-50%, -50%)',
+            width: '14px',
+            height: '14px',
+            borderRadius: '50%',
+            background: s.color,
+            boxShadow: `0 0 14px ${s.color}, 0 0 0 3px ${isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.8)'}`,
+            transition: 'left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          }} />
+        </div>
+
+        {/* Range labels */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '0.67rem',
+          color: T.muted,
+          marginTop: '6px',
+        }}>
+          <span>Normal: {normal_min}–{normal_max} {unit}</span>
+          <span style={{ color: s.color, fontWeight: 600 }}>
+            {status === 'normal' ? 'in range' :
+             status === 'high' ? `+${((value - normal_max) / Math.max(1, normal_max) * 100).toFixed(0)}% above` :
+             status === 'low'  ? `−${((normal_min - value) / Math.max(1, normal_min) * 100).toFixed(0)}% below` :
+             '⚠ critical'}
+          </span>
+        </div>
+      </div>
+    );
   };
 
   const loadSampleReport = () => {
@@ -143,24 +252,55 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>
                   <span style={{ padding: '3px 12px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, background: result.confidence >= 85 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 85 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 85 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}`, whiteSpace: 'nowrap' }}>{result.confidence}% confidence</span>
                 </div>
-                <p style={{ color: T.muted, fontSize: '0.85rem' }}>{result.details}</p>
+                <MarkdownText style={{ color: T.muted, fontSize: '0.85rem' }}>
+                  {result.details}
+                </MarkdownText>
               </div>
 
-              {result.keyFindings && result.keyFindings.length > 0 && (
+              {/* Confidence bar (parity with Symptoms tab) */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
+                  <span style={{ color: T.muted }}>Analysis Confidence</span>
+                  <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
+                </div>
+                <div style={{ height: '8px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', transition: 'width 1s ease' }} />
+                </div>
+              </div>
+
+              {/* Biomarker health bars */}
+              {result.biomarkers && result.biomarkers.length > 0 && (
                 <div>
-                  <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}><AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} /> Extracted Parameters</h4>
+                  <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}>
+                    <AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} /> Biomarker Health Status
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {result.biomarkers.map((b: any, i: number) => renderBiomarker(b, i))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommendations (same shape as Symptoms tab) */}
+              {result.recommendations && result.recommendations.length > 0 && (
+                <div>
+                  <h5 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}>
+                    <CircleCheck className="w-4 h-4" style={{ color: '#10b981' }} /> System Recommendations
+                  </h5>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {result.keyFindings.map((f: any, i: number) => (
-                      <div key={i} style={{ padding: '0.75rem 0.85rem', borderRadius: '10px', background: T.findBg }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: T.text, textTransform: 'capitalize' }}>{f.parameter}</span>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: T.muted }}>Value: <span style={{ fontWeight: 600, color: T.text }}>{f.value}</span></div>
+                    {result.recommendations.map((rec: string, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '0.65rem 0.85rem', borderRadius: '10px', background: T.recBg, border: `1px solid ${T.recBdr}` }}>
+                        <span style={{ fontFamily: S, fontWeight: 700, color: '#8b5cf6', fontSize: '0.75rem', marginTop: '1px', flexShrink: 0 }}>{i + 1}.</span>
+                        <span style={{ fontSize: '0.82rem', color: T.text }}>{rec}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Disclaimer (parity with Symptoms tab) */}
+              <div style={{ padding: '0.85rem 1rem', borderRadius: '12px', background: T.amberBg, border: `1px solid ${T.amberBdr}` }}>
+                <p style={{ fontSize: '0.75rem', color: T.amberTxt }}>⚠️ AI-generated analysis for informational purposes only. Always consult with a qualified healthcare professional.</p>
+              </div>
             </div>
           )}
         </div>

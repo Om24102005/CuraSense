@@ -4,6 +4,7 @@ import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
 import { LoadingScreen } from './LoadingScreen';
+import MarkdownText from './effects/MarkdownText';
 
 interface ImageAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
@@ -178,7 +179,9 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>
                   <span style={{ padding: '3px 12px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, background: result.confidence >= 85 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 85 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 85 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}`, whiteSpace: 'nowrap' }}>{result.confidence}% confidence</span>
                 </div>
-                <p style={{ color: T.muted, fontSize: '0.85rem' }}>{result.details}</p>
+                <MarkdownText style={{ color: T.muted, fontSize: '0.85rem' }}>
+                  {result.details}
+                </MarkdownText>
               </div>
 
               <div>

@@ -14,10 +14,49 @@ export function Settings() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [notifications, setNotifications] = useState({ email: true, push: false, sms: false });
   const [userData, setUserData] = useState({ name: '', email: '', role: 'user' });
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /* Avatar handlers — image is read as a base64 data URL and stored in
+     localStorage. Capped at 2 MB so we don't blow out the storage quota. */
+  const handlePhotoChange = (e: any) => {
+    const file: File | undefined = e?.target?.files?.[0];
+    if (!file) return;
+    setAvatarError(null);
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please choose an image file (PNG, JPG, GIF, WebP).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError('Image is over 2 MB. Please pick a smaller one.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setAvatar(dataUrl);
+      localStorage.setItem('curasense_avatar', dataUrl);
+      // Notify the rest of the app (UserProfile etc.) — both same-tab and cross-tab.
+      window.dispatchEvent(new CustomEvent('curasense:avatar', { detail: dataUrl }));
+    };
+    reader.onerror = () => setAvatarError('Could not read that file.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setAvatar(null);
+    localStorage.removeItem('curasense_avatar');
+    window.dispatchEvent(new CustomEvent('curasense:avatar', { detail: null }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('curasense_user');
     if (storedUser) setUserData(JSON.parse(storedUser));
+
+    const storedAvatar = localStorage.getItem('curasense_avatar');
+    if (storedAvatar) setAvatar(storedAvatar);
 
     const savedKey = localStorage.getItem('hf_api_key');
     if (savedKey) {
@@ -134,12 +173,81 @@ export function Settings() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: userData.role === 'admin' ? 'linear-gradient(135deg,#d946ef,#8b5cf6)' : 'linear-gradient(135deg,#3b82f6,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.75rem', fontWeight: 800, fontFamily: S }}>
-            {userData.name.substring(0, 2).toUpperCase() || 'US'}
+          {/* Avatar — shows the uploaded photo when present, otherwise
+              the user's initials on the role-tinted gradient. */}
+          <div style={{
+            width: '80px', height: '80px', borderRadius: '50%',
+            overflow: 'hidden',
+            background: userData.role === 'admin'
+              ? 'linear-gradient(135deg,#d946ef,#8b5cf6)'
+              : 'linear-gradient(135deg,#3b82f6,#8b5cf6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontSize: '1.75rem', fontWeight: 800, fontFamily: S,
+            border: '2px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}>
+            {avatar ? (
+              <img
+                src={avatar}
+                alt="Profile"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              userData.name.substring(0, 2).toUpperCase() || 'US'
+            )}
           </div>
+
           <div>
-            <button style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 600, background: T.rowBg, border: `1px solid ${T.cardBdr}`, color: T.text, cursor: 'pointer', marginBottom: '6px' }}>Change Photo</button>
-            <p style={{ fontSize: '0.7rem', color: T.muted }}>Verified clearance: {userData.role.toUpperCase()}</p>
+            {/* Hidden file input — clicked programmatically by the button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={handlePhotoChange}
+              style={{ display: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '10px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  background: T.btnBg,
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: T.btnSh,
+                }}
+              >
+                {avatar ? 'Change Photo' : 'Upload Photo'}
+              </button>
+              {avatar && (
+                <button
+                  onClick={handleRemovePhoto}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    borderRadius: '10px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    background: 'transparent',
+                    border: `1px solid ${T.cardBdr}`,
+                    color: T.muted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {avatarError ? (
+              <p style={{ fontSize: '0.7rem', color: '#f87171' }}>{avatarError}</p>
+            ) : (
+              <p style={{ fontSize: '0.7rem', color: T.muted }}>
+                Verified clearance: {userData.role.toUpperCase()} · PNG/JPG up to 2 MB
+              </p>
+            )}
           </div>
         </div>
 

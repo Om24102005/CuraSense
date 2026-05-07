@@ -191,13 +191,22 @@ function ParticleSystem({ count = 6000 }: { count?: number }) {
   useFrame((state, delta) => {
     uniforms.uTime.value = state.clock.elapsedTime;
 
-    // Map scroll to morph (0-3 range)
-    const scrollVal = scroll.range(0, 1 / 4) * 1 +
-      scroll.range(1 / 4, 1 / 4) * 2 +
-      scroll.range(2 / 4, 1 / 4) * 3 +
-      scroll.range(3 / 4, 1 / 4) * 4;
-
-    uniforms.uMorph.value += (scrollVal - uniforms.uMorph.value) * 0.05;
+    // Map scroll to morph (0-3 range).
+    // useScroll() returns null when there's no <ScrollControls> parent —
+    // this component is mounted standalone, so we fall back to a slow
+    // time-driven cycle instead of crashing every frame.
+    if (scroll && typeof scroll.range === 'function') {
+      const scrollVal =
+        scroll.range(0, 1 / 4) * 1 +
+        scroll.range(1 / 4, 1 / 4) * 2 +
+        scroll.range(2 / 4, 1 / 4) * 3 +
+        scroll.range(3 / 4, 1 / 4) * 4;
+      uniforms.uMorph.value += (scrollVal - uniforms.uMorph.value) * 0.05;
+    } else {
+      // Idle morph: gentle 30s cycle through the 4 forms.
+      const cycleTarget = (state.clock.elapsedTime % 30) / 30 * 4;
+      uniforms.uMorph.value += (cycleTarget - uniforms.uMorph.value) * 0.02;
+    }
 
     // Slow rotation
     meshRef.current.rotation.y = state.clock.elapsedTime * 0.05;
@@ -245,6 +254,10 @@ function BackgroundStars() {
 
 /* ── Main Export ─────────────────────────────────────── */
 export default function ParticleField({ count = 6000 }: { count?: number }) {
+  // Bail out entirely when count<=0 (mobile path) — don't mount a
+  // Canvas at all, so no WebGL context, no rAF, no GPU cost.
+  if (count <= 0) return null;
+
   return (
     <div className="fixed inset-0 z-0 pointer-events-none">
       <Canvas

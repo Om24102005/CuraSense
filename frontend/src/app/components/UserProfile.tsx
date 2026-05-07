@@ -19,6 +19,7 @@ interface UserData {
 export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProfileProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [userData, setUserData] = useState<UserData>({ name: 'User', email: '', role: 'user' });
+  const [avatar, setAvatar] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
@@ -26,9 +27,21 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
 
   useEffect(() => {
     const stored = localStorage.getItem('curasense_user');
-    if (stored) {
-      setUserData(JSON.parse(stored));
-    }
+    if (stored) setUserData(JSON.parse(stored));
+
+    // Initial avatar load + live updates from Settings (same-tab via
+    // CustomEvent, cross-tab via the storage event).
+    setAvatar(localStorage.getItem('curasense_avatar'));
+    const onAvatarEvent = (e: any) => setAvatar(e?.detail ?? null);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'curasense_avatar') setAvatar(e.newValue);
+    };
+    window.addEventListener('curasense:avatar', onAvatarEvent as any);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('curasense:avatar', onAvatarEvent as any);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   // 3D Canvas Rendering
@@ -100,7 +113,15 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
           border: '1px solid var(--border-color)' 
         }}
       >
-        <User className="w-4 h-4" />
+        {avatar ? (
+          <img
+            src={avatar}
+            alt=""
+            style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
+          />
+        ) : (
+          <User className="w-4 h-4" />
+        )}
         <span style={{ color: 'inherit' }}>{userData.name.split(' ')[0]}</span>
       </button>
 
@@ -121,7 +142,22 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
             <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-30 transform translate-x-1/2 -translate-y-1/2 pointer-events-none ${userData.role === 'admin' ? 'bg-fuchsia-500' : (isDark ? 'bg-cyan-500' : 'bg-purple-500')}`} />
             
             <div className="flex justify-between items-start mb-4 relative z-10">
-              <div ref={canvasRef} className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: '60px', height: '60px', background: 'var(--bg-base)', border: '1px solid var(--border-color)' }} />
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt="Profile"
+                  className="rounded-full"
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    objectFit: 'cover',
+                    border: '1px solid var(--border-color)',
+                    boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                  }}
+                />
+              ) : (
+                <div ref={canvasRef} className="rounded-full overflow-hidden flex items-center justify-center" style={{ width: '60px', height: '60px', background: 'var(--bg-base)', border: '1px solid var(--border-color)' }} />
+              )}
               <button onClick={() => setIsOpen(false)} className="p-1 rounded-lg transition-colors hover:bg-black/10 dark:hover:bg-white/10" style={{ color: 'var(--text-muted)' }}>
                  <X className="w-5 h-5" />
               </button>
