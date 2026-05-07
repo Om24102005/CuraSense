@@ -23,6 +23,44 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  // Live medical-server health pill — polls Python (:8000) and Node (:5001).
+  // 'checking' until the first probe resolves; 'offline' if EITHER service fails.
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    const POLL_MS = 15000;
+    const TIMEOUT_MS = 5000;
+
+    const pyBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+    const nodeBase = (import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:5001').replace(/\/$/, '');
+
+    const probe = async (url: string) => {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+      try {
+        const r = await fetch(url, { method: 'GET', signal: ctl.signal, cache: 'no-store' });
+        return r.ok;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    const checkAll = async () => {
+      const [py, node] = await Promise.all([
+        probe(`${pyBase}/health`),
+        probe(`${nodeBase}/health`),
+      ]);
+      if (!cancelled) setServerStatus(py && node ? 'online' : 'offline');
+    };
+
+    checkAll();
+    const id = window.setInterval(checkAll, POLL_MS);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   const [authMode, setAuthMode] = useState<'none' | 'login' | 'register' | 'forgot'>('none');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -265,6 +303,8 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
     bg: 'transparent', logoName: '#f1f5f9', logoSub: '#22d3ee',
     iconBg: 'rgba(15,15,25,0.6)', iconBdr: 'rgba(255,255,255,0.10)',
     onlineBg: 'rgba(0,200,80,0.07)', onlineClr: '#4ade80', onlineBdr: 'rgba(74,222,128,0.20)',
+    offlineBg: 'rgba(239,68,68,0.10)', offlineClr: '#f87171', offlineBdr: 'rgba(248,113,113,0.30)',
+    checkingBg: 'rgba(245,158,11,0.10)', checkingClr: '#fbbf24', checkingBdr: 'rgba(251,191,36,0.30)',
     h1a: '#67e8f9', h1b: '#e0f2fe', h2a: '#a78bfa', h2b: '#f0abfc', h3a: '#f0abfc', h3b: '#fdf4ff',
     divider: 'rgba(34,211,238,0.35)', body: 'rgba(241,245,249,0.70)',
     cardBg: 'rgba(10,10,22,0.80)', cardBdr: 'rgba(255,255,255,0.10)', cardShadow: '0 24px 60px rgba(0,0,0,0.70)', cardGlow: 'rgba(34,211,238,0.12)',
@@ -277,6 +317,8 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
     bg: 'transparent', logoName: '#0a0a1a', logoSub: '#0284c7',
     iconBg: 'rgba(255,255,255,0.90)', iconBdr: 'rgba(0,0,0,0.10)',
     onlineBg: 'rgba(0,140,50,0.07)', onlineClr: '#166534', onlineBdr: 'rgba(22,101,52,0.20)',
+    offlineBg: 'rgba(220,38,38,0.08)', offlineClr: '#991b1b', offlineBdr: 'rgba(153,27,27,0.25)',
+    checkingBg: 'rgba(217,119,6,0.08)', checkingClr: '#92400e', checkingBdr: 'rgba(146,64,14,0.25)',
     h1a: '#075985', h1b: '#0369a1', h2a: '#4c1d95', h2b: '#6d28d9', h3a: '#86198f', h3b: '#a21caf',
     divider: 'rgba(2,132,199,0.30)', body: 'rgba(10,10,26,0.65)',
     cardBg: 'rgba(255,255,255,0.92)', cardBdr: 'rgba(0,0,0,0.08)', cardShadow: '0 24px 50px rgba(0,0,0,0.10)', cardGlow: 'rgba(2,132,199,0.15)',
@@ -309,9 +351,22 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
           </div>
           <div className="flex items-center gap-6">
             <ThemeToggleButton />
-            <div className="hidden sm:flex items-center gap-3 px-5 py-2.5 rounded-full backdrop-blur-xl" style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: T.onlineBg, color: T.onlineClr, border: `1px solid ${T.onlineBdr}` }}>
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: T.onlineClr }} /> Medical Servers Online
-            </div>
+            {(() => {
+              const tone = serverStatus === 'online'
+                ? { bg: T.onlineBg,  clr: T.onlineClr,  bdr: T.onlineBdr,  label: 'Medical Servers Online'  }
+                : serverStatus === 'offline'
+                ? { bg: T.offlineBg, clr: T.offlineClr, bdr: T.offlineBdr, label: 'Medical Servers Offline' }
+                : { bg: T.checkingBg, clr: T.checkingClr, bdr: T.checkingBdr, label: 'Checking Servers…'    };
+              return (
+                <div
+                  title={serverStatus === 'offline' ? 'One or more backend services failed to respond.' : tone.label}
+                  className="hidden sm:flex items-center gap-3 px-5 py-2.5 rounded-full backdrop-blur-xl"
+                  style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: tone.bg, color: tone.clr, border: `1px solid ${tone.bdr}`, transition: 'background 0.3s, color 0.3s, border-color 0.3s' }}
+                >
+                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: tone.clr }} /> {tone.label}
+                </div>
+              );
+            })()}
           </div>
         </header>
 

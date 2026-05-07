@@ -81,7 +81,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
       formData.append("scan_type", scanType);
       formData.append("file", selectedImage);
 
-      const response = await fetch("http://localhost:8000/api/v1/diagnostics/imaging", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/diagnostics/imaging`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${import.meta.env.VITE_API_TOKEN}` },
         body: formData

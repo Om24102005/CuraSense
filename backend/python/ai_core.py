@@ -304,3 +304,158 @@ def analyze_lab_report(report_text: str):
 # parse_lab_report keeps working until callers migrate.
 def parse_lab_report(report_text: str):
     return analyze_lab_report(report_text)
+
+
+_LAB_SYSTEM_PROMPT = (
+    "You are a medical AI clinical analyst. Analyze the lab report and return ONLY a "
+    "JSON object (no markdown, no prose around it) with this exact shape:\n"
+    "{\n"
+    '  "assessment": "2-4 sentence clinical interpretation. Use **bold** for key '
+    'findings. Mention conditions suggested by the values.",\n'
+    '  "confidence": 88,\n'
+    '  "urgency": "low" | "medium" | "high" | "emergency",\n'
+    '  "biomarkers": [\n'
+    '    {"name":"Total Cholesterol","value":245,"unit":"mg/dL",'
+    '"normal_min":125,"normal_max":200,"status":"high"}\n'
+    '  ],\n'
+    '  "recommendations": ["Schedule cardiology follow-up.", "Reduce saturated fat."]\n'
+    "}\n"
+    "Use established adult clinical normal ranges. value must be a number. "
+    "Include EVERY biomarker visible. status: low<normal_min, high>normal_max, "
+    "critical if dangerously out of range (>150% of normal_max), else normal."
+)
+
+
+def _normalise_lab_response(raw: str) -> dict:
+    """Shared post-processing for both text and image lab analyses."""
+    clean = raw.replace("```json", "").replace("```", "").strip()
+    if "{" in clean and "}" in clean:
+        clean = clean[clean.index("{"): clean.rindex("}") + 1]
+    try:
+        parsed = json.loads(clean)
+    except json.JSONDecodeError as e:
+        print(f"[LAB JSON DECODE] {e}")
+        return {"error": "AI returned malformed JSON.", "raw_extraction": raw}
+
+    cleaned = []
+    for b in (parsed.get("biomarkers") or []):
+        if not isinstance(b, dict) or "name" not in b:
+            continue
+        try:
+            value = float(b.get("value", 0))
+        except (TypeError, ValueError):
+            value = 0.0
+        nmin = float(b.get("normal_min", 0) or 0)
+        nmax = float(b.get("normal_max", 0) or 0)
+        status = b.get("status") or "normal"
+        if nmax > 0:
+            if value > nmax * 1.5 or (nmin > 0 and value < nmin * 0.5):
+                status = "critical"
+            elif value > nmax:
+                status = "high"
+            elif nmin > 0 and value < nmin:
+                status = "low"
+            else:
+                status = "normal"
+        cleaned.append({
+            "name": str(b.get("name", "Unknown")),
+            "value": value,
+            "unit": str(b.get("unit", "")),
+            "normal_min": nmin,
+            "normal_max": nmax,
+            "status": status,
+        })
+
+    return {
+        "assessment": parsed.get("assessment", "No assessment provided."),
+        "confidence": int(parsed.get("confidence", 80)),
+        "urgency": parsed.get("urgency", "medium"),
+        "biomarkers": cleaned,
+        "recommendations": parsed.get("recommendations", []) or [],
+    }
+
+
+def analyze_lab_report_image(image_bytes: bytes) -> dict:
+    """
+    Analyzes a photo/scan of a lab report using Pixtral. Returns the same
+    JSON shape as analyze_lab_report so the frontend renders identically.
+    """
+    if not MISTRAL_API_KEY:
+        return {"error": "Mistral API key not configured. Image lab reports require MISTRAL_API_KEY."}
+
+    b64 = base64.b64encode(image_bytes).decode("utf-8")
+    mime = "image/jpeg"
+    if image_bytes[:4] == b"\x89PNG":
+        mime = "image/png"
+    elif image_bytes[:4] == b"GIF8":
+        mime = "image/gif"
+    elif image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        mime = "image/webp"
+
+    headers = {"Authorization": f"Bearer {MISTRAL_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": MISTRAL_VISION_MODEL,
+        "messages": [
+            {"role": "system", "content": _LAB_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Read every biomarker visible in this lab report image and return the JSON described above."},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                ],
+            },
+        ],
+        "max_tokens": 1200,
+        "temperature": 0.2,
+    }
+    try:
+        resp = requests.post(MISTRAL_URL, headers=headers, json=payload, timeout=60)
+        if resp.status_code != 200:
+            print(f"[PIXTRAL LAB ERROR] {resp.status_code}: {resp.text[:300]}")
+            return {"error": f"Vision model error. Status {resp.status_code}"}
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[PIXTRAL LAB EXCEPTION] {e}")
+        return {"error": str(e)}
+
+    return _normalise_lab_response(raw)
+
+
+def _extract_pdf_text(pdf_bytes: bytes) -> str:
+    """Extract text from a (text-based) PDF. Returns '' for image-only scans."""
+    try:
+        from pypdf import PdfReader
+        from io import BytesIO
+        reader = PdfReader(BytesIO(pdf_bytes))
+        return "\n".join((p.extract_text() or "") for p in reader.pages).strip()
+    except Exception as e:
+        print(f"[PDF EXTRACT EXCEPTION] {e}")
+        return ""
+
+
+def analyze_lab_report_file(file_bytes: bytes, filename: str, content_type: str) -> dict:
+    """
+    Dispatch a lab-report upload to the right analyzer based on file type.
+    Returns the same JSON shape as analyze_lab_report.
+    """
+    ct = (content_type or "").lower()
+    name = (filename or "").lower()
+
+    if ct.startswith("image/") or name.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp")):
+        return analyze_lab_report_image(file_bytes)
+
+    if ct == "application/pdf" or name.endswith(".pdf"):
+        text = _extract_pdf_text(file_bytes)
+        if not text or len(text) < 20:
+            return {"error": "Could not extract text from this PDF — it may be a scanned image. Please re-upload as a JPG/PNG image."}
+        return analyze_lab_report(text)
+
+    # Text-like fallback (txt, csv, md, or unknown)
+    try:
+        text = file_bytes.decode("utf-8", errors="ignore").strip()
+    except Exception:
+        return {"error": "Unsupported file type. Upload a PDF, image, or .txt lab report."}
+
+    if not text:
+        return {"error": "File appears empty."}
+    return analyze_lab_report(text)

@@ -85,7 +85,7 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
       const symptomString = selectedSymptoms.map(id => SYMPTOMS.find(s => s.id === id)?.name).join(", ");
       
       // LIVE API CALL TO FASTAPI BACKEND
-      const response = await fetch("http://localhost:8000/api/v1/diagnostics/symptoms", {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/diagnostics/symptoms`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_API_TOKEN}` },
         body: JSON.stringify({ patient_id: "demo-user", symptoms: symptomString })

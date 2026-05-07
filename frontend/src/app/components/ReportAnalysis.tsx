@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { FileText, CircleCheck, AlertTriangle, Play } from 'lucide-react';
+import { FileText, CircleCheck, AlertTriangle, Play, Upload, X, Image as ImageIcon } from 'lucide-react';
 import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
@@ -18,6 +18,28 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   const [reportText, setReportText] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [mode, setMode] = useState<'paste' | 'upload'>('paste');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ACCEPTED = '.pdf,.txt,.csv,.md,image/*';
+  const MAX_FILE_MB = 15;
+
+  const pickFile = (f: File | null) => {
+    if (!f) { setSelectedFile(null); return; }
+    if (f.size > MAX_FILE_MB * 1024 * 1024) {
+      setResult({ diagnosis: 'File Too Large', confidence: 0, details: `Max ${MAX_FILE_MB}MB. Please compress or split the file.`, urgency: 'low', recommendations: [], biomarkers: [] });
+      return;
+    }
+    setSelectedFile(f);
+    setResult(null);
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    if (e.dataTransfer.files?.[0]) pickFile(e.dataTransfer.files[0]);
+  };
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -49,23 +71,57 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   const I = "'Inter', sans-serif";
 
   const handleAnalyze = async () => {
-    if (!reportText.trim()) return;
+    const hasText = reportText.trim().length > 0;
+    const hasFile = !!selectedFile;
+    if (mode === 'paste' && !hasText) return;
+    if (mode === 'upload' && !hasFile) return;
     setAnalyzing(true); setResult(null);
 
-    try {
-      // LIVE API CALL TO FASTAPI BACKEND
-      const response = await fetch("http://localhost:8000/api/v1/diagnostics/lab-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_API_TOKEN}` },
-        body: JSON.stringify({ patient_id: "demo-user", report_text: reportText })
-      });
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const token = import.meta.env.VITE_API_TOKEN;
 
-      if (!response.ok) throw new Error("API Gateway Offline");
+    try {
+      let response: Response;
+      if (mode === 'upload' && selectedFile) {
+        const fd = new FormData();
+        fd.append('patient_id', 'demo-user');
+        fd.append('file', selectedFile);
+        response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report-file`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+      } else {
+        response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ patient_id: 'demo-user', report_text: reportText }),
+        });
+      }
+
+      if (!response.ok) {
+        let detail = 'API Gateway Offline';
+        try { const j = await response.json(); detail = j.detail || j.error || detail; } catch { /* ignore */ }
+        throw new Error(detail);
+      }
       const data = await response.json();
 
       // New shape from /lab-report endpoint:
       //   { status, module, analysis: { assessment, confidence, urgency, biomarkers[], recommendations[] } }
       const a = (data.analysis || {}) as any;
+
+      // Backend reported a soft error (e.g. unreadable scanned PDF). Surface it to the user.
+      if (a.error) {
+        setResult({
+          diagnosis: 'Could Not Read Report',
+          confidence: 0,
+          details: a.error,
+          urgency: 'low',
+          recommendations: ['Try re-uploading as a clear image (JPG/PNG) or paste the text directly.'],
+          biomarkers: [],
+        });
+        return;
+      }
 
       const mappedResult = {
         diagnosis: 'Clinical Lab Analysis',
@@ -217,20 +273,117 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
         {/* Left Side: Input UI */}
         <div className="ra-card" style={{ ...glass, padding: '1.75rem' }}>
           <h3 style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 700, color: T.head, marginBottom: '4px' }}>Upload Lab Report</h3>
-          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Paste or type lab results, blood tests, or medical reports for AI analysis</p>
+          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Paste text, or upload a PDF / image / text file for AI analysis</p>
 
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: T.head, marginBottom: '0.75rem', fontFamily: I }}>Report Text</label>
-            <textarea value={reportText} onChange={(e) => setReportText(e.target.value)} placeholder="Paste your lab report here... Include parameter names and values." style={{ width: '100%', height: '240px', padding: '1rem', background: T.txtBg, border: `1px solid ${T.txtBdr}`, borderRadius: '12px', color: T.text, fontSize: '0.85rem', outline: 'none', resize: 'none', transition: 'border 0.3s', fontFamily: 'monospace' }} onFocus={e => e.target.style.borderColor = T.txtFoc} onBlur={e => e.target.style.borderColor = T.txtBdr} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-              <span style={{ fontSize: '0.7rem', color: T.muted }}>{reportText.length} characters</span>
-              <button onClick={loadSampleReport} style={{ background: 'none', border: 'none', color: isDark ? '#a855f7' : '#6d28d9', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Load Sample Report</button>
-            </div>
+          {/* Mode toggle: Paste Text vs Upload File */}
+          <div style={{ display: 'inline-flex', padding: '4px', borderRadius: '12px', background: T.txtBg, border: `1px solid ${T.txtBdr}`, marginBottom: '1.25rem' }}>
+            {(['paste', 'upload'] as const).map(m => {
+              const active = mode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); setResult(null); }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '9px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: S,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    background: active ? T.btnBg : 'transparent',
+                    color: active ? '#fff' : T.muted,
+                    boxShadow: active ? T.btnSh : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.25s',
+                  }}
+                >
+                  {m === 'paste' ? <FileText className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
+                  {m === 'paste' ? 'PASTE TEXT' : 'UPLOAD FILE'}
+                </button>
+              );
+            })}
           </div>
 
-          <button onClick={handleAnalyze} disabled={!reportText.trim() || analyzing} className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mb-4" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: reportText.trim() ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: reportText.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
-            Analyze Report <Play className="w-4 h-4 ml-1" />
-          </button>
+          {mode === 'paste' ? (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: T.head, marginBottom: '0.75rem', fontFamily: I }}>Report Text</label>
+              <textarea value={reportText} onChange={(e) => setReportText(e.target.value)} placeholder="Paste your lab report here... Include parameter names and values." style={{ width: '100%', height: '240px', padding: '1rem', background: T.txtBg, border: `1px solid ${T.txtBdr}`, borderRadius: '12px', color: T.text, fontSize: '0.85rem', outline: 'none', resize: 'none', transition: 'border 0.3s', fontFamily: 'monospace' }} onFocus={e => e.target.style.borderColor = T.txtFoc} onBlur={e => e.target.style.borderColor = T.txtBdr} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                <span style={{ fontSize: '0.7rem', color: T.muted }}>{reportText.length} characters</span>
+                <button onClick={loadSampleReport} style={{ background: 'none', border: 'none', color: isDark ? '#a855f7' : '#6d28d9', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Load Sample Report</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: T.head, marginBottom: '0.75rem', fontFamily: I }}>Lab Report File</label>
+              <input ref={fileInputRef} type="file" accept={ACCEPTED} onChange={(e) => pickFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
+
+              {!selectedFile ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={onDrop}
+                  style={{
+                    height: '240px',
+                    borderRadius: '12px',
+                    border: `2px dashed ${dragOver ? T.txtFoc : T.txtBdr}`,
+                    background: dragOver ? `${T.txtFoc}11` : T.txtBg,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <Upload className="w-10 h-10" style={{ color: T.muted, opacity: 0.6 }} />
+                  <div style={{ textAlign: 'center', padding: '0 1rem' }}>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 600, color: T.text, marginBottom: '4px' }}>Drop your file here or click to browse</p>
+                    <p style={{ fontSize: '0.72rem', color: T.muted }}>PDF, JPG, PNG, TXT, CSV — up to {MAX_FILE_MB}MB</p>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {selectedFile.type.startsWith('image/') ? (
+                    <div style={{ borderRadius: '12px', overflow: 'hidden', border: `1px solid ${T.txtBdr}`, background: T.txtBg, maxHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <img src={URL.createObjectURL(selectedFile)} alt="preview" style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain' }} />
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '120px', borderRadius: '12px', background: T.txtBg, border: `1px solid ${T.txtBdr}` }}>
+                      {selectedFile.type === 'application/pdf'
+                        ? <FileText className="w-12 h-12" style={{ color: '#ef4444' }} />
+                        : <FileText className="w-12 h-12" style={{ color: T.txtFoc }} />}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '0.65rem 0.85rem', borderRadius: '10px', background: T.recBg, border: `1px solid ${T.recBdr}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                      {selectedFile.type.startsWith('image/') ? <ImageIcon className="w-4 h-4" style={{ color: T.txtFoc, flexShrink: 0 }} /> : <FileText className="w-4 h-4" style={{ color: T.txtFoc, flexShrink: 0 }} />}
+                      <span style={{ fontSize: '0.8rem', color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedFile.name}</span>
+                      <span style={{ fontSize: '0.7rem', color: T.muted, flexShrink: 0 }}>· {(selectedFile.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                    <button onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, padding: '2px', display: 'flex', alignItems: 'center' }} title="Remove file">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(() => {
+            const ready = mode === 'paste' ? !!reportText.trim() : !!selectedFile;
+            return (
+              <button onClick={handleAnalyze} disabled={!ready || analyzing} className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mb-4" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: ready ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: ready ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
+                Analyze Report <Play className="w-4 h-4 ml-1" />
+              </button>
+            );
+          })()}
         </div>
 
         {/* Right Side: Render Result */}

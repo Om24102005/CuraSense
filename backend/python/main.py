@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import uvicorn
 
-from ai_core import analyze_symptoms_with_mistral, classify_medical_image_with_resnet, analyze_lab_report
+from ai_core import analyze_symptoms_with_mistral, classify_medical_image_with_resnet, analyze_lab_report, analyze_lab_report_file
 
 # Load .env from the backend root (../) so a single env file feeds
 # both this Python service and the Node service in ../node.
@@ -23,6 +23,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/health")
+async def health():
+    """Lightweight unauthenticated probe used by the frontend status pill."""
+    return {"status": "ok", "service": "python-ai", "ai_keys_loaded": bool(os.getenv("MISTRAL_API_KEY") or os.getenv("GROQ_API_KEY"))}
+
 
 async def verify_gateway_auth(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
@@ -80,6 +86,27 @@ async def process_lab_report(payload: LabReportPayload, token: str = Depends(ver
     health bars.
     """
     analysis = analyze_lab_report(payload.report_text)
+    return {
+        "status": "success",
+        "module": "Clinical Lab AI",
+        "analysis": analysis,
+    }
+
+@app.post("/api/v1/diagnostics/lab-report-file")
+async def process_lab_report_file(
+    patient_id: str = Form("demo-user"),
+    file: UploadFile = File(...),
+    token: str = Depends(verify_gateway_auth),
+):
+    """
+    Same clinical lab analysis as /lab-report but accepts an upload:
+    PDF (text-based), image (Pixtral OCR), or text file.
+    Response shape matches /lab-report so the UI is identical.
+    """
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    analysis = analyze_lab_report_file(file_bytes, file.filename or "", file.content_type or "")
     return {
         "status": "success",
         "module": "Clinical Lab AI",
