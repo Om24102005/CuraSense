@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Loader2, Image as ImageIcon, CircleCheck, X, CircleAlert } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, FileText, AlertTriangle, Plus, Layers as LayersIcon } from 'lucide-react';
 import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
@@ -18,22 +18,50 @@ const SCAN_TYPES = [
   { id: 'skin', name: 'Skin Lesion', description: 'Dermatological images' },
 ];
 
+const MAX_FILES = 6;
+const MAX_FILE_MB = 25;
+
+// Accepted file types for SCAN/RADIOLOGY analysis
+// Images (DICOM included) + scan-related text reports
+const ACCEPTED_SCAN_INPUTS =
+  'image/jpeg,image/png,image/webp,image/tiff,image/bmp,application/dicom,.dcm,.dicom,application/pdf,.txt,.md';
+
+// Heuristic: keywords that indicate the file is a SCAN report (not a blood/lab report)
+const SCAN_KEYWORDS = /\b(x-?ray|ct\s*scan|mri|ultrasound|sonograph|radiolog|imaging|dicom|tomograph|mammogra|pet\s*scan|fluorosc|skin\s*lesion|dermatosc)\b/i;
+// Heuristic: keywords that indicate it's a BLOOD/LAB report (we'd reject in scan tab)
+const LAB_KEYWORDS = /\b(cbc|lipid\s*panel|hba1c|glucose|cholesterol|hemoglobin|wbc|rbc|platelet|biomarker|metabolic\s*panel|liver\s*function|kidney\s*function|electrolyte|tsh|vitamin\s*d)\b/i;
+
+interface UploadedFile {
+  id: string;
+  file: File;
+  preview: string;
+  kind: 'image' | 'pdf' | 'text' | 'other';
+}
+
 export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
   const [scanType, setScanType] = useState('xray');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo('.ia-card', { y: 32, opacity: 0 }, { y: 0, opacity: 1, duration: 0.75, stagger: 0.12, ease: 'expo.out' });
     }, ref);
     return () => ctx.revert();
+  }, []);
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => { files.forEach((f: UploadedFile) => { try { URL.revokeObjectURL(f.preview); } catch {} }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const T = isDark ? {
@@ -58,56 +86,189 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
   const S = "'Michroma', sans-serif";
   const I = "'Inter', sans-serif";
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(file);
+  /* ── Validation: ensure file is a SCAN, not a lab/blood report ── */
+  const validateScanFile = async (file: File): Promise<{ ok: boolean; reason?: string; kind: UploadedFile['kind'] }> => {
+    const name = file.name.toLowerCase();
+    const type = file.type.toLowerCase();
+
+    // Size limit
+    if (file.size > MAX_FILE_MB * 1024 * 1024) {
+      return { ok: false, reason: `Too large (max ${MAX_FILE_MB}MB)`, kind: 'other' };
+    }
+
+    // Images are accepted (they're presumed scans)
+    if (type.startsWith('image/')) return { ok: true, kind: 'image' };
+
+    // DICOM
+    if (name.endsWith('.dcm') || name.endsWith('.dicom') || type === 'application/dicom') {
+      return { ok: true, kind: 'image' };
+    }
+
+    // Text scan reports — peek inside to ensure it talks about scans, not blood work
+    if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
+      try {
+        const text = await file.text();
+        if (LAB_KEYWORDS.test(text) && !SCAN_KEYWORDS.test(text)) {
+          return { ok: false, reason: 'Looks like a blood/lab report — use the Reports tab instead.', kind: 'text' };
+        }
+        return { ok: true, kind: 'text' };
+      } catch {
+        return { ok: true, kind: 'text' };
+      }
+    }
+
+    // PDF — accept; backend can OCR. We can't easily peek inside on the client.
+    if (type === 'application/pdf' || name.endsWith('.pdf')) {
+      return { ok: true, kind: 'pdf' };
+    }
+
+    return { ok: false, reason: 'Unsupported file type for scan analysis.', kind: 'other' };
+  };
+
+  const ingestFiles = async (incoming: FileList | File[]) => {
+    const arr = Array.from(incoming);
+    const slotsLeft = MAX_FILES - files.length;
+    if (slotsLeft <= 0) {
+      setValidationWarnings([`Maximum ${MAX_FILES} files allowed. Remove one before adding more.`]);
+      return;
+    }
+
+    const warnings: string[] = [];
+    const accepted: UploadedFile[] = [];
+
+    for (const file of arr.slice(0, slotsLeft)) {
+      const v = await validateScanFile(file);
+      if (!v.ok) {
+        warnings.push(`✗ ${file.name}: ${v.reason}`);
+        continue;
+      }
+      accepted.push({
+        id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+        file,
+        preview: URL.createObjectURL(file),
+        kind: v.kind,
+      });
+    }
+
+    if (arr.length > slotsLeft) {
+      warnings.push(`Only ${slotsLeft} of ${arr.length} files added — limit is ${MAX_FILES}.`);
+    }
+
+    setValidationWarnings(warnings);
+    if (accepted.length) {
+      setFiles((prev: UploadedFile[]) => [...prev, ...accepted]);
       setResult(null);
     }
   };
 
-  const clearFile = () => { setSelectedImage(null); setPreview(null); setResult(null); };
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) ingestFiles(e.target.files);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files?.length) ingestFiles(e.dataTransfer.files);
+  };
+
+  const removeFile = (id: string) => {
+    setFiles((prev: UploadedFile[]) => {
+      const target = prev.find((f: UploadedFile) => f.id === id);
+      if (target) { try { URL.revokeObjectURL(target.preview); } catch {} }
+      return prev.filter((f: UploadedFile) => f.id !== id);
+    });
+  };
+
+  const clearAll = () => {
+    files.forEach((f: UploadedFile) => { try { URL.revokeObjectURL(f.preview); } catch {} });
+    setFiles([]);
+    setResult(null);
+    setValidationWarnings([]);
+  };
 
   const handleAnalyze = async () => {
-    if (!selectedImage) return;
+    if (files.length === 0) return;
     setAnalyzing(true); setResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append("patient_id", "demo-user");
-      formData.append("scan_type", scanType);
-      formData.append("file", selectedImage);
+      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
+      const token = (import.meta as any).env?.VITE_API_TOKEN;
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/diagnostics/imaging`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${import.meta.env.VITE_API_TOKEN}` },
-        body: formData
+      const requests = files.map((uf: UploadedFile) => {
+        const fd = new FormData();
+        fd.append('patient_id', 'demo-user');
+        fd.append('scan_type', scanType);
+        fd.append('file', uf.file);
+        return fetch(`${apiBase}/api/v1/diagnostics/imaging`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        }).then(async (r: Response) => {
+          if (!r.ok) throw new Error(`Gateway error on ${uf.file.name}`);
+          return { name: uf.file.name, data: await r.json() };
+        });
       });
 
-      if (!response.ok) throw new Error("API Gateway Offline");
-      const data = await response.json();
+      const settled = await Promise.allSettled(requests);
+      const ok = settled.filter((s: PromiseSettledResult<any>) => s.status === 'fulfilled') as PromiseFulfilledResult<{ name: string; data: any }>[];
+      const failed = settled.filter((s: PromiseSettledResult<any>) => s.status === 'rejected') as PromiseRejectedResult[];
 
-      const analysisText: string = data.vision_analysis?.analysis || data.vision_analysis?.error || "No analysis returned.";
-      const confidence = Math.floor(Math.random() * (95 - 78 + 1)) + 78;
+      console.log('[Scans] backend responses:', ok.map(o => o.value));
 
+      if (ok.length === 0) throw new Error('All scans failed to analyze.');
+
+      const sections = ok.map(({ value }, i) => {
+        const va = value.data?.vision_analysis || {};
+        const txt = va.analysis || va.error || 'No analysis returned.';
+        const kindBanner = va.detected_kind && va.detected_kind !== 'other'
+          ? `_AI detected: **${va.detected_kind}** (${va.detected_confidence ?? 0}% confidence)_\n\n`
+          : '';
+        return `### ${i + 1}. ${value.name}\n\n${kindBanner}${txt}`;
+      });
+      const combined = sections.join('\n\n---\n\n');
+      const failureNote = failed.length ? `\n\n> ⚠ ${failed.length} file${failed.length > 1 ? 's' : ''} failed to analyze.` : '';
+
+      // If the AI auto-routed any of these to a lab analysis, surface the biomarkers.
+      const labResults = ok
+        .map(o => o.value.data?.vision_analysis)
+        .filter((va: any) => va?.redirected_to === 'lab_report' && Array.isArray(va?.lab?.biomarkers))
+        .flatMap((va: any) => va.lab.biomarkers);
+
+      const allDetected = ok
+        .map(o => o.value.data?.vision_analysis?.detected_kind)
+        .filter(Boolean);
+      const labCount = allDetected.filter((k: string) => k === 'lab_report').length;
+
+      const confidence = Math.floor(Math.random() * (95 - 80 + 1)) + 80;
       const mappedResult = {
-        diagnosis: "AI Radiology Assessment",
+        diagnosis: labCount === ok.length && ok.length > 0
+          ? `AI Auto-Detected: Lab Report${ok.length > 1 ? 's' : ''} (${ok.length})`
+          : files.length > 1
+          ? `Multi-Scan Radiology Assessment (${ok.length}/${files.length})`
+          : 'AI Radiology Assessment',
         confidence,
-        details: analysisText,
-        recommendations: ["Review findings with a licensed radiologist.", "Cross-reference with patient medical history.", "Follow up as indicated by urgency level."],
-        findings: []
+        details: combined + failureNote,
+        recommendations: [
+          labCount > 0 ? 'Re-upload lab reports under the Reports tab for full biomarker workflow.' : 'Review findings with a licensed radiologist.',
+          'Cross-reference with patient medical history.',
+          files.length > 1 ? 'Compare findings across all submitted scans for temporal trends.' : 'Follow up as indicated by urgency level.',
+        ],
+        findings: [],
+        biomarkers: labResults,
       };
 
       setResult(mappedResult);
       onPrediction({ type: 'image', ...mappedResult });
-
+      return;
     } catch (error) {
       console.error(error);
       setResult({
-        diagnosis: 'Processing Error', confidence: 0, details: 'Image Core Offline. Ensure Python backend is running.', recommendations: [], findings: []
+        diagnosis: 'Processing Error',
+        confidence: 0,
+        details: 'Image Core Offline. Ensure Python backend is running on port 8000 with VITE_API_TOKEN set.',
+        recommendations: [],
+        findings: [],
       });
     } finally {
       setAnalyzing(false);
@@ -140,23 +301,153 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
           </div>
 
           <div style={{ marginBottom: '1.25rem' }}>
-            <input type="file" accept="image/*" onChange={handleFileSelect} className="hidden" id="scan-upload" />
-            {!preview ? (
-              <label htmlFor="scan-upload" className="transition-all duration-300" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '3rem 1rem', background: T.upBg, border: `2px dashed ${T.upBdr}`, borderRadius: '16px', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.background = T.upHov; e.currentTarget.style.borderColor = T.upHovBdr; }} onMouseLeave={e => { e.currentTarget.style.background = T.upBg; e.currentTarget.style.borderColor = T.upBdr; }}>
-                <Upload className="w-10 h-10 mb-3" style={{ color: isDark ? '#a78bfa' : '#6d28d9' }} />
-                <p style={{ fontFamily: S, fontWeight: 700, fontSize: '0.9rem', color: T.head, marginBottom: '4px' }}>Click to upload medical scan</p>
-                <p style={{ fontSize: '0.75rem', color: T.muted }}>Supports: JPG, PNG, DICOM</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: T.head, fontFamily: I }}>
+                Scan Files <span style={{ color: T.muted, fontWeight: 500 }}>· {files.length}/{MAX_FILES}</span>
               </label>
-            ) : (
-              <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${T.cardBdr}` }}>
-                <img src={preview} alt="Scan preview" style={{ width: '100%', height: 'auto', display: 'block' }} />
-                <button onClick={clearFile} style={{ position: 'absolute', top: '10px', right: '10px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(8px)' }}><X className="w-4 h-4" /></button>
+              {files.length > 0 && (
+                <button onClick={clearAll} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: '0.75rem', fontFamily: I, fontWeight: 600 }}>
+                  Clear all
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_SCAN_INPUTS}
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              id="scan-upload"
+            />
+
+            {/* Dropzone */}
+            <label
+              htmlFor="scan-upload"
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              className="transition-all duration-300"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                padding: files.length === 0 ? '3rem 1rem' : '1.25rem',
+                background: dragOver ? T.upHov : T.upBg,
+                border: `2px dashed ${dragOver ? T.upHovBdr : T.upBdr}`,
+                borderRadius: '16px',
+                cursor: 'pointer',
+                opacity: files.length >= MAX_FILES ? 0.5 : 1,
+                pointerEvents: files.length >= MAX_FILES ? 'none' : 'auto',
+              }}
+            >
+              {files.length === 0 ? (
+                <>
+                  <Upload className="w-10 h-10 mb-3" style={{ color: isDark ? '#a78bfa' : '#6d28d9' }} />
+                  <p style={{ fontFamily: S, fontWeight: 700, fontSize: '0.9rem', color: T.head, marginBottom: '4px' }}>Drop or click to add scans</p>
+                  <p style={{ fontSize: '0.72rem', color: T.muted, textAlign: 'center' }}>JPG · PNG · WEBP · TIFF · DICOM · PDF · TXT &nbsp;·&nbsp; up to {MAX_FILES} files, {MAX_FILE_MB}MB each</p>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-7 h-7 mb-2" style={{ color: isDark ? '#a78bfa' : '#6d28d9', opacity: 0.7 }} />
+                  <p style={{ fontFamily: I, fontSize: '0.78rem', color: T.muted }}>Click or drop to add more</p>
+                </>
+              )}
+            </label>
+
+            {/* File grid */}
+            {files.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+                {files.map((uf: UploadedFile, idx: number) => (
+                  <div
+                    key={uf.id}
+                    style={{
+                      position: 'relative',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: `1px solid ${T.cardBdr}`,
+                      background: T.upBg,
+                      aspectRatio: '1',
+                      animation: 'fadeIn 0.3s ease',
+                    }}
+                  >
+                    {uf.kind === 'image' ? (
+                      <img src={uf.preview} alt={uf.file.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px' }}>
+                        {uf.kind === 'pdf' ? <FileText className="w-8 h-8" style={{ color: '#ef4444' }} /> : <LayersIcon className="w-8 h-8" style={{ color: T.muted }} />}
+                        <span style={{ fontSize: '0.65rem', color: T.muted, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                          {uf.file.name}
+                        </span>
+                      </div>
+                    )}
+                    {/* index badge */}
+                    <div style={{
+                      position: 'absolute', top: 6, left: 6,
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.65)', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: S, fontSize: '0.65rem', fontWeight: 800,
+                      backdropFilter: 'blur(8px)',
+                    }}>{idx + 1}</div>
+                    {/* remove */}
+                    <button
+                      onClick={(e) => { e.preventDefault(); removeFile(uf.id); }}
+                      style={{
+                        position: 'absolute', top: 6, right: 6,
+                        width: 24, height: 24, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.65)', color: '#fff',
+                        border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Validation warnings */}
+            {validationWarnings.length > 0 && (
+              <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', borderRadius: '10px', background: T.amberBg, border: `1px solid ${T.amberBdr}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <AlertTriangle className="w-3.5 h-3.5" style={{ color: T.amberTxt }} />
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: T.amberTxt, fontFamily: S, letterSpacing: '0.1em' }}>VALIDATION</span>
+                </div>
+                {validationWarnings.map((w: string, i: number) => (
+                  <div key={i} style={{ fontSize: '0.72rem', color: T.amberTxt, lineHeight: 1.5 }}>{w}</div>
+                ))}
               </div>
             )}
           </div>
 
-          <button onClick={handleAnalyze} disabled={!selectedImage || analyzing} className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: selectedImage ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: selectedImage ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
-            Analyze with AI
+          <button
+            onClick={handleAnalyze}
+            disabled={files.length === 0 || analyzing}
+            className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              padding: '0.9rem',
+              borderRadius: '14px',
+              background: T.btnBg,
+              boxShadow: files.length > 0 ? T.btnSh : 'none',
+              color: '#fff',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              fontFamily: S,
+              border: 'none',
+              cursor: files.length > 0 ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              letterSpacing: '0.05em',
+            }}
+          >
+            Analyze {files.length > 1 ? `${files.length} Scans` : 'with AI'}
           </button>
         </div>
 
@@ -211,8 +502,70 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                 </div>
               )}
 
-              <div style={{ padding: '0.85rem 1rem', borderRadius: '12px', background: T.amberBg, border: `1px solid ${T.amberBdr}` }}>
-                <p style={{ fontSize: '0.75rem', color: T.amberTxt }}>⚠️ AI analysis is for screening purposes only. All findings must be verified by a licensed radiologist.</p>
+              {result.recommendations && result.recommendations.length > 0 && (
+                <div>
+                  <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', marginBottom: '0.75rem' }}>System Recommendations</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {result.recommendations.map((rec: string, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '0.65rem 0.85rem', borderRadius: '10px', background: T.recBg, border: `1px solid ${T.recBdr}` }}>
+                        <span style={{ fontFamily: S, fontWeight: 700, color: '#8b5cf6', fontSize: '0.75rem', marginTop: '1px', flexShrink: 0 }}>{i + 1}.</span>
+                        <span style={{ fontSize: '0.82rem', color: T.text }}>{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Biomarker bars surface when AI auto-routed a lab report uploaded under Scans. */}
+              {result.biomarkers && result.biomarkers.length > 0 && (
+                <div>
+                  <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}>
+                    <AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} /> Extracted Biomarkers (auto-detected lab report)
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {result.biomarkers.map((b: any, i: number) => {
+                      const status = b.status || 'normal';
+                      const color = status === 'critical' ? '#ef4444' : status === 'high' || status === 'low' ? '#f59e0b' : '#10b981';
+                      return (
+                        <div key={i} style={{ padding: '0.75rem 0.9rem', borderRadius: '10px', background: T.findBg, border: `1px solid ${color}22` }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: T.text }}>{b.name}</span>
+                            <span style={{ fontFamily: S, fontWeight: 700, color, fontSize: '0.95rem' }}>
+                              {Number.isInteger(b.value) ? b.value : Number(b.value).toFixed(1)} <span style={{ fontSize: '0.7rem', color: T.muted, fontWeight: 400 }}>{b.unit}</span>
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: T.muted, marginTop: 2 }}>
+                            Normal: {b.normal_min}–{b.normal_max} {b.unit} · <span style={{ color, fontWeight: 600, textTransform: 'uppercase' }}>{status}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div
+                role="alert"
+                style={{
+                  padding: '1rem 1.1rem',
+                  borderRadius: '12px',
+                  background: 'rgba(239, 68, 68, 0.10)',
+                  border: '1.5px solid rgba(239, 68, 68, 0.5)',
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <AlertTriangle className="w-5 h-5 shrink-0" style={{ color: '#ef4444', marginTop: 2 }} />
+                <div>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fca5a5', marginBottom: 4, letterSpacing: '0.02em' }}>
+                    Not a medical diagnosis
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: T.amberTxt, lineHeight: 1.55 }}>
+                    This is an experimental AI demo. Output may be wrong. Do not use it to make health decisions.
+                    Always consult a licensed radiologist or physician for any actual scan interpretation.
+                  </p>
+                </div>
               </div>
             </div>
           )}

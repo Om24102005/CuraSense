@@ -7,26 +7,26 @@ import { LoadingScreen } from './LoadingScreen';
 import MarkdownText from './effects/MarkdownText';
 
 const SYMPTOMS = [
-  { id: 'fever',           name: 'Fever',              category: 'General' },
-  { id: 'cough',           name: 'Cough',              category: 'Respiratory' },
-  { id: 'fatigue',         name: 'Fatigue',            category: 'General' },
-  { id: 'headache',        name: 'Headache',           category: 'Neurological' },
-  { id: 'sore-throat',     name: 'Sore Throat',        category: 'Respiratory' },
-  { id: 'nausea',          name: 'Nausea',             category: 'Digestive' },
-  { id: 'vomiting',        name: 'Vomiting',           category: 'Digestive' },
-  { id: 'diarrhea',        name: 'Diarrhea',           category: 'Digestive' },
-  { id: 'shortness-breath',name: 'Shortness of Breath',category: 'Respiratory' },
-  { id: 'chest-pain',      name: 'Chest Pain',         category: 'Cardiovascular' },
-  { id: 'abdominal-pain',  name: 'Abdominal Pain',     category: 'Digestive' },
-  { id: 'muscle-pain',     name: 'Muscle Pain',        category: 'Musculoskeletal' },
-  { id: 'joint-pain',      name: 'Joint Pain',         category: 'Musculoskeletal' },
-  { id: 'rash',            name: 'Rash',               category: 'Dermatological' },
-  { id: 'dizziness',       name: 'Dizziness',          category: 'Neurological' },
-  { id: 'loss-smell',      name: 'Loss of Smell',      category: 'Respiratory' },
-  { id: 'loss-taste',      name: 'Loss of Taste',      category: 'Respiratory' },
-  { id: 'chills',          name: 'Chills',             category: 'General' },
-  { id: 'sweating',        name: 'Excessive Sweating', category: 'General' },
-  { id: 'congestion',      name: 'Nasal Congestion',   category: 'Respiratory' },
+  { id: 'fever', name: 'Fever', category: 'General' },
+  { id: 'cough', name: 'Cough', category: 'Respiratory' },
+  { id: 'fatigue', name: 'Fatigue', category: 'General' },
+  { id: 'headache', name: 'Headache', category: 'Neurological' },
+  { id: 'sore-throat', name: 'Sore Throat', category: 'Respiratory' },
+  { id: 'nausea', name: 'Nausea', category: 'Digestive' },
+  { id: 'vomiting', name: 'Vomiting', category: 'Digestive' },
+  { id: 'diarrhea', name: 'Diarrhea', category: 'Digestive' },
+  { id: 'shortness-breath', name: 'Shortness of Breath', category: 'Respiratory' },
+  { id: 'chest-pain', name: 'Chest Pain', category: 'Cardiovascular' },
+  { id: 'abdominal-pain', name: 'Abdominal Pain', category: 'Digestive' },
+  { id: 'muscle-pain', name: 'Muscle Pain', category: 'Musculoskeletal' },
+  { id: 'joint-pain', name: 'Joint Pain', category: 'Musculoskeletal' },
+  { id: 'rash', name: 'Rash', category: 'Dermatological' },
+  { id: 'dizziness', name: 'Dizziness', category: 'Neurological' },
+  { id: 'loss-smell', name: 'Loss of Smell', category: 'Respiratory' },
+  { id: 'loss-taste', name: 'Loss of Taste', category: 'Respiratory' },
+  { id: 'chills', name: 'Chills', category: 'General' },
+  { id: 'sweating', name: 'Excessive Sweating', category: 'General' },
+  { id: 'congestion', name: 'Nasal Congestion', category: 'Respiratory' },
 ];
 
 interface SymptomCheckerProps {
@@ -54,19 +54,19 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
   }, []);
 
   const T = isDark ? {
-    cardBg:  'rgba(12,12,26,0.78)', cardBdr: 'rgba(255,255,255,0.10)', shadow:  '0 8px 32px rgba(0,0,0,0.5)',
-    head:    '#ffffff', sub:     'rgba(255,255,255,0.50)', text:    '#ffffff', muted:   'rgba(255,255,255,0.45)',
-    inpBg:   'rgba(255,255,255,0.06)', rowHov:  'rgba(255,255,255,0.06)', selBg:   'rgba(139,92,246,0.18)', selBdr:  'rgba(139,92,246,0.45)',
-    catHead: 'rgba(255,255,255,0.35)', tagBg:   'rgba(139,92,246,0.20)', tagBdr:  'rgba(139,92,246,0.40)', resBg:   'rgba(99,102,241,0.12)',
-    resBdr:  'rgba(99,102,241,0.28)', recBg:   'rgba(255,255,255,0.04)', recBdr:  'rgba(255,255,255,0.08)', amberBg: 'rgba(245,158,11,0.12)',
-    amberBdr:'rgba(245,158,11,0.30)', amberTxt:'#fde68a', btnBg:   'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh:   '0 4px 20px rgba(99,102,241,0.45)',
+    cardBg: 'rgba(12,12,26,0.78)', cardBdr: 'rgba(255,255,255,0.10)', shadow: '0 8px 32px rgba(0,0,0,0.5)',
+    head: '#ffffff', sub: 'rgba(255,255,255,0.50)', text: '#ffffff', muted: 'rgba(255,255,255,0.45)',
+    inpBg: 'rgba(255,255,255,0.06)', rowHov: 'rgba(255,255,255,0.06)', selBg: 'rgba(139,92,246,0.18)', selBdr: 'rgba(139,92,246,0.45)',
+    catHead: 'rgba(255,255,255,0.35)', tagBg: 'rgba(139,92,246,0.20)', tagBdr: 'rgba(139,92,246,0.40)', resBg: 'rgba(99,102,241,0.12)',
+    resBdr: 'rgba(99,102,241,0.28)', recBg: 'rgba(255,255,255,0.04)', recBdr: 'rgba(255,255,255,0.08)', amberBg: 'rgba(245,158,11,0.12)',
+    amberBdr: 'rgba(245,158,11,0.30)', amberTxt: '#fde68a', btnBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh: '0 4px 20px rgba(99,102,241,0.45)',
   } : {
-    cardBg:  'rgba(255,255,255,0.97)', cardBdr: 'rgba(0,0,0,0.08)', shadow:  '0 4px 20px rgba(0,0,0,0.07)',
-    head:    '#0a0a1a', sub:     'rgba(10,10,26,0.50)', text:    '#0a0a1a', muted:   'rgba(10,10,26,0.45)',
-    inpBg:   'rgba(0,0,0,0.04)', rowHov:  'rgba(0,0,0,0.04)', selBg:   'rgba(109,40,217,0.07)', selBdr:  'rgba(109,40,217,0.25)',
-    catHead: 'rgba(10,10,26,0.40)', tagBg:   'rgba(109,40,217,0.10)', tagBdr:  'rgba(109,40,217,0.25)', resBg:   'rgba(99,102,241,0.06)',
-    resBdr:  'rgba(99,102,241,0.18)', recBg:   'rgba(0,0,0,0.025)', recBdr:  'rgba(0,0,0,0.07)', amberBg: 'rgba(245,158,11,0.07)',
-    amberBdr:'rgba(245,158,11,0.22)', amberTxt:'#92400e', btnBg:   'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh:   '0 4px 16px rgba(99,102,241,0.30)',
+    cardBg: 'rgba(255,255,255,0.97)', cardBdr: 'rgba(0,0,0,0.08)', shadow: '0 4px 20px rgba(0,0,0,0.07)',
+    head: '#0a0a1a', sub: 'rgba(10,10,26,0.50)', text: '#0a0a1a', muted: 'rgba(10,10,26,0.45)',
+    inpBg: 'rgba(0,0,0,0.04)', rowHov: 'rgba(0,0,0,0.04)', selBg: 'rgba(109,40,217,0.07)', selBdr: 'rgba(109,40,217,0.25)',
+    catHead: 'rgba(10,10,26,0.40)', tagBg: 'rgba(109,40,217,0.10)', tagBdr: 'rgba(109,40,217,0.25)', resBg: 'rgba(99,102,241,0.06)',
+    resBdr: 'rgba(99,102,241,0.18)', recBg: 'rgba(0,0,0,0.025)', recBdr: 'rgba(0,0,0,0.07)', amberBg: 'rgba(245,158,11,0.07)',
+    amberBdr: 'rgba(245,158,11,0.22)', amberTxt: '#92400e', btnBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh: '0 4px 16px rgba(99,102,241,0.30)',
   };
 
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
@@ -83,7 +83,7 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
 
     try {
       const symptomString = selectedSymptoms.map(id => SYMPTOMS.find(s => s.id === id)?.name).join(", ");
-      
+
       // LIVE API CALL TO FASTAPI BACKEND
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/diagnostics/symptoms`, {
         method: "POST",
@@ -98,7 +98,7 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
       //   { analysis: { assessment, confidence, urgency, conditions[], recommendations[] }, result }
       const a = (data.analysis || {}) as any;
       const mappedResult = {
-        diagnosis: 'AI Triage Assessment',
+        diagnosis: 'SYMPTOM DIAGNOSED',
         confidence: typeof a.confidence === 'number' ? a.confidence : 80,
         details: a.assessment || data.result || '',
         urgency: (a.urgency || 'medium') as 'low' | 'medium' | 'high' | 'emergency',
@@ -128,10 +128,10 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
 
   /* ── Urgency display (emoji + color + label per level) ── */
   const URGENCY = {
-    low:       { emoji: '🟢', label: 'ALL CLEAR',     color: '#10b981', sub: 'Self-care is appropriate.' },
-    medium:    { emoji: '🟡', label: 'MONITOR',       color: '#f59e0b', sub: 'See a doctor in the next day or two.' },
-    high:      { emoji: '🟠', label: 'CONCERNING',    color: '#f97316', sub: 'Consult a physician today.' },
-    emergency: { emoji: '🚨', label: 'EMERGENCY',     color: '#ef4444', sub: 'Seek immediate medical attention.' },
+    low: { emoji: '🟢', label: 'ALL CLEAR', color: '#10b981', sub: 'Self-care is appropriate.' },
+    medium: { emoji: '🟡', label: 'MONITOR', color: '#f59e0b', sub: 'See a doctor in the next day or two.' },
+    high: { emoji: '🟠', label: 'CONCERNING', color: '#f97316', sub: 'Consult a physician today.' },
+    emergency: { emoji: '🚨', label: 'EMERGENCY', color: '#ef4444', sub: 'Seek immediate medical attention.' },
   } as const;
 
   if (analyzing) return <LoadingScreen message="NEURAL NETWORK PROCESSING..." />;
@@ -183,7 +183,7 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
                       return (
                         <label key={s.id} className="transition-all duration-200 cursor-pointer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.55rem 0.75rem', borderRadius: '10px', background: sel ? T.selBg : 'transparent', border: `1px solid ${sel ? T.selBdr : 'transparent'}` }} onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = T.rowHov; }} onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
                           <div style={{ width: '16px', height: '16px', borderRadius: '5px', border: `2px solid ${sel ? '#8b5cf6' : T.catHead}`, background: sel ? '#8b5cf6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
-                            {sel && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            {sel && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                           </div>
                           <input type="checkbox" checked={sel} onChange={() => toggleSymptom(s.id)} style={{ display: 'none' }} />
                           <span style={{ fontSize: '0.85rem', color: T.text }}>{s.name}</span>

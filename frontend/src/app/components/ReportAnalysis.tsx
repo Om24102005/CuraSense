@@ -23,15 +23,72 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Reports tab: ACCEPT lab/blood/biomarker reports — REJECT raw radiology scan images.
+  // Allow PDFs/text/CSV/MD freely; for images, allow only if filename hints at lab/blood (otherwise route to Scans tab).
   const ACCEPTED = '.pdf,.txt,.csv,.md,image/*';
   const MAX_FILE_MB = 15;
 
-  const pickFile = (f: File | null) => {
+  // Heuristics
+  const SCAN_NAME_RE = /\b(x-?ray|xray|ct|mri|ultrasound|sonogram|dicom|scan|radiograph|mammogra|pet|tomograph|fluorosc|skin\s*lesion|dermatosc)\b/i;
+  const SCAN_TEXT_RE = /\b(x-?ray|ct\s*scan|mri|ultrasound|sonograph|radiolog|imaging|dicom|tomograph|mammogra|pet\s*scan|fluorosc)\b/i;
+  const LAB_TEXT_RE = /\b(cbc|lipid|hba1c|glucose|cholesterol|hemoglobin|wbc|rbc|platelet|biomarker|metabolic|liver\s*function|kidney|electrolyte|tsh|vitamin|albumin|creatinine|urea|ferritin|sodium|potassium|chloride|bilirubin|protein|enzyme|panel|blood)\b/i;
+
+  const pickFile = async (f: File | null) => {
     if (!f) { setSelectedFile(null); return; }
     if (f.size > MAX_FILE_MB * 1024 * 1024) {
       setResult({ diagnosis: 'File Too Large', confidence: 0, details: `Max ${MAX_FILE_MB}MB. Please compress or split the file.`, urgency: 'low', recommendations: [], biomarkers: [] });
       return;
     }
+
+    const name = f.name.toLowerCase();
+    const type = f.type.toLowerCase();
+
+    // 1) Block obvious DICOM
+    if (name.endsWith('.dcm') || name.endsWith('.dicom') || type === 'application/dicom') {
+      setResult({
+        diagnosis: 'Wrong Section — Use Scans Tab',
+        confidence: 0,
+        details: '**This looks like a DICOM scan file.** The Reports tab is for **blood / lab / biomarker** reports only.\n\nPlease upload it under the **Scans** tab instead, which is built to read radiology imaging (X-ray, CT, MRI, ultrasound, etc.).',
+        urgency: 'low',
+        recommendations: ['Switch to the Scans tab and upload the DICOM there.'],
+        biomarkers: [],
+      });
+      return;
+    }
+
+    // 2) Image filename heuristic — strong scan signal in name
+    if (type.startsWith('image/') && SCAN_NAME_RE.test(name)) {
+      setResult({
+        diagnosis: 'Wrong Section — Use Scans Tab',
+        confidence: 0,
+        details: `**"${f.name}"** looks like a radiology scan image.\n\nThe **Reports** tab only accepts blood / lab / biomarker reports (CBC, lipid panel, HbA1c, etc.). Radiology images go in the **Scans** tab where the vision model is wired in.`,
+        urgency: 'low',
+        recommendations: ['Switch to the Scans tab and upload this image there.'],
+        biomarkers: [],
+      });
+      return;
+    }
+
+    // 3) For text-like files, peek inside
+    if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.png') || name.endsWith('.csv')) {
+      try {
+        const text = await f.text();
+        const isScan = SCAN_TEXT_RE.test(text);
+        const isLab = LAB_TEXT_RE.test(text);
+        if (isScan && !isLab) {
+          setResult({
+            diagnosis: 'Wrong Section — Use Scans Tab',
+            confidence: 0,
+            details: 'This document reads like a **radiology report**, not a blood / lab report.\n\nThe Reports tab is restricted to blood and biomarker tests. Please upload it under the **Scans** tab.',
+            urgency: 'low',
+            recommendations: ['Switch to the Scans tab and upload the report there.'],
+            biomarkers: [],
+          });
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+
     setSelectedFile(f);
     setResult(null);
   };
@@ -49,21 +106,21 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   }, []);
 
   const T = isDark ? {
-    cardBg:  'rgba(12,12,26,0.78)', cardBdr: 'rgba(255,255,255,0.10)', shadow:  '0 8px 32px rgba(0,0,0,0.5)',
-    head:    '#ffffff', sub:     'rgba(255,255,255,0.50)', text:    '#ffffff', muted:   'rgba(255,255,255,0.45)',
-    btnBg:   'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh:   '0 4px 20px rgba(99,102,241,0.45)',
-    txtBg:   'rgba(255,255,255,0.03)', txtBdr:  'rgba(255,255,255,0.1)', txtFoc: '#8b5cf6',
-    resBg:   'rgba(99,102,241,0.12)', resBdr:  'rgba(99,102,241,0.28)', recBg:   'rgba(255,255,255,0.04)', recBdr:  'rgba(255,255,255,0.08)',
-    amberBg: 'rgba(245,158,11,0.12)', amberBdr:'rgba(245,158,11,0.30)', amberTxt:'#fde68a',
-    findBg:  'rgba(255,255,255,0.04)', tipBg: 'rgba(14,165,233,0.1)', tipTxt: '#38bdf8'
+    cardBg: 'rgba(12,12,26,0.78)', cardBdr: 'rgba(255,255,255,0.10)', shadow: '0 8px 32px rgba(0,0,0,0.5)',
+    head: '#ffffff', sub: 'rgba(255,255,255,0.50)', text: '#ffffff', muted: 'rgba(255,255,255,0.45)',
+    btnBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh: '0 4px 20px rgba(99,102,241,0.45)',
+    txtBg: 'rgba(255,255,255,0.03)', txtBdr: 'rgba(255,255,255,0.1)', txtFoc: '#8b5cf6',
+    resBg: 'rgba(99,102,241,0.12)', resBdr: 'rgba(99,102,241,0.28)', recBg: 'rgba(255,255,255,0.04)', recBdr: 'rgba(255,255,255,0.08)',
+    amberBg: 'rgba(245,158,11,0.12)', amberBdr: 'rgba(245,158,11,0.30)', amberTxt: '#fde68a',
+    findBg: 'rgba(255,255,255,0.04)', tipBg: 'rgba(14,165,233,0.1)', tipTxt: '#38bdf8'
   } : {
-    cardBg:  'rgba(255,255,255,0.97)', cardBdr: 'rgba(0,0,0,0.08)', shadow:  '0 4px 20px rgba(0,0,0,0.07)',
-    head:    '#0a0a1a', sub:     'rgba(10,10,26,0.50)', text:    '#0a0a1a', muted:   'rgba(10,10,26,0.45)',
-    btnBg:   'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh:   '0 4px 16px rgba(99,102,241,0.30)',
-    txtBg:   'rgba(0,0,0,0.02)', txtBdr:  'rgba(0,0,0,0.12)', txtFoc: '#6d28d9',
-    resBg:   'rgba(99,102,241,0.06)', resBdr:  'rgba(99,102,241,0.18)', recBg:   'rgba(0,0,0,0.025)', recBdr:  'rgba(0,0,0,0.07)',
-    amberBg: 'rgba(245,158,11,0.07)', amberBdr:'rgba(245,158,11,0.22)', amberTxt:'#92400e',
-    findBg:  'rgba(0,0,0,0.03)', tipBg: 'rgba(14,165,233,0.08)', tipTxt: '#0284c7'
+    cardBg: 'rgba(255,255,255,0.97)', cardBdr: 'rgba(0,0,0,0.08)', shadow: '0 4px 20px rgba(0,0,0,0.07)',
+    head: '#0a0a1a', sub: 'rgba(10,10,26,0.50)', text: '#0a0a1a', muted: 'rgba(10,10,26,0.45)',
+    btnBg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', btnSh: '0 4px 16px rgba(99,102,241,0.30)',
+    txtBg: 'rgba(0,0,0,0.02)', txtBdr: 'rgba(0,0,0,0.12)', txtFoc: '#6d28d9',
+    resBg: 'rgba(99,102,241,0.06)', resBdr: 'rgba(99,102,241,0.18)', recBg: 'rgba(0,0,0,0.025)', recBdr: 'rgba(0,0,0,0.07)',
+    amberBg: 'rgba(245,158,11,0.07)', amberBdr: 'rgba(245,158,11,0.22)', amberTxt: '#92400e',
+    findBg: 'rgba(0,0,0,0.03)', tipBg: 'rgba(14,165,233,0.08)', tipTxt: '#0284c7'
   };
 
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
@@ -105,17 +162,15 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
         throw new Error(detail);
       }
       const data = await response.json();
+      console.log('[Reports] backend response:', data);
 
-      // New shape from /lab-report endpoint:
-      //   { status, module, analysis: { assessment, confidence, urgency, biomarkers[], recommendations[] } }
       const a = (data.analysis || {}) as any;
 
-      // Backend reported a soft error (e.g. unreadable scanned PDF). Surface it to the user.
       if (a.error) {
         setResult({
           diagnosis: 'Could Not Read Report',
           confidence: 0,
-          details: a.error,
+          details: typeof a.error === 'string' ? a.error : JSON.stringify(a.error),
           urgency: 'low',
           recommendations: ['Try re-uploading as a clear image (JPG/PNG) or paste the text directly.'],
           biomarkers: [],
@@ -123,8 +178,14 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
         return;
       }
 
+      // Auto-routed: AI detected this is actually a radiology scan, not a lab report.
+      const wasRedirected = a.redirected_to === 'radiology';
+      const diagnosis = wasRedirected
+        ? `AI Auto-Detected: ${(a.detected_kind || 'scan').toUpperCase()} (radiology read)`
+        : 'Clinical Lab Analysis';
+
       const mappedResult = {
-        diagnosis: 'Clinical Lab Analysis',
+        diagnosis,
         confidence: typeof a.confidence === 'number' ? a.confidence : 80,
         details: a.assessment || 'No assessment returned.',
         urgency: a.urgency || 'medium',
@@ -132,6 +193,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
           ? a.recommendations
           : ['Review extracted values with a physician.'],
         biomarkers: Array.isArray(a.biomarkers) ? a.biomarkers : [],
+        detected_kind: a.detected_kind,
       };
 
       setResult(mappedResult);
@@ -154,9 +216,9 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
 
   /* ── Color tokens for biomarker status ── */
   const STATUS = {
-    normal:   { color: '#10b981', label: 'NORMAL'   },
-    low:      { color: '#f59e0b', label: 'LOW'      },
-    high:     { color: '#f59e0b', label: 'HIGH'     },
+    normal: { color: '#10b981', label: 'NORMAL' },
+    low: { color: '#f59e0b', label: 'LOW' },
+    high: { color: '#f59e0b', label: 'HIGH' },
     critical: { color: '#ef4444', label: 'CRITICAL' },
   } as const;
 
@@ -223,7 +285,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
             width: `${normalEnd - normalStart}%`,
             background: 'linear-gradient(90deg, rgba(16,185,129,0.35), rgba(16,185,129,0.55), rgba(16,185,129,0.35))',
             borderRadius: '999px',
-          }} />
+          }} /> 
 
           {/* Value marker */}
           <div style={{
@@ -251,9 +313,9 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
           <span>Normal: {normal_min}–{normal_max} {unit}</span>
           <span style={{ color: s.color, fontWeight: 600 }}>
             {status === 'normal' ? 'in range' :
-             status === 'high' ? `+${((value - normal_max) / Math.max(1, normal_max) * 100).toFixed(0)}% above` :
-             status === 'low'  ? `−${((normal_min - value) / Math.max(1, normal_min) * 100).toFixed(0)}% below` :
-             '⚠ critical'}
+              status === 'high' ? `+${((value - normal_max) / Math.max(1, normal_max) * 100).toFixed(0)}% above` :
+                status === 'low' ? `−${((normal_min - value) / Math.max(1, normal_min) * 100).toFixed(0)}% below` :
+                  '⚠ critical'}
           </span>
         </div>
       </div>
@@ -264,16 +326,19 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
     setReportText(`LABORATORY REPORT\n\nPatient: John Doe\nDate: December 20, 2025\n\nLIPID PANEL:\n- Total Cholesterol: 245 mg/dL (H)\n- LDL Cholesterol: 165 mg/dL (H)\n- HDL Cholesterol: 35 mg/dL (L)\n- Triglycerides: 225 mg/dL (H)\n\nGLUCOSE METABOLISM:\n- Fasting Glucose: 165 mg/dL (H)\n- HbA1c: 8.2% (H)`);
   };
 
-  if (analyzing) return <LoadingScreen message="NLP REPORT EXTRACTION..." />;
+  if (analyzing) return <LoadingScreen message="REPORT UNDER REVIEW..." />;
 
   return (
     <div ref={ref} style={{ fontFamily: I }}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* Left Side: Input UI */}
         <div className="ra-card" style={{ ...glass, padding: '1.75rem' }}>
           <h3 style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 700, color: T.head, marginBottom: '4px' }}>Upload Lab Report</h3>
-          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Paste text, or upload a PDF / image / text file for AI analysis</p>
+          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '0.5rem' }}>
+            <span style={{ color: '#10b981', fontWeight: 700 }}>Blood / lab / biomarker</span> reports only — CBC, lipid panel, HbA1c, etc.
+          </p>
+          <p style={{ color: T.muted, fontSize: '0.72rem', marginBottom: '1.25rem' }}>Radiology scans (X-ray, CT, MRI, ultrasound, DICOM) belong in the <strong>Scans</strong> tab.</p>
 
           {/* Mode toggle: Paste Text vs Upload File */}
           <div style={{ display: 'inline-flex', padding: '4px', borderRadius: '12px', background: T.txtBg, border: `1px solid ${T.txtBdr}`, marginBottom: '1.25rem' }}>
@@ -344,8 +409,9 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                 >
                   <Upload className="w-10 h-10" style={{ color: T.muted, opacity: 0.6 }} />
                   <div style={{ textAlign: 'center', padding: '0 1rem' }}>
-                    <p style={{ fontSize: '0.9rem', fontWeight: 600, color: T.text, marginBottom: '4px' }}>Drop your file here or click to browse</p>
-                    <p style={{ fontSize: '0.72rem', color: T.muted }}>PDF, JPG, PNG, TXT, CSV — up to {MAX_FILE_MB}MB</p>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 600, color: T.text, marginBottom: '4px' }}>Drop blood/lab report here or click to browse</p>
+                    <p style={{ fontSize: '0.72rem', color: T.muted }}>PDF, TXT, CSV (or photo of a printed lab report) · up to {MAX_FILE_MB}MB</p>
+                    <p style={{ fontSize: '0.65rem', color: T.muted, marginTop: '6px', opacity: 0.7 }}>X-rays / CT / MRI / DICOM are auto-rejected here</p>
                   </div>
                 </div>
               ) : (
@@ -450,9 +516,29 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                 </div>
               )}
 
-              {/* Disclaimer (parity with Symptoms tab) */}
-              <div style={{ padding: '0.85rem 1rem', borderRadius: '12px', background: T.amberBg, border: `1px solid ${T.amberBdr}` }}>
-                <p style={{ fontSize: '0.75rem', color: T.amberTxt }}>⚠️ AI-generated analysis for informational purposes only. Always consult with a qualified healthcare professional.</p>
+              {/* Loud disclaimer */}
+              <div
+                role="alert"
+                style={{
+                  padding: '1rem 1.1rem',
+                  borderRadius: '12px',
+                  background: 'rgba(239, 68, 68, 0.10)',
+                  border: '1.5px solid rgba(239, 68, 68, 0.5)',
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <AlertTriangle className="w-5 h-5 shrink-0" style={{ color: '#ef4444', marginTop: 2 }} />
+                <div>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fca5a5', marginBottom: 4, letterSpacing: '0.02em' }}>
+                    Not a medical diagnosis
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: T.amberTxt, lineHeight: 1.55 }}>
+                    This is an experimental AI demo. Output may be wrong. Do not use it to make health decisions.
+                    Always consult a qualified healthcare professional for actual lab interpretation.
+                  </p>
+                </div>
               </div>
             </div>
           )}

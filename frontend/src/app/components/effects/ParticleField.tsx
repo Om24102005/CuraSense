@@ -1,278 +1,260 @@
-/* ═══════════════════════════════════════════════════════
-   CuraSense — GOD-LEVEL Particle Field (R3F)
-   GPU-accelerated, scroll-driven morphing particle system
-   ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   CuraSense — Edge Constellation Field
+   Static, low-opacity SVG constellation pinned to the left + right
+   edges of the viewport. Nodes don't drift — but they react to the
+   cursor: dots and lines within a proximity radius brighten and
+   bloom toward the pointer.
 
-import { useRef, useMemo, useCallback } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import * as THREE from 'three';
-import { useScroll } from '@react-three/drei';
+   The center of the screen is intentionally empty here — that's
+   where the helix / morphing organs live (with their own internal
+   wireframe in ThreeBackground). This component is decoration on
+   the periphery only.
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Shape Generators ───────────────────────────────── */
-function createDNA(count: number): Float32Array {
-  const arr = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const t = (i / count - 0.5) * 140;
-    const angle = t * 0.12 + (i % 2 === 0 ? 0 : Math.PI);
-    const rad = 16;
-    arr[i * 3] = Math.cos(angle) * rad;
-    arr[i * 3 + 1] = t;
-    arr[i * 3 + 2] = Math.sin(angle) * rad;
-  }
-  return arr;
+import { useEffect, useMemo, useRef } from 'react';
+
+interface ParticleFieldProps {
+  /** Approx node count per edge. Total = count * 2. Capped for sanity. */
+  count?: number;
 }
 
-function createBrain(count: number): Float32Array {
-  const arr = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const t = i / count;
-    const phi = Math.acos(1 - 2 * t);
-    const theta = Math.PI * 2 * i / ((1 + Math.sqrt(5)) / 2);
-    const rad = 28 + Math.sin(theta * 4) * 3;
-    arr[i * 3] = rad * Math.sin(phi) * Math.cos(theta);
-    arr[i * 3 + 1] = rad * Math.cos(phi);
-    arr[i * 3 + 2] = rad * Math.sin(phi) * Math.sin(theta);
+interface Node {
+  x: number; // px from left of viewport
+  y: number; // px from top of viewport
+}
+interface Edge { a: number; b: number; len: number; }
+
+/* Generate a constellation pinned to one edge of the viewport.
+   x is offset from edge inward; y is sprinkled top-to-bottom with
+   slight horizontal jitter so the layout reads as a "spine" rather
+   than a column. */
+function generateNodes(side: 'left' | 'right', n: number, vw: number, vh: number): Node[] {
+  const stripWidth = Math.min(180, vw * 0.16);
+  const nodes: Node[] = [];
+  // Distribute roughly along Y with low-discrepancy stagger
+  for (let i = 0; i < n; i++) {
+    const yJitter = (Math.random() - 0.5) * (vh / n) * 1.4;
+    const y = (i + 0.5) * (vh / n) + yJitter;
+    // X: bias inward but with curve so it isn't a straight column
+    const t = i / (n - 1);
+    const curve = Math.sin(t * Math.PI * 2.4) * 0.5 + 0.5;
+    const xOffset = 18 + curve * (stripWidth - 22) + (Math.random() - 0.5) * 22;
+    const x = side === 'left' ? xOffset : vw - xOffset;
+    nodes.push({ x, y });
   }
-  return arr;
+  return nodes;
 }
 
-function createHeart(count: number): Float32Array {
-  const arr = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    const hx = 16 * Math.pow(Math.sin(theta), 3);
-    const hy = 13 * Math.cos(theta) - 5 * Math.cos(2 * theta) - 2 * Math.cos(3 * theta) - Math.cos(4 * theta);
-    arr[i * 3] = hx * 1.8;
-    arr[i * 3 + 1] = hy * 1.8;
-    arr[i * 3 + 2] = (Math.random() - 0.5) * 12;
-  }
-  return arr;
-}
-
-function createLungs(count: number): Float32Array {
-  const arr = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const isLeft = i % 2 === 0;
-    const phi = Math.acos(1 - 2 * Math.random());
-    const theta = Math.random() * Math.PI * 2;
-    const rad = 18;
-    let lx = rad * Math.sin(phi) * Math.cos(theta);
-    let ly = rad * Math.cos(phi) * 2.0;
-    let lz = rad * Math.sin(phi) * Math.sin(theta);
-    lx += isLeft ? -16 : 16;
-    arr[i * 3] = lx;
-    arr[i * 3 + 1] = ly - 8;
-    arr[i * 3 + 2] = lz * 0.8;
-  }
-  return arr;
-}
-
-/* ── Shader Material ─────────────────────────────────── */
-const particleVert = `
-  uniform float uTime;
-  uniform float uMorph;
-  uniform float uPixelRatio;
-  attribute vec3 target0;
-  attribute vec3 target1;
-  attribute vec3 target2;
-  attribute float aSize;
-  attribute vec3 aColor;
-  varying vec3 vColor;
-  varying float vAlpha;
-
-  void main() {
-    vec3 pos = position;
-    pos = mix(pos, target0, uMorph);
-    pos = mix(pos, target1, smoothstep(0.0, 1.0, uMorph - 1.0));
-    pos = mix(pos, target2, smoothstep(1.0, 2.0, uMorph - 2.0));
-
-    // Organic drift
-    float drift = sin(uTime * 0.3 + position.x * 0.01) * 0.5;
-    pos.x += drift;
-    pos.y += cos(uTime * 0.2 + position.z * 0.01) * 0.5;
-    pos.z += sin(uTime * 0.25 + position.y * 0.01) * 0.5;
-
-    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-    vColor = aColor;
-    vAlpha = 0.6 + 0.4 * sin(uTime * 0.5 + position.x * 0.1);
-
-    gl_PointSize = aSize * uPixelRatio * (200.0 / -mvPosition.z);
-    gl_Position = projectionMatrix * mvPosition;
-  }
-`;
-
-const particleFrag = `
-  varying vec3 vColor;
-  varying float vAlpha;
-
-  void main() {
-    vec2 uv = gl_PointCoord.xy - vec2(0.5);
-    float d = length(uv);
-    if (d > 0.5) discard;
-
-    float glow = exp(-d * d * 20.0);
-    float core = smoothstep(0.5, 0.0, d);
-
-    vec3 color = vColor * (1.0 + glow * 0.5);
-    float alpha = (glow * 0.4 + core * 0.6) * vAlpha;
-
-    gl_FragColor = vec4(color, alpha);
-  }
-`;
-
-/* ── Particle System Component ───────────────────────── */
-function ParticleSystem({ count = 6000 }: { count?: number }) {
-  const meshRef = useRef<THREE.Points>(null!);
-  const { viewport } = useThree();
-  const scroll = useScroll();
-
-  const { positions, targets, colors, sizes } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const t0 = createDNA(count);
-    const t1 = createBrain(count);
-    const t2 = createHeart(count);
-    const t3 = createLungs(count);
-    const cols = new Float32Array(count * 3);
-    const siz = new Float32Array(count);
-
-    const c1 = new THREE.Color(0x00f0ff);
-    const c2 = new THREE.Color(0xff00aa);
-    const c3 = new THREE.Color(0xff1133);
-    const c4 = new THREE.Color(0x00ffa8);
-
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      pos[i3] = t0[i3] + (Math.random() - 0.5) * 8;
-      pos[i3 + 1] = t0[i3 + 1] + (Math.random() - 0.5) * 8;
-      pos[i3 + 2] = t0[i3 + 2] + (Math.random() - 0.5) * 8;
-
-      const mixColor = c1.clone().lerp(c2, Math.random());
-      cols[i3] = mixColor.r;
-      cols[i3 + 1] = mixColor.g;
-      cols[i3 + 2] = mixColor.b;
-
-      siz[i] = 0.5 + Math.random() * 1.5;
+/* Connect each node to its k=2 nearest neighbors (in pixel space).
+   Pre-computed once at mount; lines never get recomputed. */
+function generateEdges(nodes: Node[], k = 2, maxLen = 200): Edge[] {
+  const edges: Edge[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < nodes.length; i++) {
+    // gather distances to others
+    const cands: Array<{ j: number; d: number }> = [];
+    for (let j = 0; j < nodes.length; j++) {
+      if (j === i) continue;
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const d = Math.hypot(dx, dy);
+      if (d <= maxLen) cands.push({ j, d });
     }
+    cands.sort((a, b) => a.d - b.d);
+    for (let p = 0; p < Math.min(k, cands.length); p++) {
+      const j = cands[p].j;
+      const lo = Math.min(i, j), hi = Math.max(i, j);
+      const key = `${lo}-${hi}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({ a: lo, b: hi, len: cands[p].d });
+    }
+  }
+  return edges;
+}
 
-    return {
-      positions: pos,
-      targets: [t0, t1, t2, t3],
-      colors: cols,
-      sizes: siz,
+const CURSOR_RADIUS = 220;       // px — proximity reach for highlighting
+const CURSOR_RADIUS_SQ = CURSOR_RADIUS * CURSOR_RADIUS;
+
+function EdgeStrip({ side, n }: { side: 'left' | 'right'; n: number }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const lineRefs = useRef<(SVGLineElement | null)[]>([]);
+  const dotRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const mouseRef = useRef({ x: -9999, y: -9999, active: false });
+  const sizeRef = useRef({ w: 0, h: 0 });
+
+  /* Generate the layout once. Stays static across cursor moves +
+     re-renders. Recomputes only on viewport size change. */
+  const layout = useMemo(() => {
+    if (typeof window === 'undefined') return { nodes: [] as Node[], edges: [] as Edge[] };
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    sizeRef.current = { w: vw, h: vh };
+    const nodes = generateNodes(side, n, vw, vh);
+    const edges = generateEdges(nodes);
+    return { nodes, edges };
+  }, [side, n]);
+
+  /* Cursor tracking + per-frame opacity update */
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      mouseRef.current.x = e.clientX;
+      mouseRef.current.y = e.clientY;
+      mouseRef.current.active = true;
     };
-  }, [count]);
+    const onLeave = () => { mouseRef.current.active = false; };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener('mouseout', onLeave);
+    document.addEventListener('mouseleave', onLeave);
 
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uMorph: { value: 0 },
-    uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
-  }), []);
+    let raf = 0;
+    const tick = () => {
+      const { x: mx, y: my, active } = mouseRef.current;
+      const nodes = layout.nodes;
+      const edges = layout.edges;
 
-  const material = useMemo(() => new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader: particleVert,
-    fragmentShader: particleFrag,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  }), [uniforms]);
+      // Update dots
+      for (let i = 0; i < nodes.length; i++) {
+        const el = dotRefs.current[i];
+        if (!el) continue;
+        const dx = nodes[i].x - mx;
+        const dy = nodes[i].y - my;
+        const d2 = dx * dx + dy * dy;
+        const prox = active ? Math.max(0, 1 - d2 / CURSOR_RADIUS_SQ) : 0;
+        // Base 22% → 95% with proximity
+        const op = 0.22 + prox * 0.73;
+        const r = 1.4 + prox * 1.6;
+        el.setAttribute('opacity', op.toFixed(3));
+        el.setAttribute('r', r.toFixed(2));
+      }
 
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('target0', new THREE.BufferAttribute(targets[0], 3));
-    geo.setAttribute('target1', new THREE.BufferAttribute(targets[1], 3));
-    geo.setAttribute('target2', new THREE.BufferAttribute(targets[2], 3));
-    geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    return geo;
-  }, [positions, targets, colors, sizes]);
+      // Update lines — proximity uses the midpoint of each segment
+      for (let i = 0; i < edges.length; i++) {
+        const el = lineRefs.current[i];
+        if (!el) continue;
+        const a = nodes[edges[i].a];
+        const b = nodes[edges[i].b];
+        const cx = (a.x + b.x) * 0.5;
+        const cy = (a.y + b.y) * 0.5;
+        const dx = cx - mx;
+        const dy = cy - my;
+        const d2 = dx * dx + dy * dy;
+        const prox = active ? Math.max(0, 1 - d2 / CURSOR_RADIUS_SQ) : 0;
+        // Base 8% → 55% with proximity. Intentionally low so the
+        // edges read as ambient, not the focal point.
+        const op = 0.08 + prox * 0.47;
+        const sw = 0.6 + prox * 0.9;
+        el.setAttribute('opacity', op.toFixed(3));
+        el.setAttribute('stroke-width', sw.toFixed(2));
+      }
 
-  useFrame((state, delta) => {
-    uniforms.uTime.value = state.clock.elapsedTime;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
 
-    // Map scroll to morph (0-3 range).
-    // useScroll() returns null when there's no <ScrollControls> parent —
-    // this component is mounted standalone, so we fall back to a slow
-    // time-driven cycle instead of crashing every frame.
-    if (scroll && typeof scroll.range === 'function') {
-      const scrollVal =
-        scroll.range(0, 1 / 4) * 1 +
-        scroll.range(1 / 4, 1 / 4) * 2 +
-        scroll.range(2 / 4, 1 / 4) * 3 +
-        scroll.range(3 / 4, 1 / 4) * 4;
-      uniforms.uMorph.value += (scrollVal - uniforms.uMorph.value) * 0.05;
-    } else {
-      // Idle morph: gentle 30s cycle through the 4 forms.
-      const cycleTarget = (state.clock.elapsedTime % 30) / 30 * 4;
-      uniforms.uMorph.value += (cycleTarget - uniforms.uMorph.value) * 0.02;
-    }
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseout', onLeave);
+      document.removeEventListener('mouseleave', onLeave);
+      cancelAnimationFrame(raf);
+    };
+  }, [layout]);
 
-    // Slow rotation
-    meshRef.current.rotation.y = state.clock.elapsedTime * 0.05;
-    meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.08) * 0.1;
-  });
+  /* Resize → regenerate layout. Cheap; runs only on actual resize. */
+  useEffect(() => {
+    const onResize = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      sizeRef.current = { w: vw, h: vh };
+      // Force a fresh memo by toggling key — simplest: replace SVG via parent.
+      // Here we just translate existing nodes proportionally so it stays cheap.
+      const sx = vw / sizeRef.current.w;
+      const sy = vh / sizeRef.current.h;
+      layout.nodes.forEach((nd: Node, i: number) => {
+        nd.x *= sx;
+        nd.y *= sy;
+        const el = dotRefs.current[i];
+        if (el) {
+          el.setAttribute('cx', nd.x.toFixed(1));
+          el.setAttribute('cy', nd.y.toFixed(1));
+        }
+      });
+      layout.edges.forEach((eg: Edge, i: number) => {
+        const el = lineRefs.current[i];
+        if (!el) return;
+        el.setAttribute('x1', layout.nodes[eg.a].x.toFixed(1));
+        el.setAttribute('y1', layout.nodes[eg.a].y.toFixed(1));
+        el.setAttribute('x2', layout.nodes[eg.b].x.toFixed(1));
+        el.setAttribute('y2', layout.nodes[eg.b].y.toFixed(1));
+      });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [layout]);
+
+  // Side-specific accent color
+  const accent = side === 'left' ? '#22d3ee' : '#a855f7';
 
   return (
-    <points ref={meshRef} geometry={geometry} material={material} />
+    <svg
+      ref={svgRef}
+      className="fixed inset-0 z-0 pointer-events-none"
+      width="100vw"
+      height="100vh"
+      style={{ width: '100vw', height: '100vh' }}
+    >
+      <defs>
+        <radialGradient id={`pf-glow-${side}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor={accent} stopOpacity="0.85" />
+          <stop offset="60%"  stopColor={accent} stopOpacity="0.30" />
+          <stop offset="100%" stopColor={accent} stopOpacity="0" />
+        </radialGradient>
+        <filter id={`pf-blur-${side}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="0.5" />
+        </filter>
+      </defs>
+
+      {/* Edges first so dots render on top */}
+      <g>
+        {layout.edges.map((e: Edge, i: number) => {
+          const a = layout.nodes[e.a];
+          const b = layout.nodes[e.b];
+          return (
+            <line
+              key={`e-${side}-${i}`}
+              ref={(el: SVGLineElement | null) => { lineRefs.current[i] = el; }}
+              x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+              stroke={accent}
+              strokeWidth={0.6}
+              opacity={0.08}
+            />
+          );
+        })}
+      </g>
+      <g>
+        {layout.nodes.map((nd: Node, i: number) => (
+          <circle
+            key={`n-${side}-${i}`}
+            ref={(el: SVGCircleElement | null) => { dotRefs.current[i] = el; }}
+            cx={nd.x} cy={nd.y} r={1.4}
+            fill={accent}
+            opacity={0.22}
+            filter={`url(#pf-blur-${side})`}
+          />
+        ))}
+      </g>
+    </svg>
   );
 }
 
-/* ── Background Stars ────────────────────────────────── */
-function BackgroundStars() {
-  const count = 3000;
-  const positions = useMemo(() => {
-    const arr = new Float32Array(count * 3);
-    for (let i = 0; i < count * 3; i++) {
-      arr[i] = (Math.random() - 0.5) * 600;
-    }
-    return arr;
-  }, []);
-
+export default function ParticleField({ count = 26 }: ParticleFieldProps) {
+  // Cap node count per side. Lines are O(n*k) so this stays cheap.
+  const safe = Math.max(0, Math.min(count, 50));
+  if (safe === 0) return null;
   return (
-    <points>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
-          args={[positions, 3]}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.08}
-        color="#888899"
-        transparent
-        opacity={0.4}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </points>
-  );
-}
-
-/* ── Main Export ─────────────────────────────────────── */
-export default function ParticleField({ count = 6000 }: { count?: number }) {
-  // Bail out entirely when count<=0 (mobile path) — don't mount a
-  // Canvas at all, so no WebGL context, no rAF, no GPU cost.
-  if (count <= 0) return null;
-
-  return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
-      <Canvas
-        camera={{ position: [0, 0, 85], fov: 60 }}
-        dpr={[1, 2]}
-        gl={{
-          antialias: true,
-          alpha: true,
-          powerPreference: 'high-performance',
-        }}
-      >
-        <fogExp2 attach="fog" args={['#020205', 0.005]} />
-        <BackgroundStars />
-        <ParticleSystem count={count} />
-      </Canvas>
-    </div>
+    <>
+      <EdgeStrip side="left"  n={safe} />
+      <EdgeStrip side="right" n={safe} />
+    </>
   );
 }

@@ -54,10 +54,11 @@ import FluidGradient from './components/effects/FluidGradient';
 import CustomCursor from './components/effects/CustomCursor';
 import SmoothScroll from './components/effects/SmoothScroll';
 import CinematicSequence from './components/effects/CinematicSequence';
+import SystemBootSequence from './components/effects/SystemBootSequence';
 import { MagneticCard } from './components/effects/MagneticCard';
-import ScrambleText from './components/effects/ScrambleText';
 import ThreeBackground from './components/ThreeBackground';
 import InteractionLayer from './components/effects/InteractionLayer';
+import ElementTransitions from './components/effects/ElementTransitions';
 
 // ── Themes ──
 import { themes, ThemeName } from './themes';
@@ -99,6 +100,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setThemeState] = useState<ThemeName>('dark');
   const [cinematicDone, setCinematicDone] = useState(false);
+  // Plays once on cold app boot, BEFORE the WelcomeScreen (or the
+  // dashboard if the user is already authenticated). Acts as a short
+  // "system firing up" intro the user sees on every refresh.
+  const [bootDone, setBootDone] = useState(false);
 
   /* ── Motion refs ──
      Held outside React render so GSAP can mutate without re-render storms.
@@ -148,15 +153,10 @@ export default function App() {
     }
   }, [isAuthenticated]);
 
-  /* ── CURTAIN ON TAB CHANGE ──
-     Fires the global aurora wipe defined in InteractionLayer every
-     time activeTab changes. The curtain runs in parallel with the
-     page-content reveal below, so the user sees: outgoing content
-     dims → curtain wipes across → incoming content materializes. */
-  useEffect(() => {
-    if (!isAuthenticated || !cinematicDone) return;
-    window.__curasenseCurtain?.();
-  }, [activeTab, isAuthenticated, cinematicDone]);
+  /* Curtain-on-tab-change was removed — the aurora wipe popped up
+     every time a section was switched and read as a glitch rather
+     than a transition. The page-content opacity/y reveal below is
+     enough to acknowledge the change. */
 
   /* ── PAGE TRANSITION ──
      Simple opacity + y reveal on tab change. We deliberately do NOT
@@ -337,14 +337,14 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+        {/* Cold-boot intro overlays the welcome screen for ~1.5s. */}
+        {!bootDone && (
+          <SystemBootSequence onComplete={() => setBootDone(true)} />
+        )}
         <div style={themeVars}>
           <ThreeBackground />
-          {/* Secondary particle field — 1200 desktop / 0 on phones.
-              The helix already carries the visual weight; this layer
-              just adds depth, so it can drop sharply without losing
-              the look. */}
           <ParticleField
-            count={typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 1200}
+            count={typeof window !== 'undefined' && window.innerWidth < 768 ? 14 : 26}
           />
           <FluidGradient
             colors={[
@@ -356,6 +356,7 @@ export default function App() {
           />
           <CustomCursor />
           <InteractionLayer />
+          <ElementTransitions />
           <div className="relative z-10 min-h-screen">
             <WelcomeScreen onAuthenticate={() => setIsAuthenticated(true)} />
           </div>
@@ -367,7 +368,9 @@ export default function App() {
   /* ── Authenticated ── */
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-      {/* Cinematic sequence on first load */}
+      {/* Post-login cinematic intro (~4.5s). The "system firing up"
+          boot intro is intentionally not shown here — it only plays on
+          the unauthenticated cold-boot path before the WelcomeScreen. */}
       {!cinematicDone && (
         <CinematicSequence onComplete={() => setCinematicDone(true)} />
       )}
@@ -378,7 +381,7 @@ export default function App() {
           style={themeVars}
         >
           <ParticleField
-            count={typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 1500}
+            count={typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 60}
           />
           <FluidGradient
             colors={[
@@ -390,6 +393,7 @@ export default function App() {
           />
           <CustomCursor />
           <InteractionLayer />
+          <ElementTransitions />
 
           <div className="relative z-10">
             {/* ── SCROLL PROGRESS RAIL ──
@@ -635,12 +639,12 @@ export default function App() {
                       Future: replace plain <p> with SplitText words for
                       individual word stagger (gsap-bonus). */}
                   <div className="mb-8" data-reveal>
-                    <ScrambleText
-                      text="AI-Powered Analysis"
-                      as="h2"
+                    <h2
                       className="text-3xl font-bold mb-2 tracking-tight"
                       style={{ fontFamily: "'Michroma', sans-serif" }}
-                    />
+                    >
+                      AI-Powered Analysis
+                    </h2>
                     <p
                       className="text-base leading-relaxed max-w-xl"
                       style={{ color: 'var(--text-secondary)' }}
@@ -681,12 +685,12 @@ export default function App() {
               {activeTab === 'history' && (
                 <div>
                   <div className="mb-8" data-reveal>
-                    <ScrambleText
-                      text="Analysis History"
-                      as="h2"
+                    <h2
                       className="text-3xl font-bold mb-2 tracking-tight"
                       style={{ fontFamily: "'Michroma', sans-serif" }}
-                    />
+                    >
+                      Analysis History
+                    </h2>
                     <p
                       className="text-base leading-relaxed max-w-xl"
                       style={{ color: 'var(--text-secondary)' }}
@@ -703,12 +707,12 @@ export default function App() {
               {activeTab === 'settings' && (
                 <div>
                   <div className="mb-8" data-reveal>
-                    <ScrambleText
-                      text="Settings"
-                      as="h2"
+                    <h2
                       className="text-3xl font-bold mb-2 tracking-tight"
                       style={{ fontFamily: "'Michroma', sans-serif" }}
-                    />
+                    >
+                      Settings
+                    </h2>
                     <p
                       className="text-base leading-relaxed max-w-xl"
                       style={{ color: 'var(--text-secondary)' }}

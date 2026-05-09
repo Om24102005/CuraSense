@@ -4,6 +4,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
 // nodemailer / Resend / Gmail SMTP all removed — the reset code is
 // returned directly from /forgot-password and displayed in the UI.
 // No email infrastructure is required for the flow to work.
@@ -86,6 +88,12 @@ const userSchema = new mongoose.Schema({
   // Reset-code fields — populated by /forgot-password, cleared by /reset-password
   resetCode: { type: String, default: null },
   resetCodeExpiry: { type: Date, default: null },
+  // TOTP / Google Authenticator 2FA
+  // totpSecret: base32 secret shared with the authenticator app. Stored
+  // unencrypted at rest; if you need extra hardening, encrypt with KMS.
+  // totpEnabled: false until the user verifies their first code.
+  totpSecret: { type: String, default: null },
+  totpEnabled: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -128,6 +136,55 @@ const verifyAdmin = async (req, res, next) => {
   }
 };
 
+/* ── AUTH WITH GOOGLE-AUTHENTICATOR 2FA ──
+   Sign-up is a two-step flow:
+     1. POST /register
+        Creates the user (totpEnabled=false). Returns a short-lived
+        SETUP TOKEN — usable only for /totp-setup and /totp-verify, never
+        for protected routes.
+     2a. POST /totp-setup    (Bearer setup token)
+        Generates a base32 secret, stores it on the user, returns the
+        otpauth URL + a data:image/png;base64,... QR. The frontend shows
+        the QR; user scans with Google Authenticator.
+     2b. POST /totp-verify   (Bearer setup token, body: { code })
+        Verifies the 6-digit code, flips totpEnabled=true, and finally
+        issues the FULL JWT.
+
+   Login is also two-step when 2FA is on:
+     1. POST /login            → if totpEnabled, returns { totpToken } only
+     2. POST /login-totp       → exchanges totpToken + code for full JWT
+   Legacy users (totpEnabled=false) get the full JWT directly from /login.
+*/
+
+const SETUP_PURPOSE = 'totp_setup';
+const LOGIN_TOTP_PURPOSE = 'totp_login';
+
+const issueFullToken = (user) =>
+  jwt.sign({ _id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+
+const issuePurposeToken = (user, purpose) =>
+  jwt.sign({ _id: user._id, purpose }, JWT_SECRET, { expiresIn: '15m' });
+
+// Verify a token that was issued for a single purpose (totp setup / totp login).
+const verifyPurposeToken = (req, res, expectedPurpose) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    res.status(401).json({ error: 'Setup token required.' });
+    return null;
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.purpose !== expectedPurpose) {
+      res.status(403).json({ error: 'Wrong token type.' });
+      return null;
+    }
+    return decoded;
+  } catch {
+    res.status(400).json({ error: 'Invalid or expired setup token.' });
+    return null;
+  }
+};
+
 app.post('/register', requireMongo, async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
@@ -143,10 +200,89 @@ app.post('/register', requireMongo, async (req, res) => {
     const user = new User({ name, email, password: hashedPassword, role: 'user' });
     const savedUser = await user.save();
 
-    const token = jwt.sign({ _id: savedUser._id, role: savedUser.role }, JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, user: { id: savedUser._id, name: savedUser.name, email: savedUser.email, role: savedUser.role } });
+    // Issue a SETUP token. Account is created but not usable until 2FA verified.
+    const setupToken = issuePurposeToken(savedUser, SETUP_PURPOSE);
+    res.json({
+      setupToken,
+      requiresTotpSetup: true,
+      user: { id: savedUser._id, name: savedUser.name, email: savedUser.email, role: savedUser.role },
+    });
   } catch (error) {
     console.error('[/register] failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* Generate (or regenerate) the TOTP secret and a scannable QR code.
+   Idempotent — calling again before /totp-verify rotates the secret so
+   a user who closed the QR can reopen this step and get a fresh one. */
+app.post('/totp-setup', requireMongo, async (req, res) => {
+  const decoded = verifyPurposeToken(req, res, SETUP_PURPOSE);
+  if (!decoded) return;
+
+  try {
+    const user = await User.findById(decoded._id);
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+    if (user.totpEnabled) {
+      return res.status(400).json({ error: '2FA is already set up for this account.' });
+    }
+
+    const secret = speakeasy.generateSecret({
+      name: `CuraSense (${user.email})`,
+      issuer: 'CuraSense',
+      length: 20,
+    });
+    user.totpSecret = secret.base32;
+    await user.save();
+
+    const qrDataUrl = await QRCode.toDataURL(secret.otpauth_url);
+    res.json({
+      otpauthUrl: secret.otpauth_url,
+      qrDataUrl,
+      // Manual-entry fallback for users whose camera doesn't read the QR.
+      manualSecret: secret.base32,
+      issuer: 'CuraSense',
+      account: user.email,
+    });
+  } catch (error) {
+    console.error('[/totp-setup] failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* Verify the 6-digit code generated by Google Authenticator.
+   On success, mark 2FA enabled and issue the full JWT. */
+app.post('/totp-verify', requireMongo, async (req, res) => {
+  const decoded = verifyPurposeToken(req, res, SETUP_PURPOSE);
+  if (!decoded) return;
+
+  try {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'code is required.' });
+
+    const user = await User.findById(decoded._id);
+    if (!user || !user.totpSecret) {
+      return res.status(400).json({ error: 'Run /totp-setup first.' });
+    }
+
+    const ok = speakeasy.totp.verify({
+      secret: user.totpSecret,
+      encoding: 'base32',
+      token: String(code).trim(),
+      window: 1,
+    });
+    if (!ok) return res.status(400).json({ error: 'Invalid code. Check your authenticator app and try again.' });
+
+    user.totpEnabled = true;
+    await user.save();
+
+    const token = issueFullToken(user);
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (error) {
+    console.error('[/totp-verify] failed:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -163,10 +299,55 @@ app.post('/login', requireMongo, async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(400).json({ error: 'Invalid credentials.' });
 
-    const token = jwt.sign({ _id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+    // 2FA gate. If the user enabled it, password alone is not enough.
+    if (user.totpEnabled) {
+      const totpToken = issuePurposeToken(user, LOGIN_TOTP_PURPOSE);
+      return res.json({
+        requiresTotp: true,
+        totpToken,
+        user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      });
+    }
+
+    // No 2FA on this account — issue the full token.
+    const token = issueFullToken(user);
     res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
   } catch (error) {
     console.error('[/login] failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* Step-2 login: exchange the totpToken (returned by /login) + the
+   6-digit code from Google Authenticator for the full JWT. */
+app.post('/login-totp', requireMongo, async (req, res) => {
+  const decoded = verifyPurposeToken(req, res, LOGIN_TOTP_PURPOSE);
+  if (!decoded) return;
+
+  try {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'code is required.' });
+
+    const user = await User.findById(decoded._id);
+    if (!user || !user.totpEnabled || !user.totpSecret) {
+      return res.status(400).json({ error: '2FA is not active for this account.' });
+    }
+
+    const ok = speakeasy.totp.verify({
+      secret: user.totpSecret,
+      encoding: 'base32',
+      token: String(code).trim(),
+      window: 1,
+    });
+    if (!ok) return res.status(400).json({ error: 'Invalid code. Check your authenticator app and try again.' });
+
+    const token = issueFullToken(user);
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (error) {
+    console.error('[/login-totp] failed:', error);
     res.status(500).json({ error: error.message });
   }
 });

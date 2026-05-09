@@ -425,8 +425,13 @@ export default function ThreeBackground() {
        doesn't melt; camera dollies further back so wider organs
        (brain, heart, cell) fit in the narrower portrait FOV. */
     const isMobile = isMobileViewport();
-    const PARTICLE_COUNT = isMobile ? 11000 : 28000;
-    const PIXEL_RATIO_CAP = isMobile ? 1.5 : 2;
+    // Was 11000 / 28000 — biggest single perf cost in the app. Each
+    // particle ran a full vertex shader path AND morph interpolation
+    // every frame on the main thread, dropping fps under 60 on
+    // mid-tier GPUs. ~3500/8000 still reads as a dense field at
+    // viewport scale.
+    const PARTICLE_COUNT = isMobile ? 3500 : 8000;
+    const PIXEL_RATIO_CAP = isMobile ? 1.25 : 1.5;
     const CAM_Z_BASE = isMobile ? 280 : 180;
     const CAM_Z_RANGE = isMobile ? 200 : 160; // dolly distance across full scroll
     const CAM_Z_INTRO = isMobile ? 460 : 320; // intro start position
@@ -641,6 +646,175 @@ export default function ThreeBackground() {
     dna.rotation.z = Math.PI * 0.1;
     dna.rotation.x = Math.PI * 0.08;
 
+    /* ── WIREFRAME LINES INSIDE THE STRUCTURE ──────────────────────────
+       Build a sparse neighbor mesh from FORM 0 (helix). The line
+       indices are FIXED at setup, but the line geometry shares the
+       same morph attributes as the points — so as particles morph
+       between helix → brain → heart → cell → galaxy, the lines
+       stretch with them, drawing a wireframe of whichever form is
+       currently shown.
+
+       Pair generation uses a spatial hash (8-unit cells) and caps
+       neighbors-per-particle, so total line count stays bounded
+       regardless of PARTICLE_COUNT. */
+    const linkPairs: number[] = [];
+    {
+      const CELL = 9;
+      const LINK_R = 7.0;
+      const LINK_R_SQ = LINK_R * LINK_R;
+      const MAX_LINKS_PER_NODE = 1;
+      // Hard cap on total lines — only 50–70 segments draw, period.
+      // The wireframe should be a quiet hint of structure, not a mesh.
+      const MAX_TOTAL_LINES = 50 + Math.floor(Math.random() * 21); // 50..70
+      // Sample enough candidates that we usually hit the cap (some
+      // sampled particles won't find a neighbor in range and get skipped).
+      const SAMPLE = isMobile ? 0.012 : 0.015;
+
+      const grid = new Map<number, number[]>();
+      const keyOf = (x: number, y: number, z: number) =>
+        ((x | 0) * 73856093) ^ ((y | 0) * 19349663) ^ ((z | 0) * 83492791);
+
+      const helixPos = formArrays[0];
+      const isNode: Uint8Array = new Uint8Array(PARTICLE_COUNT);
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        if (Math.random() < SAMPLE) {
+          isNode[i] = 1;
+          const cx = Math.floor(helixPos[i * 3] / CELL);
+          const cy = Math.floor(helixPos[i * 3 + 1] / CELL);
+          const cz = Math.floor(helixPos[i * 3 + 2] / CELL);
+          const k = keyOf(cx, cy, cz);
+          let arr = grid.get(k);
+          if (!arr) { arr = []; grid.set(k, arr); }
+          arr.push(i);
+        }
+      }
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        if (!isNode[i]) continue;
+        // Hard stop: never exceed the total-line cap.
+        if (linkPairs.length / 2 >= MAX_TOTAL_LINES) break;
+
+        const xi = helixPos[i * 3];
+        const yi = helixPos[i * 3 + 1];
+        const zi = helixPos[i * 3 + 2];
+        const cx = Math.floor(xi / CELL);
+        const cy = Math.floor(yi / CELL);
+        const cz = Math.floor(zi / CELL);
+
+        let added = 0;
+        for (let dx = -1; dx <= 1 && added < MAX_LINKS_PER_NODE; dx++) {
+          for (let dy = -1; dy <= 1 && added < MAX_LINKS_PER_NODE; dy++) {
+            for (let dz = -1; dz <= 1 && added < MAX_LINKS_PER_NODE; dz++) {
+              const cell = grid.get(keyOf(cx + dx, cy + dy, cz + dz));
+              if (!cell) continue;
+              for (let n = 0; n < cell.length; n++) {
+                const j = cell[n];
+                if (j <= i) continue;
+                const ax = xi - helixPos[j * 3];
+                const ay = yi - helixPos[j * 3 + 1];
+                const az = zi - helixPos[j * 3 + 2];
+                const d2 = ax * ax + ay * ay + az * az;
+                if (d2 < LINK_R_SQ) {
+                  linkPairs.push(i, j);
+                  added++;
+                  if (added >= MAX_LINKS_PER_NODE) break;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const lineGeometry = new THREE.BufferGeometry();
+    // Share attribute references with the points geometry — both
+    // geometries see the same form-blend data, so the line shader
+    // produces line endpoints from the same morphed positions the
+    // point shader uses.
+    lineGeometry.setAttribute('position', geometry.attributes.position);
+    lineGeometry.setAttribute('pos1',     geometry.attributes.pos1);
+    lineGeometry.setAttribute('pos2',     geometry.attributes.pos2);
+    lineGeometry.setAttribute('pos3',     geometry.attributes.pos3);
+    lineGeometry.setAttribute('pos4',     geometry.attributes.pos4);
+    lineGeometry.setAttribute('customColor', geometry.attributes.customColor);
+    lineGeometry.setAttribute('pulseDir',    geometry.attributes.pulseDir);
+    lineGeometry.setIndex(linkPairs);
+
+    const lineMaterial = new THREE.ShaderMaterial({
+      // Reuse the same uniform refs so morph/pulse/intro stay in sync
+      // with the points layer.
+      uniforms: material.uniforms,
+      vertexShader: /* glsl */ `
+        uniform float uTime;
+        uniform float uMorph;
+        uniform float uPulse;
+        uniform float uIntro;
+
+        attribute vec3  pos1;
+        attribute vec3  pos2;
+        attribute vec3  pos3;
+        attribute vec3  pos4;
+        attribute vec3  customColor;
+        attribute float pulseDir;
+
+        varying vec3  vColor;
+        varying float vEnergy;
+        varying float vZ;
+
+        void main() {
+          float w0 = max(0.0, 1.0 - abs(uMorph - 0.0));
+          float w1 = max(0.0, 1.0 - abs(uMorph - 1.0));
+          float w2 = max(0.0, 1.0 - abs(uMorph - 2.0));
+          float w3 = max(0.0, 1.0 - abs(uMorph - 3.0));
+          float w4 = max(0.0, 1.0 - abs(uMorph - 4.0));
+
+          vec3 pos =
+            position * w0 +
+            pos1     * w1 +
+            pos2     * w2 +
+            pos3     * w3 +
+            pos4     * w4;
+
+          float wave  = sin(pos.y * 0.06 + uTime * 2.2 * pulseDir) * 0.5 + 0.5;
+          vEnergy = pow(wave, 9.0);
+
+          // Match the points' intro scale so they grow in together.
+          pos *= mix(0.4, 1.0, uIntro);
+          // Heartbeat radial bulge (mild on lines so they don't whip)
+          float beat = pow(sin(uTime * 1.4) * 0.5 + 0.5, 4.0) * uPulse * 0.6;
+          pos *= 1.0 + beat * 0.04;
+
+          vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+          vZ = -mvPos.z;
+          vColor = customColor;
+          gl_Position = projectionMatrix * mvPos;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uIsDark;
+        varying vec3  vColor;
+        varying float vEnergy;
+        varying float vZ;
+        void main() {
+          // Distance fade — far lines vanish so the deep volume reads.
+          float depthFade = smoothstep(700.0, 60.0, vZ);
+          // Base alpha is intentionally low — lines should structure,
+          // not overpower the particle field.
+          float baseAlpha = mix(0.18, 0.30, uIsDark);
+          float a = (baseAlpha + vEnergy * 0.25) * depthFade;
+          gl_FragColor = vec4(vColor, a);
+        }
+      `,
+      transparent: true,
+      blending: isDark ? THREE.AdditiveBlending : THREE.NormalBlending,
+      depthWrite: false,
+    });
+
+    const wireframe = new THREE.LineSegments(lineGeometry, lineMaterial);
+    // Share rotation with the dna points so they morph as one object.
+    wireframe.rotation.copy(dna.rotation);
+    scene.add(wireframe);
+
     /* ── MOUSE PARALLAX (peachweb damping) ─────────────────────────── */
     const target = { x: 0, y: 0 };
     const current = { x: 0, y: 0 };
@@ -734,6 +908,9 @@ export default function ThreeBackground() {
       // Mouse-driven X tilt only — Y/Z owned by intro + scroll
       dna.rotation.x = Math.PI * 0.08 + current.y * 0.28;
 
+      // Wireframe rides with the points — same rotation, same morph.
+      wireframe.rotation.copy(dna.rotation);
+
       // Camera X/Y parallax (scroll owns Z)
       camera.position.x += (current.x * 22 - camera.position.x) * 0.04;
       camera.position.y += (-current.y * 22 - camera.position.y) * 0.04;
@@ -766,6 +943,8 @@ export default function ThreeBackground() {
       }
       geometry.dispose();
       material.dispose();
+      lineGeometry.dispose();
+      lineMaterial.dispose();
       renderer.dispose();
     };
   }, [isDark]);

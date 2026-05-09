@@ -424,3 +424,259 @@ select:focus {
   }
 }
 
+/* ═══════════════════════════════════════════════════════
+   GOD-LEVEL ADDITIONS — grain, neon, smooth-scroll motion
+   ═══════════════════════════════════════════════════════ */
+
+/* Film-grain overlay was removed — body::before with mix-blend-mode:
+   overlay forces a full-viewport composited layer every frame,
+   making the whole page repaint on any redraw. Cinematic but expensive.
+
+   Velocity-driven blur was removed — `filter: blur(...)` on every
+   scroll-velocity update is one of the most expensive properties
+   to animate; the constant filter recompute drops scroll fps.
+   Both can be re-enabled if perf budget allows. */
+:root { --scroll-vel: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   ELEMENT TRANSITIONS (global, JS-toggled via .cs-elem-transition)
+   ───────────────────────────────────────────────────────
+   Triggered by the ElementTransitions component on every user
+   input — click, focus, keystroke inside a field — for any
+   button, link, input, card, tab, or [data-cs-transition]
+   element. The class is auto-removed after 1s.
+
+   Two layered effects run together for the full 1s:
+     1. Aurora sweep   — a cyan→violet→pink gradient bar travels
+                         left-to-right across the element via a
+                         mask-clipped ::after.
+     2. Glow halo      — soft outer box-shadow expands and fades.
+
+   Both are GPU-only (transform + opacity + filter), so they
+   compose cleanly with the element's existing styles and don't
+   force layout. position is forced to relative if static so the
+   ::after can be absolutely positioned inside it.
+   ═══════════════════════════════════════════════════════ */
+
+/* GPU-only: animate ONLY transform + opacity. No box-shadow, no
+   filter, no mix-blend-mode — those force compositing every frame
+   and tank fps. Sweep is a pre-baked gradient that just translates;
+   the browser promotes it to its own layer once. */
+@keyframes cs-aurora-sweep {
+  0%   { transform: translate3d(-110%, 0, 0); opacity: 0; }
+  20%  { opacity: 0.85; }
+  80%  { opacity: 0.55; }
+  100% { transform: translate3d(110%, 0, 0); opacity: 0; }
+}
+
+.cs-elem-transition {
+  position: relative;
+  isolation: isolate;
+}
+
+.cs-elem-transition::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent-cyan, #00e5ff) 28%, transparent) 38%,
+    color-mix(in srgb, var(--accent-violet, #a855f7) 55%, transparent) 50%,
+    color-mix(in srgb, #ec4899 28%, transparent) 62%,
+    transparent 100%
+  );
+  opacity: 0;
+  transform: translate3d(-110%, 0, 0);
+  animation: cs-aurora-sweep 1s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  will-change: transform, opacity;
+  z-index: 1;
+}
+
+/* Tighter sweep for inputs — keep transform-only, just dial down
+   the gradient intensity so it doesn't wash out the cursor. */
+.cs-elem-transition:is(input, textarea, select)::after {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent-cyan, #00e5ff) 18%, transparent) 45%,
+    color-mix(in srgb, var(--accent-violet, #a855f7) 22%, transparent) 55%,
+    transparent 100%
+  );
+  animation-duration: 0.85s;
+}
+
+/* Respect users who don't want motion. */
+@media (prefers-reduced-motion: reduce) {
+  .cs-elem-transition,
+  .cs-elem-transition::after {
+    animation: none !important;
+  }
+}
+
+/* Lenis state hooks (for the html element) */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+
+/* Neon utilities */
+.neon-cyan {
+  color: #67e8f9 !important;
+  text-shadow: 0 0 4px rgba(34,211,238,0.8), 0 0 12px rgba(34,211,238,0.6), 0 0 24px rgba(34,211,238,0.4);
+}
+.neon-violet {
+  color: #d8b4fe !important;
+  text-shadow: 0 0 4px rgba(168,85,247,0.8), 0 0 12px rgba(168,85,247,0.6), 0 0 24px rgba(168,85,247,0.4);
+}
+.neon-pink {
+  color: #fbcfe8 !important;
+  text-shadow: 0 0 4px rgba(236,72,153,0.8), 0 0 12px rgba(236,72,153,0.6), 0 0 24px rgba(236,72,153,0.4);
+}
+
+/* Holographic card hover lift */
+.holographic-card {
+  transition: box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: inherit;
+}
+.holographic-card:hover {
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 0 32px var(--glow-violet, rgba(168, 85, 247, 0.25)),
+    0 0 64px var(--glow-cyan, rgba(34, 211, 238, 0.18));
+}
+
+/* Pulsing ring used in feature cards */
+@keyframes pulseRing {
+  0%, 100% { transform: scale(1); opacity: 0.65; }
+  50%      { transform: scale(1.18); opacity: 0; }
+}
+
+/* Hero char-split prep */
+.hero-char {
+  display: inline-block;
+  will-change: transform, opacity, filter;
+}
+
+/* Section reveal helper */
+.section-wipe {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.section-wipe.is-revealed { clip-path: inset(0 0% 0 0); }
+
+/* Tilt 3D card prep */
+.tilt-3d {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  will-change: transform;
+}
+
+/* Animated gradient border */
+.glow-border {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: inherit;
+  z-index: 1;
+}
+.glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(120deg, var(--accent-cyan), var(--accent-violet), var(--accent-cyan));
+  background-size: 200% 100%;
+  animation: glow-border-flow 6s linear infinite;
+  opacity: 0.45;
+}
+@keyframes glow-border-flow { to { background-position: 200% 0%; } }
+
+/* Aurora sweep — soft full-page light layer */
+.aurora-sweep {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(60% 40% at 20% 30%, rgba(34, 211, 238, 0.10), transparent 70%),
+    radial-gradient(50% 50% at 80% 70%, rgba(168, 85, 247, 0.10), transparent 70%),
+    radial-gradient(40% 30% at 50% 100%, rgba(236, 72, 153, 0.08), transparent 70%);
+  filter: blur(40px);
+  mix-blend-mode: screen;
+  animation: aurora-shift 18s ease-in-out infinite alternate;
+}
+@keyframes aurora-shift {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%  { transform: translate3d(2%, -1%, 0) rotate(0.5deg); }
+  100% { transform: translate3d(-2%, 1%, 0) rotate(-0.5deg); }
+}
+
+/* Premium thin scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--accent-cyan), var(--accent-violet));
+  border-radius: 999px;
+}
+
+/* Idle hero shimmer */
+.shimmer-idle {
+  background: linear-gradient(90deg, var(--text-primary) 0%, var(--accent-cyan) 35%, var(--accent-violet) 65%, var(--text-primary) 100%);
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-idle 5s ease-in-out infinite;
+}
+@keyframes shimmer-idle {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   NARRATIVE REEL — full-viewport scenes, snap behavior
+   ═══════════════════════════════════════════════════════ */
+
+.narrative-reel {
+  /* `proximity` is gentler than `mandatory` — content longer than 100vh
+     is still readable, while short scrolls still snap to the nearest scene. */
+  scroll-snap-type: y proximity;
+}
+
+.reel-scene {
+  /* Each scene owns the viewport. */
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  isolation: isolate;
+}
+
+/* The persistent backdrop must sit behind everything else in the reel.
+   Hero's ThreeBackground (z-0 on body) shows through gaps when the
+   reel backdrop is fading between scenes — desired. */
+.narrative-reel > [aria-hidden] {
+  z-index: 0;
+}
+
+/* Ensure scene content always reads above its backdrop. */
+.reel-scene > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Tight rhythm between scenes on tablets — keep min-h-screen but reduce
+   inner padding on shorter viewports so the headline doesn't crowd the
+   scroll cue at the bottom. */
+@media (max-height: 720px) {
+  .reel-scene { padding-top: 4rem; padding-bottom: 4rem; }
+}
+
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  body::before { display: none; }
+  .holographic-card, .step-card, .sec-card { transition: none !important; }
+  .aurora-sweep, .glow-border::before { animation: none !important; }
+}
+
