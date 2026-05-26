@@ -680,3 +680,20 @@ html.lenis, html.lenis body { height: auto; }
   .aurora-sweep, .glow-border::before { animation: none !important; }
 }
 
+/* ═══════════════════════════════════════════════════════
+   LOCALIZATION & ACCESSIBILITY — AppSettingsContext hooks
+   ═══════════════════════════════════════════════════════ */
+
+html.cura-high-contrast {
+  --text-secondary: rgba(255,255,255,0.92) !important;
+  --text-muted: rgba(255,255,255,0.78) !important;
+  --border-color: rgba(255,255,255,0.32) !important;
+  --glass-edge: rgba(255,255,255,0.28) !important;
+}
+html.cura-high-contrast #page-content {
+  filter: contrast(1.15);
+}
+html.cura-large-text {
+  font-size: 112.5%;
+}
+

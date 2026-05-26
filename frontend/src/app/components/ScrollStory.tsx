@@ -261,7 +261,7 @@ export default function ScrollStory() {
 
       // Each scene occupies one "unit" on the timeline.
       // Transition windows live BETWEEN units (i + 0.65 → i + 1).
-      SCENES.forEach((scene, i) => {
+      SCENES.forEach((_scene, i) => {
         if (i === SCENES.length - 1) return; // no outgoing for last scene
 
         // Outgoing caption + visual for scene i
@@ -535,7 +535,7 @@ export default function ScrollStory() {
           className="absolute right-6 lg:right-10 top-1/2 -translate-y-1/2 flex flex-col gap-5 z-10"
           aria-hidden
         >
-          {SCENES.map((s, i) => (
+          {SCENES.map((s) => (
             <div key={s.id} className="flex items-center gap-3">
               <span
                 className="text-[10px] tabular-nums tracking-widest opacity-50"

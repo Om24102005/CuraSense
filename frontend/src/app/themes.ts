@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   CuraSense — 5 GOD-LEVEL THEMES
+   CuraSense — Theme palette
    ═══════════════════════════════════════════════════════ */
 
 export type ThemeName = 'dark' | 'light' | 'cyberpunk' | 'medical' | 'aurora';
@@ -13,9 +13,81 @@ export interface ThemeConfig {
 }
 
 export const themes: Record<ThemeName, ThemeConfig> = {
+  cyberpunk: {
+    name: 'cyberpunk',
+    label: 'Cyberpunk',
+    gradient: 'linear-gradient(135deg, #f0e040 0%, #ff2d78 100%)',
+    accent: '#ff2d78',
+    vars: {
+      '--bg-base': '#050010',
+      '--bg-surface': 'rgba(5,0,20,0.85)',
+      '--bg-card': 'rgba(10,0,30,0.80)',
+      '--border-color': 'rgba(255,45,120,0.25)',
+      '--text-primary': '#f0e040',
+      '--text-secondary': 'rgba(240,224,64,0.72)',
+      '--text-muted': 'rgba(240,224,64,0.40)',
+      '--accent-cyan': '#00f5ff',
+      '--accent-violet': '#ff2d78',
+      '--header-bg': 'rgba(5,0,16,0.90)',
+      '--footer-bg': 'rgba(5,0,16,0.95)',
+      '--nav-active-bg': 'rgba(255,45,120,0.20)',
+      '--scrollbar-thumb': 'rgba(255,45,120,0.5)',
+      '--glass-edge': 'rgba(255,45,120,0.15)',
+      '--glow-cyan': 'rgba(0,245,255,0.15)',
+      '--glow-violet': 'rgba(255,45,120,0.20)',
+    }
+  },
+  medical: {
+    name: 'medical',
+    label: 'Medical',
+    gradient: 'linear-gradient(135deg, #0ea5e9 0%, #10b981 100%)',
+    accent: '#0ea5e9',
+    vars: {
+      '--bg-base': '#f0f9ff',
+      '--bg-surface': 'rgba(240,249,255,0.97)',
+      '--bg-card': 'rgba(255,255,255,0.99)',
+      '--border-color': 'rgba(14,165,233,0.15)',
+      '--text-primary': '#0c1a2e',
+      '--text-secondary': 'rgba(12,26,46,0.70)',
+      '--text-muted': 'rgba(12,26,46,0.45)',
+      '--accent-cyan': '#0ea5e9',
+      '--accent-violet': '#10b981',
+      '--header-bg': 'rgba(240,249,255,0.97)',
+      '--footer-bg': 'rgba(240,249,255,0.99)',
+      '--nav-active-bg': 'rgba(14,165,233,0.10)',
+      '--scrollbar-thumb': 'rgba(14,165,233,0.35)',
+      '--glass-edge': 'rgba(14,165,233,0.08)',
+      '--glow-cyan': 'rgba(14,165,233,0.12)',
+      '--glow-violet': 'rgba(16,185,129,0.10)',
+    }
+  },
+  aurora: {
+    name: 'aurora',
+    label: 'Aurora',
+    gradient: 'linear-gradient(135deg, #34d399 0%, #818cf8 100%)',
+    accent: '#818cf8',
+    vars: {
+      '--bg-base': '#010d10',
+      '--bg-surface': 'rgba(1,13,16,0.88)',
+      '--bg-card': 'rgba(2,18,22,0.82)',
+      '--border-color': 'rgba(52,211,153,0.18)',
+      '--text-primary': '#e0fff8',
+      '--text-secondary': 'rgba(224,255,248,0.68)',
+      '--text-muted': 'rgba(224,255,248,0.38)',
+      '--accent-cyan': '#34d399',
+      '--accent-violet': '#818cf8',
+      '--header-bg': 'rgba(1,10,14,0.90)',
+      '--footer-bg': 'rgba(1,10,14,0.95)',
+      '--nav-active-bg': 'rgba(52,211,153,0.15)',
+      '--scrollbar-thumb': 'rgba(52,211,153,0.40)',
+      '--glass-edge': 'rgba(52,211,153,0.12)',
+      '--glow-cyan': 'rgba(52,211,153,0.18)',
+      '--glow-violet': 'rgba(129,140,248,0.15)',
+    }
+  },
   dark: {
     name: 'dark',
-    label: 'Void',
+    label: 'Dark',
     gradient: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 100%)',
     accent: '#8b5cf6',
     vars: {
@@ -39,7 +111,7 @@ export const themes: Record<ThemeName, ThemeConfig> = {
   },
   light: {
     name: 'light',
-    label: 'Dawn',
+    label: 'Light',
     gradient: 'linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)',
     accent: '#6d28d9',
     vars: {
@@ -59,78 +131,6 @@ export const themes: Record<ThemeName, ThemeConfig> = {
       '--glass-edge': 'rgba(0,0,0,0.06)',
       '--glow-cyan': 'rgba(2,132,199,0.10)',
       '--glow-violet': 'rgba(109,40,217,0.10)',
-    }
-  },
-  cyberpunk: {
-    name: 'cyberpunk',
-    label: 'Cyber',
-    gradient: 'linear-gradient(135deg, #f472b6 0%, #22d3ee 100%)',
-    accent: '#ec4899',
-    vars: {
-      '--bg-base': '#0a0015',
-      '--bg-surface': 'rgba(20,0,40,0.70)',
-      '--bg-card': 'rgba(30,0,50,0.80)',
-      '--border-color': 'rgba(244,114,182,0.20)',
-      '--text-primary': '#fce7f3',
-      '--text-secondary': 'rgba(252,231,243,0.70)',
-      '--text-muted': 'rgba(252,231,243,0.40)',
-      '--accent-cyan': '#22d3ee',
-      '--accent-violet': '#ec4899',
-      '--header-bg': 'rgba(10,0,21,0.85)',
-      '--footer-bg': 'rgba(10,0,21,0.90)',
-      '--nav-active-bg': 'rgba(236,72,153,0.20)',
-      '--scrollbar-thumb': 'rgba(236,72,153,0.5)',
-      '--glass-edge': 'rgba(244,114,182,0.15)',
-      '--glow-cyan': 'rgba(34,211,238,0.12)',
-      '--glow-violet': 'rgba(236,72,153,0.15)',
-    }
-  },
-  medical: {
-    name: 'medical',
-    label: 'Medic',
-    gradient: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
-    accent: '#10b981',
-    vars: {
-      '--bg-base': '#020f0a',
-      '--bg-surface': 'rgba(5,25,18,0.70)',
-      '--bg-card': 'rgba(8,30,20,0.80)',
-      '--border-color': 'rgba(16,185,129,0.15)',
-      '--text-primary': '#d1fae5',
-      '--text-secondary': 'rgba(209,250,229,0.65)',
-      '--text-muted': 'rgba(209,250,229,0.35)',
-      '--accent-cyan': '#10b981',
-      '--accent-violet': '#3b82f6',
-      '--header-bg': 'rgba(2,15,10,0.85)',
-      '--footer-bg': 'rgba(2,15,10,0.90)',
-      '--nav-active-bg': 'rgba(16,185,129,0.20)',
-      '--scrollbar-thumb': 'rgba(16,185,129,0.4)',
-      '--glass-edge': 'rgba(16,185,129,0.12)',
-      '--glow-cyan': 'rgba(16,185,129,0.12)',
-      '--glow-violet': 'rgba(59,130,246,0.12)',
-    }
-  },
-  aurora: {
-    name: 'aurora',
-    label: 'Aurora',
-    gradient: 'linear-gradient(135deg, #a78bfa 0%, #34d399 100%)',
-    accent: '#a78bfa',
-    vars: {
-      '--bg-base': '#050510',
-      '--bg-surface': 'rgba(10,10,30,0.70)',
-      '--bg-card': 'rgba(15,15,40,0.80)',
-      '--border-color': 'rgba(167,139,250,0.15)',
-      '--text-primary': '#ede9fe',
-      '--text-secondary': 'rgba(237,233,254,0.65)',
-      '--text-muted': 'rgba(237,233,254,0.35)',
-      '--accent-cyan': '#34d399',
-      '--accent-violet': '#a78bfa',
-      '--header-bg': 'rgba(5,5,16,0.85)',
-      '--footer-bg': 'rgba(5,5,16,0.90)',
-      '--nav-active-bg': 'rgba(167,139,250,0.20)',
-      '--scrollbar-thumb': 'rgba(167,139,250,0.4)',
-      '--glass-edge': 'rgba(167,139,250,0.12)',
-      '--glow-cyan': 'rgba(52,211,153,0.12)',
-      '--glow-violet': 'rgba(167,139,250,0.15)',
     }
   }
 };

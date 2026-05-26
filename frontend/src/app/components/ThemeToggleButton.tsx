@@ -1,32 +1,33 @@
 /* ═══════════════════════════════════════════════════════
-   CuraSense — 5-Theme Toggle Button
-   Cycles through: Void → Dawn → Cyber → Medic → Aurora
+   CuraSense — Theme Toggle Button (Dark ⇄ Light)
    ═══════════════════════════════════════════════════════ */
 
-import { Sun, Moon, Sparkles, Heart, CloudMoon } from 'lucide-react';
+import { Sun, Moon, Zap, Stethoscope, Sparkles } from 'lucide-react';
 import { useTheme } from '../App';
 import { themes, ThemeName } from '../themes';
 
 const themeIcons: Record<ThemeName, { icon: typeof Sun; label: string }> = {
-  dark: { icon: Moon, label: 'Void' },
-  light: { icon: Sun, label: 'Dawn' },
-  cyberpunk: { icon: Sparkles, label: 'Cyber' },
-  medical: { icon: Heart, label: 'Medic' },
-  aurora: { icon: CloudMoon, label: 'Aurora' },
+  dark:      { icon: Moon,        label: 'Dark' },
+  light:     { icon: Sun,         label: 'Light' },
+  cyberpunk: { icon: Zap,         label: 'Cyberpunk' },
+  medical:   { icon: Stethoscope, label: 'Medical' },
+  aurora:    { icon: Sparkles,    label: 'Aurora' },
 };
 
 export function ThemeToggleButton() {
   const { theme, toggleTheme } = useTheme();
-  const current = themes[theme];
-  const meta = themeIcons[theme];
+  const t = theme as ThemeName;
+  const current = themes[t];
+  const meta = themeIcons[t];
   const Icon = meta.icon;
+  const next = t === 'dark' ? 'Light' : 'Dark';
 
   return (
     <button
       id="theme-toggle"
       onClick={toggleTheme}
-      aria-label={`Current theme: ${meta.label}. Click to cycle.`}
-      title={`${meta.label} — Click to cycle`}
+      aria-label={`Current theme: ${meta.label}. Switch to ${next} mode.`}
+      title={`${meta.label} mode — Click for ${next}`}
       className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95"
       style={{
         fontFamily: "'Inter', sans-serif",

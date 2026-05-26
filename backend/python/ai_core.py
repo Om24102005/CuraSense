@@ -10,19 +10,34 @@ load_dotenv()
 def _is_real_key(k: str) -> bool:
     if not k:
         return False
-    placeholder = {"your_mistral_key_here", "your_groq_key_here", "changeme", "todo", "your_api_key"}
+    placeholder = {"your_mistral_key_here", "your_groq_key_here", "your_hf_token_here", "your_deepseek_key_here", "changeme", "todo", "your_api_key"}
     return k.strip().lower() not in placeholder
 
 
+_RAW_DEEPSEEK = os.getenv("DEEPSEEK_API_KEY", "")
+_RAW_HF      = os.getenv("HF_TOKEN", "")
 _RAW_MISTRAL = os.getenv("MISTRAL_API_KEY", "")
-_RAW_GROQ = os.getenv("GROQ_API_KEY", "")
-MISTRAL_API_KEY = _RAW_MISTRAL if _is_real_key(_RAW_MISTRAL) else ""
-GROQ_API_KEY = _RAW_GROQ if _is_real_key(_RAW_GROQ) else ""
+_RAW_GROQ    = os.getenv("GROQ_API_KEY", "")
+DEEPSEEK_API_KEY = _RAW_DEEPSEEK if _is_real_key(_RAW_DEEPSEEK) else ""
+HF_TOKEN        = _RAW_HF       if _is_real_key(_RAW_HF)       else ""
+MISTRAL_API_KEY = _RAW_MISTRAL  if _is_real_key(_RAW_MISTRAL)  else ""
+GROQ_API_KEY    = _RAW_GROQ     if _is_real_key(_RAW_GROQ)     else ""
 
-MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions"
-MISTRAL_TEXT_MODEL = "open-mistral-7b"
+# ── DeepSeek (primary — text only) ───────────────────────────────────────
+DEEPSEEK_URL        = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_TEXT_MODEL = os.getenv("DEEPSEEK_TEXT_MODEL", "deepseek-v4-pro")
+
+# ── HuggingFace Mistral (secondary) ──────────────────────────────────────
+HF_BASE_URL    = "https://api-inference.huggingface.co/models"
+HF_TEXT_MODEL  = os.getenv("HF_TEXT_MODEL",   "mistralai/Mistral-7B-Instruct-v0.3")
+HF_VISION_MODEL = os.getenv("HF_VISION_MODEL", "mistralai/Pixtral-12B-2409")
+
+# ── Mistral API (tertiary) ────────────────────────────────────────────────
+MISTRAL_URL          = "https://api.mistral.ai/v1/chat/completions"
+MISTRAL_TEXT_MODEL   = "open-mistral-7b"
 MISTRAL_VISION_MODEL = "pixtral-12b-2409"
 
+# ── Groq (fallback) ───────────────────────────────────────────────────────
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama-3.3-70b-versatile"
 GROQ_VISION_MODELS = [
@@ -32,6 +47,52 @@ GROQ_VISION_MODELS = [
 
 
 # ── Text chat ─────────────────────────────────────────────────────────────
+
+def _deepseek_chat(system: str, user: str, max_tokens: int = 400) -> str | None:
+    """DeepSeek API — OpenAI-compatible endpoint (primary provider)."""
+    if not DEEPSEEK_API_KEY:
+        return None
+    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": DEEPSEEK_TEXT_MODEL,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "max_tokens": max_tokens,
+        "temperature": 0.3,
+        "stream": False,
+    }
+    try:
+        resp = requests.post(DEEPSEEK_URL, headers=headers, json=payload, timeout=60)
+        if resp.status_code == 200:
+            return resp.json()["choices"][0]["message"]["content"].strip()
+        print(f"[DEEPSEEK CHAT ERROR] {resp.status_code}: {resp.text[:300]}")
+    except Exception as e:
+        print(f"[DEEPSEEK CHAT EXCEPTION] {e}")
+    return None
+
+
+def _hf_chat(system: str, user: str, max_tokens: int = 400) -> str | None:
+    """HuggingFace Inference API — Mistral (OpenAI-compatible endpoint)."""
+    if not HF_TOKEN:
+        return None
+    url = f"{HF_BASE_URL}/{HF_TEXT_MODEL}/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
+    payload = {
+        "model": HF_TEXT_MODEL,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "max_tokens": max_tokens,
+        "temperature": 0.3,
+        "stream": False,
+    }
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=60)
+        if resp.status_code == 200:
+            return resp.json()["choices"][0]["message"]["content"].strip()
+        print(f"[HF CHAT ERROR] {resp.status_code}: {resp.text[:300]}")
+    except Exception as e:
+        print(f"[HF CHAT EXCEPTION] {e}")
+    return None
+
+
 def _mistral_chat(system: str, user: str, max_tokens: int = 400) -> str | None:
     if not MISTRAL_API_KEY:
         return None
@@ -73,11 +134,17 @@ def _groq_chat(system: str, user: str, max_tokens: int = 400) -> str | None:
 
 
 def _chat(system: str, user: str, max_tokens: int = 400) -> str | None:
-    """Try Mistral first, fall back to Groq."""
-    return _mistral_chat(system, user, max_tokens) or _groq_chat(system, user, max_tokens)
+    """Priority: DeepSeek → HuggingFace Mistral → Mistral API → Groq."""
+    return (
+        _deepseek_chat(system, user, max_tokens)
+        or _hf_chat(system, user, max_tokens)
+        or _mistral_chat(system, user, max_tokens)
+        or _groq_chat(system, user, max_tokens)
+    )
 
 
-# ── Vision chat (image in, text out) ──────────────────────────────────────
+# ── Vision chat (image in, text out) ─────────────────────────────────────
+
 def _detect_mime(image_bytes: bytes) -> str:
     if image_bytes[:4] == b"\x89PNG":
         return "image/png"
@@ -88,6 +155,41 @@ def _detect_mime(image_bytes: bytes) -> str:
     if image_bytes[:2] == b"BM":
         return "image/bmp"
     return "image/jpeg"
+
+
+def _hf_vision(prompt: str, image_bytes: bytes, max_tokens: int = 600, system: str | None = None) -> str | None:
+    """HuggingFace Inference API — Pixtral vision (OpenAI-compatible multimodal endpoint)."""
+    if not HF_TOKEN:
+        return None
+    b64  = base64.b64encode(image_bytes).decode("utf-8")
+    mime = _detect_mime(image_bytes)
+    url  = f"{HF_BASE_URL}/{HF_VISION_MODEL}/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({
+        "role": "user",
+        "content": [
+            {"type": "text",      "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+        ],
+    })
+    payload = {
+        "model": HF_VISION_MODEL,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.2,
+        "stream": False,
+    }
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=90)
+        if resp.status_code == 200:
+            return resp.json()["choices"][0]["message"]["content"].strip()
+        print(f"[HF VISION ERROR] {resp.status_code}: {resp.text[:300]}")
+    except Exception as e:
+        print(f"[HF VISION EXCEPTION] {e}")
+    return None
 
 
 def _mistral_vision(prompt: str, image_bytes: bytes, max_tokens: int = 600, system: str | None = None) -> str | None:
@@ -148,15 +250,16 @@ def _groq_vision(prompt: str, image_bytes: bytes, max_tokens: int = 800, system:
 
 
 def _vision(prompt: str, image_bytes: bytes, max_tokens: int = 800, system: str | None = None) -> str | None:
-    """Try Mistral Pixtral first, fall back to Groq Llama-4 vision."""
+    """Priority: HuggingFace Pixtral → Mistral API Pixtral → Groq Llama-4 vision."""
     return (
-        _mistral_vision(prompt, image_bytes, max_tokens, system)
+        _hf_vision(prompt, image_bytes, max_tokens, system)
+        or _mistral_vision(prompt, image_bytes, max_tokens, system)
         or _groq_vision(prompt, image_bytes, max_tokens, system)
     )
 
 
 def vision_available() -> bool:
-    return bool(MISTRAL_API_KEY) or bool(GROQ_API_KEY)
+    return bool(HF_TOKEN) or bool(MISTRAL_API_KEY) or bool(GROQ_API_KEY)
 
 
 # ── AI-driven image type detection ────────────────────────────────────────
@@ -206,7 +309,15 @@ def detect_image_type(image_bytes: bytes) -> dict:
 
 
 # ── Symptom triage ────────────────────────────────────────────────────────
-def analyze_symptoms_with_mistral(symptoms_text: str) -> dict:
+def analyze_symptoms_with_mistral(symptoms_text: str, wearable_context: str | None = None) -> dict:
+    """
+    Structured NLP triage via DeepSeek V4 Pro (with fallback chain).
+
+    When wearable_context is provided, it is prepended to the user message
+    as an immutable clinical baseline sourced from the patient's Apple Watch
+    biometrics stored in MongoDB. The AI is instructed to factor these
+    objective parameters into its differential diagnosis.
+    """
     system = (
         "You are an expert medical AI triage system. Analyze the patient symptoms and return "
         "ONLY a JSON object (no markdown wrapping, no prose around it) with this exact shape:\n"
@@ -225,9 +336,20 @@ def analyze_symptoms_with_mistral(symptoms_text: str) -> dict:
         "List 2-4 conditions ordered by descending probability. "
         'urgency = "emergency" only for life-threatening signs (chest pain, severe breathing issues, '
         'loss of consciousness). "high" if same-day care recommended. "medium" if see-doctor-soon. '
-        '"low" if self-care is fine.'
+        '"low" if self-care is fine. '
+        "When wearable biometric data is present in the user message, treat it as ground-truth "
+        "objective clinical measurements and incorporate them into your assessment and confidence scoring."
     )
-    raw = _chat(system, f"Symptoms: {symptoms_text}", max_tokens=600)
+
+    # Prepend wearable biometric baseline before the symptom text so the
+    # model has full objective context before performing differential analysis.
+    user_msg = (
+        f"{wearable_context}\n\nSymptoms: {symptoms_text}"
+        if wearable_context
+        else f"Symptoms: {symptoms_text}"
+    )
+
+    raw = _chat(system, user_msg, max_tokens=600)
     if not raw:
         return _local_triage_fallback(symptoms_text)
 
@@ -262,10 +384,10 @@ def analyze_symptoms_with_mistral(symptoms_text: str) -> dict:
         urgency = "medium"
 
     return {
-        "assessment": parsed.get("assessment", "No assessment provided."),
-        "confidence": int(parsed.get("confidence", 80)),
-        "urgency": urgency,
-        "conditions": conditions,
+        "assessment":      parsed.get("assessment", "No assessment provided."),
+        "confidence":      int(parsed.get("confidence", 80)),
+        "urgency":         urgency,
+        "conditions":      conditions,
         "recommendations": parsed.get("recommendations", []) or [],
     }
 
@@ -354,7 +476,10 @@ def classify_medical_image_with_resnet(image_bytes: bytes, scan_type: str = "sca
         "detected_reason": detection.get("reason", ""),
         "scan_type_used": detected if detected != "other" else scan_type,
         "analysis": analysis,
-        "model": "mistral-pixtral" if MISTRAL_API_KEY else "groq-llama4-vision",
+        "model": (
+            f"hf-{HF_VISION_MODEL.split('/')[-1]}" if HF_TOKEN
+            else ("mistral-pixtral" if MISTRAL_API_KEY else "groq-llama4-vision")
+        ),
     }
 
 
@@ -426,10 +551,10 @@ def _normalise_lab_response(raw: str) -> dict:
         })
 
     return {
-        "assessment": parsed.get("assessment", "No assessment provided."),
-        "confidence": int(parsed.get("confidence", 80)),
-        "urgency": parsed.get("urgency", "medium"),
-        "biomarkers": cleaned,
+        "assessment":      parsed.get("assessment", "No assessment provided."),
+        "confidence":      int(parsed.get("confidence", 80)),
+        "urgency":         parsed.get("urgency", "medium"),
+        "biomarkers":      cleaned,
         "recommendations": parsed.get("recommendations", []) or [],
     }
 

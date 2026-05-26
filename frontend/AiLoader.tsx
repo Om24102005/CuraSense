@@ -148,7 +148,7 @@ export default function AiLoader({ isLoading }: AiLoaderProps) {
                     CuraSense AI
                 </h2>
                 <p className="text-gray-300 font-['Inter'] text-lg md:text-xl tracking-wide">
-                    Analyzing God Level Diagnostics...
+                    Analyzing AI HEALTH ANALYSER Diagnostics...
                 </p>
             </div>
         </div>

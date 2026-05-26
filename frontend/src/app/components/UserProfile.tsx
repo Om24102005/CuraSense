@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, History, Settings, LogOut, X, Cloud, ShieldAlert } from 'lucide-react';
+import { User, History, Settings, LogOut, X, Cloud, ShieldAlert, CalendarCheck } from 'lucide-react';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { useTheme } from '../App';
@@ -8,6 +8,7 @@ interface UserProfileProps {
   predictionsCount: number;
   onNavigate: (tab: string) => void;
   onLogout: () => void;
+  onMyBookings?: () => void;
 }
 
 interface UserData {
@@ -16,7 +17,7 @@ interface UserData {
   role: string;
 }
 
-export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProfileProps) {
+export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookings }: UserProfileProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [userData, setUserData] = useState<UserData>({ name: 'User', email: '', role: 'user' });
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -130,11 +131,12 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
         <div 
           ref={menuRef}
           className="absolute right-0 mt-4 w-80 rounded-2xl overflow-hidden z-50 origin-top-right"
-          style={{ 
-            background: 'var(--bg-card)', 
-            border: '1px solid var(--border-color)', 
-            boxShadow: isDark ? '0 20px 40px rgba(0,0,0,0.8)' : '0 10px 40px rgba(0,0,0,0.1)', 
-            backdropFilter: 'blur(24px)' 
+          style={{
+            background: isDark ? 'rgba(6,6,18,0.97)' : 'rgba(255,255,255,0.99)',
+            border: '1px solid var(--border-color)',
+            boxShadow: isDark ? '0 24px 48px rgba(0,0,0,0.88)' : '0 12px 40px rgba(0,0,0,0.18)',
+            backdropFilter: 'blur(32px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(32px) saturate(180%)',
           }}
         >
           {/* Header Area */}
@@ -188,16 +190,23 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout }: UserProf
             </div>
 
             <div className="space-y-1.5">
-              <button 
-                onClick={() => handleNavigation('history')} 
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1" 
+              <button
+                onClick={() => { onMyBookings?.(); setIsOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1"
+                style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
+              >
+                <CalendarCheck className="w-4 h-4" /> My Bookings
+              </button>
+              <button
+                onClick={() => handleNavigation('history')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1"
                 style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
               >
                 <History className="w-4 h-4" /> View Full History
               </button>
-              <button 
-                onClick={() => handleNavigation('settings')} 
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1" 
+              <button
+                onClick={() => handleNavigation('settings')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1"
                 style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
               >
                 <Settings className="w-4 h-4" /> Account Settings

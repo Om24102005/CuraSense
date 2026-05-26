@@ -3,8 +3,7 @@
    Reactive liquid gradient that follows cursor
    ═══════════════════════════════════════════════════════ */
 
-import { useRef, useEffect, useCallback } from 'react';
-import gsap from 'gsap';
+import { useRef, useEffect } from 'react';
 
 interface FluidGradientProps {
   colors?: string[];

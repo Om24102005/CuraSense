@@ -32,7 +32,7 @@ interface MarkdownTextProps {
 /* Inline parser — handles **bold** and *italic* within a line of text */
 function parseInline(text: string, keyPrefix: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
-  let buf = text;
+  const buf = text;
   let key = 0;
 
   // Greedy handle **bold** first (so single * doesn't eat the inner text)

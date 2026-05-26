@@ -1,5 +1,5 @@
 import { Card, CardContent } from './ui/card';
-import { Activity, Brain, Stethoscope, TrendingUp, Users, Zap } from 'lucide-react';
+import { Activity, Brain, Stethoscope, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardStatsProps {

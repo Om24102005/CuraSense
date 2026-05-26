@@ -7,7 +7,6 @@
 import { useRef, useEffect, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Icon } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 

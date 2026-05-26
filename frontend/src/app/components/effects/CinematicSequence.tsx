@@ -14,7 +14,7 @@ interface CinematicSequenceProps {
   onComplete?: () => void;
 }
 
-const PARTICLE_COUNT = 70000;
+const PARTICLE_COUNT = 90000;
 
 function buildHelixTargets(): Float32Array {
   const arr = new Float32Array(PARTICLE_COUNT * 3);
@@ -24,29 +24,29 @@ function buildHelixTargets(): Float32Array {
     const radius = 22 + Math.sin(t * 0.05) * 2;
     if (strand === 0) {
       const angle = t * 0.16;
-      arr[i*3] = Math.cos(angle) * radius;
-      arr[i*3+1] = t;
-      arr[i*3+2] = Math.sin(angle) * radius;
+      arr[i * 3] = Math.cos(angle) * radius;
+      arr[i * 3 + 1] = t;
+      arr[i * 3 + 2] = Math.sin(angle) * radius;
     } else if (strand === 1) {
       const angle = t * 0.16 + Math.PI;
-      arr[i*3] = Math.cos(angle) * radius;
-      arr[i*3+1] = t;
-      arr[i*3+2] = Math.sin(angle) * radius;
+      arr[i * 3] = Math.cos(angle) * radius;
+      arr[i * 3 + 1] = t;
+      arr[i * 3 + 2] = Math.sin(angle) * radius;
     } else if (strand === 2) {
       const baseT = (Math.floor(i / 20) * 20 / PARTICLE_COUNT - 0.5) * 220;
       const angle1 = baseT * 0.16;
       const angle2 = baseT * 0.16 + Math.PI;
       const mix = (i % 20) / 20;
-      arr[i*3] = Math.cos(angle1) * radius * (1 - mix) + Math.cos(angle2) * radius * mix;
-      arr[i*3+1] = baseT;
-      arr[i*3+2] = Math.sin(angle1) * radius * (1 - mix) + Math.sin(angle2) * radius * mix;
+      arr[i * 3] = Math.cos(angle1) * radius * (1 - mix) + Math.cos(angle2) * radius * mix;
+      arr[i * 3 + 1] = baseT;
+      arr[i * 3 + 2] = Math.sin(angle1) * radius * (1 - mix) + Math.sin(angle2) * radius * mix;
     } else {
       const r = 35 + Math.random() * 50;
       const phi = Math.acos(Math.random() * 2 - 1);
       const theta = Math.random() * Math.PI * 2;
-      arr[i*3] = r * Math.sin(phi) * Math.cos(theta);
-      arr[i*3+1] = r * Math.cos(phi) + (Math.random() - 0.5) * 100;
-      arr[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+      arr[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      arr[i * 3 + 1] = r * Math.cos(phi) + (Math.random() - 0.5) * 100;
+      arr[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
     }
   }
   return arr;
@@ -89,11 +89,11 @@ export default function CinematicSequence({ onComplete }: CinematicSequenceProps
 
     const expansionDirs = new Float32Array(PARTICLE_COUNT * 3);
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const x = helixTargets[i*3], y = helixTargets[i*3+1], z = helixTargets[i*3+2];
-      const len = Math.sqrt(x*x + y*y + z*z) || 1;
-      expansionDirs[i*3] = x / len;
-      expansionDirs[i*3+1] = y / len;
-      expansionDirs[i*3+2] = z / len;
+      const x = helixTargets[i * 3], y = helixTargets[i * 3 + 1], z = helixTargets[i * 3 + 2];
+      const len = Math.sqrt(x * x + y * y + z * z) || 1;
+      expansionDirs[i * 3] = x / len;
+      expansionDirs[i * 3 + 1] = y / len;
+      expansionDirs[i * 3 + 2] = z / len;
     }
 
     const colors = new Float32Array(PARTICLE_COUNT * 3);
@@ -103,9 +103,9 @@ export default function CinematicSequence({ onComplete }: CinematicSequenceProps
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const r = Math.random();
       const c = r < 0.4 ? cyan : r < 0.85 ? violet : pink;
-      colors[i*3] = c.r;
-      colors[i*3+1] = c.g;
-      colors[i*3+2] = c.b;
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
     }
 
     const scales = new Float32Array(PARTICLE_COUNT);

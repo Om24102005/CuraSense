@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import gsap from 'gsap';
-import { ShieldAlert, Users, Activity, Database, Trash2, Shield, Eye } from 'lucide-react';
+import { ShieldAlert, Users, Activity, Database, Trash2, Shield } from 'lucide-react';
 import { useTheme } from '../App';
 import { getAdminStats, getAdminUsers, getAdminPredictions, deleteAdminUser } from '../utils/api';
 

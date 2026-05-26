@@ -4,7 +4,7 @@ import type { Prediction } from '../App';
 import { useTheme } from '../App';
 import gsap from 'gsap';
 import { LoadingScreen } from './LoadingScreen';
-import MarkdownText from './effects/MarkdownText';
+import MedicalAIOutput from './effects/MedicalAIOutput';
 
 interface ReportAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
@@ -16,6 +16,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   const isDark = theme === 'dark';
 
   const [reportText, setReportText] = useState('');
+  const [customContext, setCustomContext] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [mode, setMode] = useState<'paste' | 'upload'>('paste');
@@ -142,6 +143,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
       if (mode === 'upload' && selectedFile) {
         const fd = new FormData();
         fd.append('patient_id', 'demo-user');
+        if (customContext.trim()) fd.append('clinical_context', customContext.trim());
         fd.append('file', selectedFile);
         response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report-file`, {
           method: 'POST',
@@ -149,10 +151,11 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
           body: fd,
         });
       } else {
+        const contextNote = customContext.trim() ? `\n\n[CLINICAL CONTEXT: ${customContext.trim()}]` : '';
         response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ patient_id: 'demo-user', report_text: reportText }),
+          body: JSON.stringify({ patient_id: 'demo-user', report_text: reportText + contextNote }),
         });
       }
 
@@ -164,7 +167,14 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
       const data = await response.json();
       console.log('[Reports] backend response:', data);
 
-      const a = (data.analysis || {}) as any;
+      let a = (data.analysis || {}) as any;
+      // Same fallback as SymptomChecker: backend may return JSON string in data.result
+      if (!a.assessment && data.result) {
+        try {
+          const parsed = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+          if (parsed && typeof parsed === 'object') a = parsed;
+        } catch { /* plain text result — leave a as-is */ }
+      }
 
       if (a.error) {
         setResult({
@@ -182,13 +192,18 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
       const wasRedirected = a.redirected_to === 'radiology';
       const diagnosis = wasRedirected
         ? `AI Auto-Detected: ${(a.detected_kind || 'scan').toUpperCase()} (radiology read)`
-        : 'Clinical Lab Analysis';
+        : 'CLINICAL LAB ANALYSIS';
+
+      const urgencyRaw = String(a.urgency || 'medium').trim().toLowerCase();
+      const urgency = (['low', 'medium', 'high', 'emergency'] as const).includes(urgencyRaw as any)
+        ? (urgencyRaw as 'low' | 'medium' | 'high' | 'emergency')
+        : 'medium';
 
       const mappedResult = {
         diagnosis,
         confidence: typeof a.confidence === 'number' ? a.confidence : 80,
         details: a.assessment || 'No assessment returned.',
-        urgency: a.urgency || 'medium',
+        urgency,
         recommendations: Array.isArray(a.recommendations) && a.recommendations.length
           ? a.recommendations
           : ['Review extracted values with a physician.'],
@@ -285,7 +300,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
             width: `${normalEnd - normalStart}%`,
             background: 'linear-gradient(90deg, rgba(16,185,129,0.35), rgba(16,185,129,0.55), rgba(16,185,129,0.35))',
             borderRadius: '999px',
-          }} /> 
+          }} />
 
           {/* Value marker */}
           <div style={{
@@ -442,6 +457,23 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
             </div>
           )}
 
+          {/* Custom clinical context */}
+          <div style={{ marginBottom: '1.25rem', padding: '0.9rem 1rem', borderRadius: '14px', background: isDark ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.04)', border: `1px dashed ${isDark ? 'rgba(99,102,241,0.30)' : 'rgba(99,102,241,0.25)'}` }}>
+            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', fontFamily: S, color: isDark ? '#a78bfa' : '#6d28d9', marginBottom: '0.4rem' }}>
+              ADDITIONAL CONTEXT (OPTIONAL)
+            </label>
+            <p style={{ fontSize: '0.7rem', color: T.muted, marginBottom: '0.5rem' }}>Describe your condition, what to focus on, or ask a specific question about the report</p>
+            <textarea
+              value={customContext}
+              onChange={e => setCustomContext(e.target.value)}
+              placeholder="e.g. 'Patient is diabetic, 52 years old. Please focus on kidney function and flag any early CKD markers.'"
+              rows={3}
+              style={{ width: '100%', padding: '0.6rem 0.8rem', background: T.txtBg, border: `1px solid ${T.txtBdr}`, borderRadius: '10px', color: T.text, fontSize: '0.8rem', fontFamily: I, outline: 'none', resize: 'vertical' }}
+              onFocus={e => (e.target.style.borderColor = T.txtFoc)}
+              onBlur={e => (e.target.style.borderColor = T.txtBdr)}
+            />
+          </div>
+
           {(() => {
             const ready = mode === 'paste' ? !!reportText.trim() : !!selectedFile;
             return (
@@ -453,9 +485,21 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
         </div>
 
         {/* Right Side: Render Result */}
-        <div className="ra-card" style={{ ...glass, padding: '1.75rem' }}>
-          <h3 style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 700, color: T.head, marginBottom: '4px' }}>AI Analysis Results</h3>
-          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Natural Language Processing insights</p>
+        <div
+          className="ra-card ra-results-scroll"
+          data-lenis-prevent
+          style={{ ...glass, padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '85vh', overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain' }}
+        >
+          <style>{`
+            .ra-results-scroll::-webkit-scrollbar { width: 5px; }
+            .ra-results-scroll::-webkit-scrollbar-track { background: transparent; }
+            .ra-results-scroll::-webkit-scrollbar-thumb { background: ${isDark ? 'rgba(139,92,246,0.35)' : 'rgba(109,40,217,0.25)'}; border-radius: 999px; }
+            .ra-results-scroll::-webkit-scrollbar-thumb:hover { background: ${isDark ? 'rgba(139,92,246,0.6)' : 'rgba(109,40,217,0.45)'}; }
+          `}</style>
+          <div style={{ flexShrink: 0 }}>
+            <h3 style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 700, color: T.head, marginBottom: '4px' }}>AI Analysis Results</h3>
+            <p style={{ color: T.sub, fontSize: '0.82rem' }}>Natural Language Processing insights</p>
+          </div>
 
           {!result && (
             <div style={{ textAlign: 'center', padding: '3rem 0', color: T.muted }}>
@@ -471,9 +515,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>
                   <span style={{ padding: '3px 12px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, background: result.confidence >= 85 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 85 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 85 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}`, whiteSpace: 'nowrap' }}>{result.confidence}% confidence</span>
                 </div>
-                <MarkdownText style={{ color: T.muted, fontSize: '0.85rem' }}>
-                  {result.details}
-                </MarkdownText>
+                <MedicalAIOutput text={result.details} isDark={isDark} textColor={T.text} mutedColor={T.muted} />
               </div>
 
               {/* Confidence bar (parity with Symptoms tab) */}
@@ -532,7 +574,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                 <AlertTriangle className="w-5 h-5 shrink-0" style={{ color: '#ef4444', marginTop: 2 }} />
                 <div>
                   <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fca5a5', marginBottom: 4, letterSpacing: '0.02em' }}>
-                    Not a medical diagnosis
+                    AI BASED DIAGNOSIS
                   </p>
                   <p style={{ fontSize: '0.78rem', color: T.amberTxt, lineHeight: 1.55 }}>
                     This is an experimental AI demo. Output may be wrong. Do not use it to make health decisions.

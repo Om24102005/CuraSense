@@ -9,7 +9,9 @@
     "dev:open": "vite --open",
     "start": "vite",
     "preview": "vite preview",
-    "serve:dist": "npm run build && npx http-server ./dist -p 5000"
+    "serve:dist": "npm run build && npx http-server ./dist -p 5000",
+    "lint": "eslint src/**/*.{ts,tsx}",
+    "lint:fix": "eslint src/**/*.{ts,tsx} --fix"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -88,10 +90,17 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "4.1.12",
     "@types/animejs": "^3.1.13",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "4.7.0",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^17.6.0",
     "tailwindcss": "4.1.12",
+    "typescript-eslint": "^8.59.4",
     "vite": "6.3.5"
   },
   "peerDependencies": {

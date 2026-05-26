@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import { Lock, Eye, EyeOff, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
-import { resetPassword } from '../utils/api';
+import { resetPasswordWithToken } from '../utils/api';
 
 interface ResetPasswordProps {
   token: string;
@@ -38,7 +38,7 @@ export default function ResetPassword({ token, onDone }: ResetPasswordProps) {
     if (password !== confirm) return setError('Passwords do not match.');
 
     setBusy(true);
-    const res = await resetPassword(token, password);
+    const res = await resetPasswordWithToken(token, password);
     setBusy(false);
 
     if (res.error) {
