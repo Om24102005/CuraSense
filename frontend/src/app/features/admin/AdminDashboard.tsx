@@ -97,7 +97,7 @@ export function AdminDashboard() {
           <ShieldAlert className="w-8 h-8 text-fuchsia-500" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold uppercase tracking-widest text-fuchsia-500" style={{ fontFamily: "'Michroma', sans-serif" }}>Overwatch Protocol</h1>
+          <h1 className="text-3xl font-bold uppercase tracking-widest text-fuchsia-500" style={{ fontFamily: "var(--font-display)" }}>Overwatch Protocol</h1>
           <p className="text-sm font-bold uppercase tracking-widest" style={{ color: tMuted }}>Global Administrator Terminal</p>
         </div>
       </div>

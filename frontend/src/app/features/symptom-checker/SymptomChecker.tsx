@@ -5,6 +5,8 @@ import { useTheme } from '../../App';
 import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
+import SuccessBurst from '../../components/shared/SuccessBurst';
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 
 const SYMPTOMS = [
   // General / Constitutional
@@ -228,6 +230,9 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  // AutoAnimate: zero-config FLIP animation for the chip list as symptoms are
+  // added/removed — no manual enter/exit choreography needed for this one.
+  const [chipListRef] = useAutoAnimate<HTMLDivElement>({ duration: 220 });
 
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [customSymptomInput, setCustomSymptomInput] = useState('');
@@ -235,6 +240,7 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [burstActive, setBurstActive] = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -263,8 +269,8 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
   };
 
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
 
   const filteredSymptoms = SYMPTOMS.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.category.toLowerCase().includes(searchQuery.toLowerCase()));
   const categories = [...new Set(SYMPTOMS.map(s => s.category))];
@@ -346,6 +352,8 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
 
       setResult(mappedResult);
       onPrediction({ type: 'symptom', ...mappedResult });
+      setBurstActive(true);
+      setTimeout(() => setBurstActive(false), 1400);
 
     } catch (error) {
       console.error(error);
@@ -387,7 +395,7 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
           </div>
 
           {(selectedSymptoms.length > 0 || customSymptoms.length > 0) && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '1rem' }}>
+            <div ref={chipListRef} style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '1rem' }}>
               {selectedSymptoms.map(id => {
                 const s = SYMPTOMS.find(x => x.id === id);
                 return s ? (
@@ -493,7 +501,8 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
 
           {result && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ padding: '1.25rem', borderRadius: '14px', background: T.resBg, border: `1px solid ${T.resBdr}` }}>
+              <div style={{ position: 'relative', overflow: 'hidden', padding: '1.25rem', borderRadius: '14px', background: T.resBg, border: `1px solid ${T.resBdr}` }}>
+                <SuccessBurst active={burstActive} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>
                   <span style={{ padding: '3px 12px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, background: result.confidence >= 80 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 80 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 80 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}`, whiteSpace: 'nowrap' }}>{result.confidence}% confidence</span>

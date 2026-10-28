@@ -8,6 +8,7 @@ import {
 import type { Prediction } from '../../App';
 import { useTheme } from '../../App';
 import gsap from 'gsap';
+import { motion, AnimatePresence } from 'motion/react';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
 
 interface PredictionHistoryProps {
@@ -54,8 +55,8 @@ function formatAbsolute(date: Date | string | number | null | undefined) {
 
 function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () => void; isDark: boolean }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
   const typeColor = TYPE_COLORS[p.type] || '#8b5cf6';
 
   const T = isDark ? {
@@ -117,13 +118,16 @@ function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () =>
         @keyframes frPulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.15) } }
       `}</style>
 
-      <div
+      <motion.div
         onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22 }}
         style={{
           position: 'fixed', inset: 0, zIndex: 9200,
           background: 'rgba(0,0,0,0.88)',
           backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          animation: 'frIn 0.22s ease',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '1.25rem',
         }}
@@ -365,7 +369,7 @@ function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () =>
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </>
   ), document.body);
 }
@@ -382,8 +386,8 @@ interface DetailPanelProps {
 
 function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
   const typeColor = TYPE_COLORS[p.type] || '#8b5cf6';
 
   const T = isDark ? {
@@ -445,14 +449,19 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
         @keyframes emergencyPulse { 0%,100% { transform:scale(1) } 50% { transform:scale(1.15) } }
       `}</style>
 
-      {/* Backdrop */}
-      <div
+      {/* Backdrop — Motion drives enter/exit so closing actually animates out
+          instead of vanishing (plain conditional unmount gives React no time
+          to run an exit transition; AnimatePresence at the call site does). */}
+      <motion.div
         onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
         style={{
           position: 'fixed', inset: 0, zIndex: 9000,
           background: 'rgba(0,0,0,0.72)',
           backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-          animation: 'phFadeIn 0.25s ease',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '1.25rem',
         }}
@@ -875,7 +884,7 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </>
   ), document.body);
 }
@@ -927,8 +936,8 @@ export function PredictionHistory({ predictions, onLike }: PredictionHistoryProp
     statIcons: ['#0ea5e9', '#8b5cf6', '#10b981'],
   };
 
-  const S     = "'Michroma', sans-serif";
-  const I     = "'Inter', sans-serif";
+  const S     = "var(--font-display)";
+  const I     = "var(--font-body)";
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
 
   const avgConfidence = predictions.length > 0 ? Math.round(predictions.reduce((s, p) => s + p.confidence, 0) / predictions.length) : 0;
@@ -1052,25 +1061,32 @@ export function PredictionHistory({ predictions, onLike }: PredictionHistoryProp
         )}
       </div>
 
-      {/* Detail panel */}
-      {selected && (
-        <DetailPanel
-          p={selected}
-          onClose={() => setSelected(null)}
-          onLike={onLike}
-          onViewFullReport={() => setFullReport(selected)}
-          isDark={isDark}
-        />
-      )}
+      {/* Detail panel — AnimatePresence lets the backdrop actually fade out on
+          close instead of vanishing the instant `selected` goes null. */}
+      <AnimatePresence>
+        {selected && (
+          <DetailPanel
+            key={selected.id}
+            p={selected}
+            onClose={() => setSelected(null)}
+            onLike={onLike}
+            onViewFullReport={() => setFullReport(selected)}
+            isDark={isDark}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Full Report overlay — sits above DetailPanel (z-9200 vs z-9000) */}
-      {fullReport && (
-        <FullReportModal
-          p={fullReport}
-          onClose={() => setFullReport(null)}
-          isDark={isDark}
-        />
-      )}
+      <AnimatePresence>
+        {fullReport && (
+          <FullReportModal
+            key={fullReport.id}
+            p={fullReport}
+            onClose={() => setFullReport(null)}
+            isDark={isDark}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

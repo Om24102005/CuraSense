@@ -1,0 +1,76 @@
+/* ═══════════════════════════════════════════════════════
+   CuraSense — Typography tokens
+   ───────────────────────────────────────────────────────
+   Fluid (clamp-based) scale: sizes interpolate smoothly with
+   viewport width instead of jumping at breakpoints. data-theme
+   drives the two mode-specific adjustments below — body weight
+   is bumped on dark because near-black backgrounds make regular
+   weight read optically thinner than the same weight does on a
+   light surface, and caption color shares the shared --text-muted
+   token so it always tracks the active theme automatically.
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-xs:  clamp(0.72rem, 0.69rem + 0.15vw, 0.78rem);
+  --text-sm:  clamp(0.82rem, 0.78rem + 0.2vw, 0.9rem);
+  --text-base:clamp(0.95rem, 0.9rem + 0.25vw, 1rem);
+  --text-lg:  clamp(1.05rem, 1rem + 0.3vw, 1.15rem);
+  --text-xl:  clamp(1.2rem, 1.1rem + 0.5vw, 1.4rem);
+  --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 1.875rem);
+  --text-3xl: clamp(1.875rem, 1.6rem + 1.5vw, 2.25rem);
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.04em;
+  --tracking-widest: 0.12em;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+}
+
+:root[data-theme="dark"]  { --body-weight: var(--weight-normal); }
+:root[data-theme="light"] { --body-weight: var(--weight-medium); }
+/* Before the bootstrap script runs (first paint of the very first visit,
+   no data-theme set yet) default to the dark-mode weight — the body
+   background default is dark too (see index.css), so they stay matched. */
+:root:not([data-theme]) { --body-weight: var(--weight-normal); }
+
+body { font-family: var(--font-body); }
+
+.text-display {
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-tight);
+}
+
+p, li, label, td, th {
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  font-weight: var(--body-weight);
+}
+
+small, .text-caption {
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  color: var(--text-muted);
+}
+
+a {
+  color: var(--accent-cyan);
+  text-decoration-color: color-mix(in srgb, var(--accent-cyan) 45%, transparent);
+}
+
+code, pre, kbd {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}

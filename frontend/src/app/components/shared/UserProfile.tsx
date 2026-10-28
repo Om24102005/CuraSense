@@ -166,7 +166,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookin
             </div>
             
             <div className="relative z-10">
-              <h3 className="text-lg font-bold tracking-wide flex items-center gap-2" style={{ color: 'var(--text-primary)', fontFamily: "'Michroma', sans-serif" }}>
+              <h3 className="text-lg font-bold tracking-wide flex items-center gap-2" style={{ color: 'var(--text-primary)', fontFamily: "var(--font-display)" }}>
                 {userData.name}
                 {userData.role === 'admin' && <ShieldAlert className="w-4 h-4 text-fuchsia-500" />}
               </h3>

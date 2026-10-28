@@ -7,6 +7,7 @@ import { ThemeToggleButton } from '../../components/shared/ThemeToggleButton';
 import { useTheme } from '../../App';
 import { login, register, forgotPassword, verifyResetCode, resetPassword, totpSetup, totpVerify, loginTotp } from '../../services/api';
 import NarrativeReel from './NarrativeReel';
+import { SectionLabel, PageIndex, Marquee } from '../../components/shared/DarkMoon';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -271,8 +272,8 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
     )
     // Border-glow pulse — pure box-shadow, no layout cost.
     .fromTo(panel,
-      { boxShadow: '0 0 0 0 rgba(168,85,247,0)' },
-      { boxShadow: '0 0 32px 6px rgba(168,85,247,0.35)', duration: 0.18, yoyo: true, repeat: 1, ease: 'sine.inOut' },
+      { boxShadow: '0 0 0 0 rgba(38,103,255,0)' },
+      { boxShadow: '0 0 32px 6px rgba(38,103,255,0.30)', duration: 0.18, yoyo: true, repeat: 1, ease: 'sine.inOut' },
       '-=0.34'
     )
     .set(panel, { clearProps: 'boxShadow,filter' });
@@ -408,36 +409,40 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
     if (el) window.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
   };
 
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
 
   const T = isDark ? {
-    bg: 'transparent', logoName: '#f1f5f9', logoSub: '#22d3ee',
+    bg: 'transparent', logoName: '#dceaf4', logoSub: 'var(--accent-cyan)',
     iconBg: 'rgba(15,15,25,0.6)', iconBdr: 'rgba(255,255,255,0.10)',
     onlineBg: 'rgba(0,200,80,0.07)', onlineClr: '#4ade80', onlineBdr: 'rgba(74,222,128,0.20)',
     offlineBg: 'rgba(239,68,68,0.10)', offlineClr: '#f87171', offlineBdr: 'rgba(248,113,113,0.30)',
     checkingBg: 'rgba(245,158,11,0.10)', checkingClr: '#fbbf24', checkingBdr: 'rgba(251,191,36,0.30)',
-    h1a: '#67e8f9', h1b: '#e0f2fe', h2a: '#a78bfa', h2b: '#f0abfc', h3a: '#f0abfc', h3b: '#fdf4ff',
-    divider: 'rgba(34,211,238,0.35)', body: 'rgba(241,245,249,0.70)',
-    cardBg: 'rgba(10,10,22,0.80)', cardBdr: 'rgba(255,255,255,0.10)', cardShadow: '0 24px 60px rgba(0,0,0,0.70)', cardGlow: 'rgba(34,211,238,0.12)',
-    initClr: 'rgba(255,255,255,0.32)', zapClr: '#d946ef', cardTitle: '#ffffff',
-    btnBg: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 100%)', btnShadow: '0 0 32px rgba(34,211,238,0.25)',
+    h1a: '#22d3ee', h1m: '#67e8f9', h1b: '#c4b5fd',
+    h2a: '#2dd4bf', h2m: '#34d399', h2b: '#d1fae5',
+    h3a: '#6ee7b7', h3m: '#ecfdf5', h3b: '#67e8f9',
+    divider: 'rgba(38,103,255,0.35)', body: 'rgba(220,234,244,0.74)',
+    cardBg: '#0a1022', cardBdr: 'rgba(135,191,255,0.18)', cardShadow: '0 30px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)', cardGlow: 'rgba(38,103,255,0.12)',
+    initClr: 'rgba(255,255,255,0.32)', zapClr: 'var(--accent-violet)', cardTitle: '#dceaf4',
+    btnBg: 'var(--accent-cyan)', btnShadow: '0 8px 30px rgba(38,103,255,0.5)',
     secBtnBg: 'rgba(255,255,255,0.05)', secBtnBdr: 'rgba(255,255,255,0.15)',
     inpBg: 'rgba(255,255,255,0.05)', inpBdr: 'rgba(255,255,255,0.15)', text: '#ffffff',
     secTitle: '#ffffff', secText: 'rgba(255,255,255,0.6)',
   } : {
-    bg: 'transparent', logoName: '#0a0a1a', logoSub: '#0284c7',
+    bg: 'transparent', logoName: '#0a1230', logoSub: 'var(--accent-cyan)',
     iconBg: 'rgba(255,255,255,0.90)', iconBdr: 'rgba(0,0,0,0.10)',
     onlineBg: 'rgba(0,140,50,0.07)', onlineClr: '#166534', onlineBdr: 'rgba(22,101,52,0.20)',
     offlineBg: 'rgba(220,38,38,0.08)', offlineClr: '#991b1b', offlineBdr: 'rgba(153,27,27,0.25)',
     checkingBg: 'rgba(217,119,6,0.08)', checkingClr: '#92400e', checkingBdr: 'rgba(146,64,14,0.25)',
-    h1a: '#075985', h1b: '#0369a1', h2a: '#4c1d95', h2b: '#6d28d9', h3a: '#86198f', h3b: '#a21caf',
-    divider: 'rgba(2,132,199,0.30)', body: 'rgba(10,10,26,0.65)',
-    cardBg: 'rgba(255,255,255,0.92)', cardBdr: 'rgba(0,0,0,0.08)', cardShadow: '0 24px 50px rgba(0,0,0,0.10)', cardGlow: 'rgba(2,132,199,0.15)',
-    initClr: 'rgba(0,0,0,0.40)', zapClr: '#7c3aed', cardTitle: '#0a0a1a',
-    btnBg: 'linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)', btnShadow: '0 8px 24px rgba(2,132,199,0.30)',
+    h1a: '#075985', h1m: '#0369a1', h1b: '#0891b2',
+    h2a: '#115e59', h2m: '#0f766e', h2b: '#059669',
+    h3a: '#064e3b', h3m: '#047857', h3b: '#0d9488',
+    divider: 'rgba(2,132,199,0.30)', body: 'rgba(10,18,48,0.7)',
+    cardBg: '#f4f7fd', cardBdr: 'rgba(0,0,0,0.06)', cardShadow: '0 30px 70px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.9)', cardGlow: 'rgba(2,132,199,0.15)',
+    initClr: 'rgba(0,0,0,0.40)', zapClr: 'var(--accent-violet)', cardTitle: '#0a1230',
+    btnBg: 'var(--accent-cyan)', btnShadow: '0 8px 24px rgba(38,103,255,0.32)',
     secBtnBg: 'rgba(0,0,0,0.03)', secBtnBdr: 'rgba(0,0,0,0.10)',
-    inpBg: 'rgba(0,0,0,0.03)', inpBdr: 'rgba(0,0,0,0.15)', text: '#0a0a1a',
+    inpBg: 'rgba(0,0,0,0.04)', inpBdr: 'rgba(0,0,0,0.12)', text: '#0a1230',
     secTitle: '#0a0a1a', secText: 'rgba(0,0,0,0.6)',
   };
 
@@ -455,19 +460,19 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
   return (
     <div ref={containerRef} className="relative w-full" style={{ fontFamily: I, background: T.bg }}>
       
-      <div id="section-hero" className="scroll-section min-h-dvh relative flex flex-col" style={{ padding: '2rem 4rem' }}>
-        <header className="flex justify-between items-center fade-up w-full max-w-[1600px] mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="mag p-4 rounded-2xl backdrop-blur-xl cursor-pointer" style={{ background: T.iconBg, border: `1px solid ${T.iconBdr}` }}>
-              <ActivitySquare className="w-8 h-8" style={{ color: T.logoSub }} />
+      <div id="section-hero" data-sec="Access" className="scroll-section min-h-dvh relative flex flex-col" style={{ padding: '2rem 4rem' }}>
+        <header className="grid grid-cols-3 items-center fade-up w-full max-w-[1600px] mx-auto">
+          <div className="justify-self-start"><ThemeToggleButton /></div>
+          <div className="flex items-center gap-3 justify-self-center">
+            <div className="mag p-2.5 rounded-xl backdrop-blur-xl cursor-pointer" style={{ background: T.iconBg, border: `1px solid ${T.iconBdr}` }}>
+              <ActivitySquare className="w-6 h-6" style={{ color: T.logoSub }} />
             </div>
             <div>
-              <div style={{ fontFamily: S, fontSize: '0.9rem', fontWeight: 800, letterSpacing: '0.18em', color: T.logoName }}>CuraSense</div>
+              <div style={{ fontFamily: S, fontSize: '1rem', fontWeight: 600, letterSpacing: '-0.01em', color: T.logoName }}>CuraSense</div>
               <div style={{ fontFamily: I, fontSize: '0.7rem', fontWeight: 500, color: T.logoSub }}>Health intelligence · demo</div>
             </div>
           </div>
-          <div className="flex items-center gap-6">
-            <ThemeToggleButton />
+          <div className="justify-self-end">
             {(() => {
               const tone = serverStatus === 'online'
                 ? { bg: T.onlineBg,  clr: T.onlineClr,  bdr: T.onlineBdr,  label: 'All systems online'  }
@@ -478,7 +483,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                 <div
                   title={serverStatus === 'offline' ? 'One or more backend services failed to respond.' : tone.label}
                   className="hidden sm:flex items-center gap-3 px-5 py-2.5 rounded-full backdrop-blur-xl"
-                  style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: tone.bg, color: tone.clr, border: `1px solid ${tone.bdr}`, transition: 'background 0.3s, color 0.3s, border-color 0.3s' }}
+                  style={{ fontFamily: S, fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0', background: tone.bg, color: tone.clr, border: `1px solid ${tone.bdr}`, transition: 'background 0.3s, color 0.3s, border-color 0.3s' }}
                 >
                   <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: tone.clr }} /> {tone.label}
                 </div>
@@ -487,29 +492,53 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
           </div>
         </header>
 
-        <div className="flex-1 flex items-center max-w-[1600px] mx-auto w-full mt-12">
-          <div className="w-full flex flex-col lg:flex-row justify-between items-center gap-16">
-            <div className="w-full lg:flex-1 max-w-[900px]" style={{ perspective: '1000px' }}>
-              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3.2rem, 6.5vw, 6.5rem)', fontWeight: 900, lineHeight: 0.95, letterSpacing: '0.02em', marginBottom: '0.1em', paddingRight: '0.2em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h1a}, ${T.h1b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h1a }) }}>CLINICAL</h1>
-              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3.2rem, 6.5vw, 6.5rem)', fontWeight: 900, lineHeight: 0.95, letterSpacing: '0.02em', marginBottom: '0.1em', paddingRight: '0.2em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h2a}, ${T.h2b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h2a }) }}>PRECISION</h1>
-              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 5.5vw, 5.5rem)', fontWeight: 900, lineHeight: 1.1, letterSpacing: '0.01em', marginBottom: '1rem', paddingRight: '0.2em', ...(isDark ? { background: `linear-gradient(100deg, ${T.h3a}, ${T.h3b})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : { color: T.h3a }) }}>REDEFINED.</h1>
+        <nav className="fade-up hidden md:flex justify-center gap-10 mt-5" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', letterSpacing: '0.22em', textTransform: 'uppercase' }}>
+          {[['Platform', 'reel-problem'], ['Approach', 'reel-approach'], ['Access', 'section-hero']].map(([l, id]) => (
+            <button key={l} onClick={() => scrollToSection(id)} style={{ color: T.body, background: 'none', border: 0, cursor: 'pointer' }}>{l}</button>
+          ))}
+        </nav>
+
+        <div className="flex-1 flex items-center max-w-[1600px] mx-auto w-full mt-8">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-12 items-center gap-12">
+            <div className="w-full lg:col-span-5" style={{ perspective: '1000px' }}>
+              <SectionLabel n={1} title="Clinical AI" />
+              <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3rem, 6vw, 5.75rem)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.045em', color: T.logoName }}>Clinical precision,</h1>
+              <h1 className="hero-text hero-gradient-text" style={{ fontFamily: S, fontSize: 'clamp(3rem, 6vw, 5.75rem)', fontWeight: 700, lineHeight: 1.05, letterSpacing: '-0.045em', marginBottom: '1rem', paddingBottom: '0.08em', background: 'linear-gradient(100deg, var(--accent-cyan), var(--accent-violet), var(--accent-cyan))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>redefined.</h1>
               
-              <div className="uline h-[2px] mt-8 mb-8 rounded-full" style={{ maxWidth: '300px', background: `linear-gradient(90deg, ${T.divider}, transparent)` }} />
+              {/* EKG accent — same .uline class GSAP already scaleX-reveals, just
+                  a heartbeat trace instead of a flat bar. Ties the headline
+                  straight to the brand's actual heartbeat mark. */}
+              <svg
+                className="uline mt-8 mb-8"
+                viewBox="0 0 300 24"
+                preserveAspectRatio="none"
+                style={{ width: '100%', maxWidth: '300px', height: '24px', display: 'block' }}
+              >
+                <path
+                  d="M0,12 L60,12 Q72,6 84,12 L96,12 L104,18 L114,0 L124,22 L136,12 L300,12"
+                  fill="none"
+                  stroke={T.divider}
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
               
-              <p className="fade-up text-xl" style={{ fontWeight: 400, lineHeight: 1.8, color: T.body, maxWidth: '600px' }}>
+              <p className="fade-up text-xl" style={{ fontWeight: 400, lineHeight: 1.6, letterSpacing: '-0.01em', color: T.body, maxWidth: '600px' }}>
                 Harness the architecture of deep neural networks to process biomarker data, radiological scans,
                 and genomic structures — delivering absolute diagnostic clarity for complex pathologies.
               </p>
               
               <div className="fade-up mt-12 flex items-center gap-6">
-                <button onClick={() => scrollToSection('reel-problem')} className="mag px-8 py-4 rounded-full font-bold text-sm tracking-widest uppercase transition-all" style={{ background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.logoName, fontFamily: S }}>
+                <button onClick={() => scrollToSection('reel-problem')} className="mag dm-rim px-8 py-4 rounded-full font-semibold text-base transition-all" style={{ background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.logoName, fontFamily: S }}>
                   Explore Medical Framework <ChevronDown className="inline w-4 h-4 ml-2" />
                 </button>
               </div>
             </div>
 
-            <div className="w-full max-w-md">
-              <Card ref={panelRef} className="gpanel relative p-10 rounded-[2rem] backdrop-blur-2xl" style={{ background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.cardShadow }}>
+            <div className="hidden lg:block lg:col-span-3" aria-hidden />
+            <div className="w-full max-w-md lg:col-span-4 lg:justify-self-end">
+              <Card ref={panelRef} className="gpanel relative p-10 rounded-[2rem]" style={{ backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)', background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.cardShadow }}>
                 <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-[80px] pointer-events-none" style={{ background: T.cardGlow }} />
                 
                 {error && (
@@ -581,7 +610,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                         type="button"
                         onClick={submitTotpCode}
                         disabled={isAuthenticating || totpCode.length !== 6}
-                        className="mag w-full py-4 rounded-2xl text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
+                        className="mag w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
                         style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: (isAuthenticating || totpCode.length !== 6) ? 0.5 : 1, cursor: (isAuthenticating || totpCode.length !== 6) ? 'not-allowed' : 'pointer' }}
                       >
                         {isAuthenticating ? 'Verifying…' : (totpFlow === 'setup' ? 'Verify & finish sign-up' : 'Verify & sign in')}
@@ -608,10 +637,10 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                       </div>
                       <h3 className="auth-stagger" style={{ fontFamily: I, fontSize: '2rem', fontWeight: 700, lineHeight: 1.15, color: T.cardTitle, marginBottom: '2.5rem' }}>Sign in</h3>
                       <div className="flex flex-col gap-4">
-                        <button onClick={() => switchAuthMode('login')} className="auth-stagger mag w-full py-4 rounded-2xl text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow }}>
+                        <button onClick={() => switchAuthMode('login')} className="auth-stagger mag dm-rim w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow }}>
                           Sign in
                         </button>
-                        <button onClick={() => switchAuthMode('register')} className="auth-stagger mag w-full py-4 rounded-2xl font-semibold transition-all hover:bg-opacity-80 hover:scale-[1.02] active:scale-[0.98]" style={{ fontFamily: I, fontSize: '0.95rem', background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.cardTitle }}>
+                        <button onClick={() => switchAuthMode('register')} className="auth-stagger mag w-full py-4 rounded-full font-semibold transition-all hover:bg-opacity-80 hover:scale-[1.02] active:scale-[0.98]" style={{ fontFamily: I, fontSize: '0.95rem', background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.cardTitle }}>
                           Create an account
                         </button>
                       </div>
@@ -630,12 +659,12 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                         <div className="auth-stagger" style={{ position: 'relative' }}><Lock style={iconStyle} className="w-5 h-5" /><input type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} placeholder="Password" required style={inpStyle} /></div>
                       </div>
                       <div className="auth-stagger flex justify-end mb-6">
-                        <button type="button" onClick={() => switchAuthMode('forgot')} style={{ fontSize: '0.8rem', color: '#a855f7', background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontWeight: 600 }}>Forgot password?</button>
+                        <button type="button" onClick={() => switchAuthMode('forgot')} style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: I, fontWeight: 600 }}>Forgot password?</button>
                       </div>
                       <button
                         type="submit"
                         disabled={isAuthenticating}
-                        className="auth-stagger mag w-full py-4 rounded-2xl text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
+                        className="auth-stagger mag dm-rim w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
                         style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.7 : 1, cursor: isAuthenticating ? 'wait' : 'pointer' }}
                       >
                         {isAuthenticating ? 'Signing in…' : <>Sign in <ArrowRight className="inline w-5 h-5 ml-2" /></>}
@@ -661,7 +690,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                       <button
                         type="submit"
                         disabled={isAuthenticating}
-                        className="auth-stagger mag w-full py-4 rounded-2xl text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
+                        className="auth-stagger mag dm-rim w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
                         style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.7 : 1, cursor: isAuthenticating ? 'wait' : 'pointer' }}
                       >
                         {isAuthenticating ? 'Creating account…' : <>Continue <ArrowRight className="inline w-5 h-5 ml-2" /></>}
@@ -702,7 +731,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                               />
                             </div>
                           </div>
-                          <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #10b981, #059669)', boxShadow: '0 8px 24px rgba(16,185,129,0.3)', opacity: isAuthenticating ? 0.6 : 1 }}>
+                          <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-full text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.6 : 1 }}>
                             {isAuthenticating ? 'Sending…' : <>Send Code <ArrowRight className="inline w-5 h-5 ml-2" /></>}
                           </button>
                         </>
@@ -757,7 +786,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                             </div>
                           </div>
 
-                          <button type="submit" disabled={isAuthenticating || typedCode.length !== 6} className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)', opacity: (isAuthenticating || typedCode.length !== 6) ? 0.5 : 1 }}>
+                          <button type="submit" disabled={isAuthenticating || typedCode.length !== 6} className="mag w-full py-5 rounded-full text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: (isAuthenticating || typedCode.length !== 6) ? 0.5 : 1 }}>
                             {isAuthenticating ? 'Verifying…' : <>Verify Code <ArrowRight className="inline w-5 h-5 ml-2" /></>}
                           </button>
                           {/* No skip on this screen — user must verify the code first */}
@@ -793,7 +822,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                             </div>
                           </div>
 
-                          <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-2xl text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)', opacity: isAuthenticating ? 0.6 : 1 }}>
+                          <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-full text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.6 : 1 }}>
                             {isAuthenticating ? 'Updating…' : <>Reset Password <ArrowRight className="inline w-5 h-5 ml-2" /></>}
                           </button>
 
@@ -858,7 +887,9 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
             </div>
           </div>
         </div>
+        <div className="fade-up -mx-16 mt-10"><Marquee /></div>
       </div>
+      <PageIndex />
 
       {/* ── NARRATIVE REEL ─────────────────────────────────
           Six full-viewport scenes — Problem → Approach →

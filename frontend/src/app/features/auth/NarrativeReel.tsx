@@ -35,8 +35,8 @@ interface NarrativeReelProps {
   isDark: boolean;
 }
 
-const S = "'Michroma', sans-serif";
-const I = "'Inter', sans-serif";
+const S = "var(--font-display)";
+const I = "var(--font-body)";
 
 /* ─────────────────────────────────────────────────────────────────────
    BACKDROP COMPONENTS — one per scene, CSS/SVG only.
@@ -530,7 +530,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
             key={i}
             className="problem-fact text-left p-4 rounded-xl backdrop-blur-sm"
             style={{
-              background: isDark ? 'rgba(15,8,8,0.45)' : 'rgba(255,255,255,0.72)',
+              background: isDark ? '#120a12' : '#f4f7fd',
               border: `1px solid ${cardBdr}`,
             }}
           >
@@ -544,7 +544,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
       <blockquote
         className="problem-quote mx-auto mt-14 max-w-3xl text-left p-6 rounded-2xl"
         style={{
-          background: isDark ? 'rgba(20, 10, 10, 0.4)' : 'rgba(255,255,255,0.7)',
+          background: isDark ? '#140c10' : '#f4f7fd',
           border: `1px solid ${cardBdr}`,
           borderLeft: `3px solid ${eyeClr}`,
         }}
@@ -704,7 +704,7 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
       <div
         className="approach-panel mt-20 mx-auto max-w-5xl text-left p-7 md:p-9 rounded-2xl backdrop-blur-md"
         style={{
-          background: isDark ? 'rgba(10, 14, 26, 0.55)' : 'rgba(255,255,255,0.78)',
+          background: isDark ? '#0a0e1a' : '#f4f7fd',
           border: `1px solid ${isDark ? 'rgba(34, 211, 238, 0.18)' : 'rgba(0,0,0,0.08)'}`,
           boxShadow: '0 16px 60px rgba(34, 211, 238, 0.08), 0 0 0 1px rgba(168, 85, 247, 0.06) inset',
         }}
@@ -808,7 +808,7 @@ function DemoNLP() {
   }, []);
 
   return (
-    <div ref={ref} className="rounded-2xl p-6 backdrop-blur-md" style={{ background: 'rgba(10, 14, 26, 0.55)', border: '1px solid rgba(34, 211, 238, 0.18)', fontFamily: I }}>
+    <div ref={ref} className="rounded-2xl p-6 backdrop-blur-md" style={{ background: '#0a0e1a', border: '1px solid rgba(34, 211, 238, 0.18)', fontFamily: I }}>
       <div style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', marginBottom: 12, textTransform: 'uppercase' }}>
         Patient intake (verbatim)
       </div>
@@ -901,7 +901,7 @@ function SceneImaging({ isDark }: { isDark: boolean }) {
 
 function DemoImaging() {
   return (
-    <div className="rounded-2xl p-6 backdrop-blur-md" style={{ background: 'rgba(14, 10, 26, 0.55)', border: '1px solid rgba(168, 85, 247, 0.18)', fontFamily: I }}>
+    <div className="rounded-2xl p-6 backdrop-blur-md" style={{ background: '#0e0a1a', border: '1px solid rgba(168, 85, 247, 0.18)', fontFamily: I }}>
       <div className="flex items-center justify-between mb-3">
         <span style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
           Chest X-ray · PA view
@@ -1032,7 +1032,7 @@ function DemoLabs() {
   ];
 
   return (
-    <div ref={ref} className="rounded-2xl p-6 backdrop-blur-md" style={{ background: 'rgba(26, 10, 18, 0.55)', border: '1px solid rgba(236, 72, 153, 0.18)', fontFamily: I }}>
+    <div ref={ref} className="rounded-2xl p-6 backdrop-blur-md" style={{ background: '#1a0a12', border: '1px solid rgba(236, 72, 153, 0.18)', fontFamily: I }}>
       <div className="flex items-center justify-between mb-4">
         <span style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
           Lab panel · 5 of 14 markers
@@ -1228,7 +1228,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
             key={i}
             className="fin-step text-left p-5 rounded-2xl"
             style={{
-              background: isDark ? 'rgba(10, 14, 26, 0.55)' : 'rgba(255,255,255,0.78)',
+              background: isDark ? '#0a0e1a' : '#f4f7fd',
               border: `1px solid ${isDark ? 'rgba(34, 211, 238, 0.16)' : 'rgba(0,0,0,0.06)'}`,
               backdropFilter: 'blur(10px)',
             }}

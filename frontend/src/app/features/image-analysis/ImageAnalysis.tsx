@@ -242,8 +242,8 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
   };
 
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
 
   const validateScanFile = async (file: File): Promise<{ ok: boolean; reason?: string; kind: UploadedFile['kind'] }> => {
     const name = file.name.toLowerCase();

@@ -1,6 +1,7 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './typography.css';
 
 /* ═══════════════════════════════════════════════════════
    CuraSense — GOD-LEVEL CSS Architecture
@@ -8,15 +9,15 @@
 
 @layer base {
   html {
-    background: #000000;
+    background: #05070f;
     scroll-behavior: auto; /* Lenis handles this */
   }
 
   body {
     background: var(--bg-base, #000000);
     color: var(--text-primary, #ffffff);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-feature-settings: 'cv11', 'ss01';
+    font-family: var(--font-body);
+    font-feature-settings: 'cv11', 'ss03';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease;
@@ -31,13 +32,13 @@
     overscroll-behavior-y: none;
   }
 
-  /* ── Michroma for all headings ──
+  /* ── Outfit for all headings ──
      Fluid font-size (clamp) so headings scale with viewport width instead of
      jumping at fixed breakpoints — min/preferred/max per heading level. */
   h1, h2, h3, h4,
   .font-syncopate, [class*="font-syncopate"] {
-    font-family: 'Michroma', sans-serif !important;
-    letter-spacing: -0.02em;
+    font-family: var(--font-display) !important;
+    letter-spacing: -0.03em;
     color: var(--text-primary);
     text-transform: none !important;
   }
@@ -57,7 +58,7 @@
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb, rgba(139,92,246,0.4));
+    background: var(--scrollbar-thumb, rgba(45,212,191,0.4));
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--accent-violet); }
@@ -67,28 +68,41 @@
    GLASSMORPHISM 2.0 — PeachWeb-inspired
    ═══════════════════════════════════════════════════════ */
 
+/* Micro-glass — buttons, badges, pills, inputs, tooltips, icon containers,
+   nav controls. Specular edge: top/left border brighter than bottom/right,
+   simulating light catching the upper-left of a refractive surface. */
 .glass {
   background: var(--bg-surface, rgba(10,10,24,0.65));
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid var(--glass-edge, rgba(255,255,255,0.08));
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  border-top: 1px solid color-mix(in srgb, var(--glass-edge, rgba(255,255,255,0.08)), white 25%);
+  border-left: 1px solid color-mix(in srgb, var(--glass-edge, rgba(255,255,255,0.08)), white 25%);
+  border-right: 1px solid var(--glass-edge, rgba(255,255,255,0.08));
+  border-bottom: 1px solid var(--glass-edge, rgba(255,255,255,0.08));
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
 
+/* Macro-glass — cards, modals, sidebars, gradient containers. Deeper blur +
+   saturation boost, plus an inset top highlight for a glossy inner-surface
+   catch-light — the "liquid glass" read, not a flat frosted panel. */
 .glass-strong {
   background: var(--bg-card, rgba(14,14,30,0.75));
-  backdrop-filter: blur(32px) saturate(1.6);
-  -webkit-backdrop-filter: blur(32px) saturate(1.6);
-  border: 1px solid var(--glass-edge, rgba(255,255,255,0.08));
-  box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid color-mix(in srgb, var(--glass-edge, rgba(255,255,255,0.08)), white 30%);
+  border-left: 1px solid color-mix(in srgb, var(--glass-edge, rgba(255,255,255,0.08)), white 30%);
+  border-right: 1px solid var(--glass-edge, rgba(255,255,255,0.08));
+  border-bottom: 1px solid var(--glass-edge, rgba(255,255,255,0.08));
+  box-shadow: 0 12px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
 .glass-card {
   background: var(--bg-card, rgba(14,14,30,0.75)) !important;
   border-color: var(--border-color, rgba(255,255,255,0.10)) !important;
   color: var(--text-primary) !important;
-  backdrop-filter: blur(24px) saturate(1.4) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(1.4) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
@@ -148,7 +162,7 @@
   .ghost-btn:hover {
     border-color: var(--accent-violet);
     color: var(--accent-violet);
-    box-shadow: 0 0 20px var(--glow-violet, rgba(139,92,246,0.15));
+    box-shadow: 0 0 20px var(--glow-violet, rgba(45,212,191,0.15));
   }
 }
 
@@ -213,8 +227,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px var(--glow-violet, rgba(139,92,246,0.2)); }
-  50% { box-shadow: 0 0 40px var(--glow-violet, rgba(139,92,246,0.4)); }
+  0%, 100% { box-shadow: 0 0 20px var(--glow-violet, rgba(45,212,191,0.2)); }
+  50% { box-shadow: 0 0 40px var(--glow-violet, rgba(45,212,191,0.4)); }
 }
 
 @keyframes float {
@@ -435,8 +449,8 @@ select:focus-visible {
   outline: none;
   box-shadow:
     0 0 0 2px var(--bg-base, #000),
-    0 0 0 4px var(--accent-violet, #a855f7),
-    0 0 24px var(--accent-violet, #a855f7);
+    0 0 0 4px var(--accent-violet, #2dd4bf),
+    0 0 24px var(--accent-violet, #2dd4bf);
   border-radius: 8px;
   transition: box-shadow 0.18s ease;
 }
@@ -461,9 +475,9 @@ select:focus {
 
 /* Selection styling — premium feel even when copying text */
 ::selection {
-  background: color-mix(in srgb, var(--accent-violet, #a855f7) 50%, transparent);
+  background: color-mix(in srgb, var(--accent-violet, #2dd4bf) 50%, transparent);
   color: var(--text-primary, #fff);
-  text-shadow: 0 0 8px var(--accent-violet, #a855f7);
+  text-shadow: 0 0 8px var(--accent-violet, #2dd4bf);
 }
 
 /* Reduce motion: respect the OS setting and kill bouncy effects */
@@ -537,7 +551,7 @@ select:focus {
     100deg,
     transparent 0%,
     color-mix(in srgb, var(--accent-cyan, #00e5ff) 28%, transparent) 38%,
-    color-mix(in srgb, var(--accent-violet, #a855f7) 55%, transparent) 50%,
+    color-mix(in srgb, var(--accent-violet, #2dd4bf) 55%, transparent) 50%,
     color-mix(in srgb, #ec4899 28%, transparent) 62%,
     transparent 100%
   );
@@ -555,7 +569,7 @@ select:focus {
     100deg,
     transparent 0%,
     color-mix(in srgb, var(--accent-cyan, #00e5ff) 18%, transparent) 45%,
-    color-mix(in srgb, var(--accent-violet, #a855f7) 22%, transparent) 55%,
+    color-mix(in srgb, var(--accent-violet, #2dd4bf) 22%, transparent) 55%,
     transparent 100%
   );
   animation-duration: 0.85s;
@@ -752,3 +766,188 @@ html.cura-large-text {
   font-size: 112.5%;
 }
 
+/* ═══════════════════════════════════════════════════════
+   AURORA BACKDROP — see AuroraBackdrop.tsx
+   Colours come from the theme tokens, so dark and light match.
+   ═══════════════════════════════════════════════════════ */
+.cs-aurora {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--accent-cyan) 10%, transparent), transparent 60%),
+    var(--bg-base);
+}
+.cs-aurora-field {
+  position: absolute; border-radius: 50%;
+  width: 62vmax; height: 62vmax;
+  filter: blur(90px);
+  opacity: 0.38;
+  will-change: transform;
+}
+:root[data-theme="light"] .cs-aurora-field { opacity: 0.26; filter: blur(110px); }
+.cs-aurora-a { left: -18vmax; top: -22vmax; background: var(--accent-cyan);   animation: cs-drift-a 38s ease-in-out infinite alternate; }
+.cs-aurora-b { right: -22vmax; top: 18vh;   background: var(--accent-violet); animation: cs-drift-b 46s ease-in-out infinite alternate; }
+.cs-aurora-c { left: 22vw; bottom: -34vmax; width: 52vmax; height: 52vmax;
+  background: color-mix(in srgb, var(--accent-cyan) 55%, var(--accent-violet));
+  animation: cs-drift-c 52s ease-in-out infinite alternate; }
+@keyframes cs-drift-a { to { transform: translate3d(14vw, 10vh, 0) scale(1.12); } }
+@keyframes cs-drift-b { to { transform: translate3d(-12vw, -8vh, 0) scale(1.08); } }
+@keyframes cs-drift-c { to { transform: translate3d(-10vw, -12vh, 0) scale(1.15); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-aurora-field { animation: none; }
+}
+
+/* Apple-style spinner tick fade — see AppleSpinner.tsx (which itself checks
+   useReducedMotion and skips setting this animation when it's on, rather
+   than relying on a CSS attribute-selector hack to override inline styles). */
+@keyframes apple-spinner-tick {
+  0%   { opacity: 1; }
+  100% { opacity: 0.15; }
+}
+
+/* Hero headline — slow living gradient drift. GSAP still owns the line's
+   entrance (opacity/y/rotateX); this is a separate, independent background-
+   position animation layered on the same element, so it can't fight that. */
+.hero-gradient-text {
+  background-size: 200% 100%;
+  animation: hero-text-shimmer 8s ease-in-out infinite;
+}
+@keyframes hero-text-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-gradient-text { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   VIEW TRANSITIONS — two distinct treatments, gated by a class on
+   <html> so they don't bleed into each other.
+   ───────────────────────────────────────────────────────
+   .vt-circle  — theme switch: circular reveal centered on the toggle
+                 button's click point (--vt-x/--vt-y). Set/removed by
+                 animations/presets/themeTransition.ts.
+   (no class)  — tab switch: the browser's own default cross-fade is
+                 already correct for this and needs no extra CSS —
+                 see animations/hooks/usePageTransition.ts.
+   ═══════════════════════════════════════════════════════ */
+html.vt-circle::view-transition-old(root),
+html.vt-circle::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html.vt-circle::view-transition-old(root) {
+  z-index: 1;
+}
+html.vt-circle::view-transition-new(root) {
+  z-index: 2;
+  clip-path: circle(0% at var(--vt-x, 50%) var(--vt-y, 50%));
+  animation: cs-theme-circle-reveal 0.65s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes cs-theme-circle-reveal {
+  to { clip-path: circle(150% at var(--vt-x, 50%) var(--vt-y, 50%)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.vt-circle::view-transition-new(root) { animation: none; clip-path: none; }
+}
+
+
+
+/* ═══════════════════════════════════════════════════════
+   DARK MOON LAYER — medical edition
+   ECG-paper floor, biomarker meteors, scan bar, film grain,
+   border-trail cards, metal rim shimmer, numbered section labels.
+   All transform/opacity driven; reduced-motion switches them off.
+   ═══════════════════════════════════════════════════════ */
+@property --dm-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+:root { --dm-grid: rgba(135,191,255,0.16); --dm-ink: var(--accent-cyan); }
+:root[data-theme="light"] { --dm-grid: rgba(10,36,114,0.12); }
+
+.dm-grain {
+  position: fixed; inset: -50%; z-index: 40; pointer-events: none; opacity: 0.07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: dm-filmgrain 0.9s steps(6) infinite;
+}
+@keyframes dm-filmgrain {
+  0% { transform: translate(0,0); } 20% { transform: translate(-3%,2%); } 40% { transform: translate(2%,-3%); }
+  60% { transform: translate(-2%,-1%); } 80% { transform: translate(3%,3%); } 100% { transform: translate(0,0); }
+}
+
+/* ECG-paper floor: perspective grid flowing toward the viewer */
+.dm-floor {
+  position: absolute; left: -60%; right: -60%; bottom: -8%; height: 62%;
+  transform: perspective(520px) rotateX(64deg); transform-origin: 50% 100%;
+  background-image: linear-gradient(var(--dm-grid) 1px, transparent 1px), linear-gradient(90deg, var(--dm-grid) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 88%); mask-image: linear-gradient(to top, #000 10%, transparent 88%);
+  animation: dm-grid-flow 3.2s linear infinite;
+}
+@keyframes dm-grid-flow { to { background-position: 0 64px; } }
+
+/* CT-scan bar sweeping the viewport */
+.dm-scan {
+  position: absolute; left: 0; right: 0; height: 120px; top: -120px; opacity: 0.5;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--dm-ink) 28%, transparent) 50%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--dm-ink) 55%, transparent);
+  animation: dm-scan 9s ease-in-out infinite;
+}
+@keyframes dm-scan { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: 0.5; } 88% { opacity: 0.5; } 100% { transform: translateY(calc(100vh + 120px)); opacity: 0; } }
+
+/* Biomarker meteors: a cell-shaped head with a fading trail */
+.dm-meteor {
+  position: absolute; top: -10%; width: 220px; height: 2px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--dm-ink) 80%, transparent));
+  transform: rotate(32deg); animation: dm-meteor 7s linear infinite;
+}
+.dm-meteor::after { content: ''; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dm-ink); box-shadow: 0 0 12px 2px var(--dm-ink); }
+.dm-meteor:nth-of-type(6) { left: 12%; animation-delay: 0s; }
+.dm-meteor:nth-of-type(7) { left: 38%; animation-delay: 2.4s; animation-duration: 8s; }
+.dm-meteor:nth-of-type(8) { left: 64%; animation-delay: 4.1s; }
+.dm-meteor:nth-of-type(9) { left: 86%; animation-delay: 5.6s; animation-duration: 9s; }
+@keyframes dm-meteor { 0% { transform: translate3d(0,0,0) rotate(32deg); opacity: 0; } 8% { opacity: 0.9; } 40% { opacity: 0; transform: translate3d(-520px, 330px, 0) rotate(32deg); } 100% { opacity: 0; transform: translate3d(-520px, 330px, 0) rotate(32deg); } }
+
+/* Border trail: a light that circles the card edge */
+.dash-card, .gpanel, .dm-trail { position: relative; }
+.dash-card::before, .gpanel::before, .dm-trail::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
+  background: conic-gradient(from var(--dm-a), transparent 0 72%, var(--dm-ink) 88%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask-composite: exclude;
+  animation: dm-trail 7s linear infinite;
+}
+@keyframes dm-trail { to { --dm-a: 360deg; } }
+
+/* Metal rim shimmer for buttons and pills */
+.dm-rim { position: relative; overflow: hidden; }
+.dm-rim::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,0.35) 50%, transparent 65%);
+  transform: translateX(-120%); animation: dm-sheen 5s ease-in-out infinite;
+}
+@keyframes dm-sheen { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+
+/* Numbered section labels + page index */
+.dm-label { display: flex; align-items: center; gap: 0.75rem; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem; }
+.dm-label b { color: var(--dm-ink); font-weight: 600; }
+.dm-label i { display: block; height: 1px; width: 3rem; background: linear-gradient(90deg, var(--dm-ink), transparent); }
+.dm-index { position: fixed; right: 1.25rem; top: 50%; transform: translateY(-50%); z-index: 45; display: none; flex-direction: column; gap: 0.7rem; align-items: flex-end; }
+@media (min-width: 1280px) { .dm-index { display: flex; } }
+.dm-index button { display: flex; align-items: center; gap: 0.6rem; background: none; border: 0; cursor: pointer; font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); opacity: 0.7; transition: color .3s, opacity .3s; }
+.dm-index button span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; transition: transform .3s, box-shadow .3s; }
+.dm-index button[data-on="true"] { color: var(--dm-ink); opacity: 1; }
+.dm-index button[data-on="true"] span { transform: scale(1.7); box-shadow: 0 0 10px var(--dm-ink); }
+
+/* Marquee strip */
+.dm-marquee { overflow: hidden; border-block: 1px solid var(--border-color); -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+.dm-marquee > div { display: flex; width: max-content; gap: 3rem; padding: 0.8rem 0; animation: dm-marquee 38s linear infinite; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-muted); }
+@keyframes dm-marquee { to { transform: translateX(-50%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-grain, .dm-floor, .dm-scan, .dm-meteor, .dm-rim::after { animation: none; }
+  .dash-card::before, .gpanel::before, .dm-trail::before { animation: none; }
+  .dm-meteor, .dm-scan { display: none; }
+}
+
+/* No glassmorphism: surfaces are solid, edges are hairlines. */
+*, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

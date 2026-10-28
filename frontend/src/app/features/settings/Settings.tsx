@@ -19,75 +19,80 @@ import {
 } from '../../state/AppSettingsContext';
 import { getWearableStatus, syncAppleHealth, type WearableData } from '../../services/api';
 import gsap from 'gsap';
+import { useTransition, animated } from '@react-spring/web';
 
 // ─── CyberToast ───────────────────────────────────────────────────────────────
+// Spring physics (tension/friction) for the pop-in/pop-out — distinct from the
+// Motion-driven modal fades elsewhere: a toast's "pop" reads better as a spring
+// than a duration/easing curve. useTransition also gives it a real exit
+// animation on dismiss, which the old CSS-keyframe-only version never had.
 
-interface CyberToastProps {
+interface ToastData {
   msg: string;
   type: 'success' | 'error';
+}
+
+interface CyberToastProps {
+  toast: ToastData | null;
   onClose: () => void;
 }
 
-function CyberToast({ msg, type, onClose }: CyberToastProps) {
-  const ok = type === 'success';
-  const accent = ok ? '#10b981' : '#ef4444';
-  const glow   = ok ? 'rgba(16,185,129,0.22)' : 'rgba(239,68,68,0.22)';
-  const bg     = ok ? 'rgba(16,185,129,0.09)' : 'rgba(239,68,68,0.09)';
-  return (
-    <>
-      <style>{`
-        @keyframes _cyberIn {
-          from { opacity:0; transform:translateX(-50%) translateY(14px) scale(0.94); }
-          to   { opacity:1; transform:translateX(-50%) translateY(0)     scale(1);   }
-        }
-      `}</style>
+function CyberToast({ toast, onClose }: CyberToastProps) {
+  const transitions = useTransition(toast, {
+    from: { opacity: 0, transform: 'translateX(-50%) translateY(14px) scale(0.94)' },
+    enter: { opacity: 1, transform: 'translateX(-50%) translateY(0px) scale(1)' },
+    leave: { opacity: 0, transform: 'translateX(-50%) translateY(10px) scale(0.96)' },
+    config: { tension: 380, friction: 28 },
+  });
+
+  return transitions((style, item) => item && (
+    <animated.div style={{
+      position: 'fixed', bottom: '2rem', left: '50%',
+      zIndex: 9999,
+      display: 'flex', alignItems: 'center', gap: '10px',
+      padding: '0.7rem 1.15rem',
+      background: 'rgba(7,7,18,0.94)',
+      border: `1px solid ${item.type === 'success' ? '#10b981' : '#ef4444'}55`,
+      borderRadius: '999px',
+      backdropFilter: 'blur(22px)',
+      WebkitBackdropFilter: 'blur(22px)',
+      boxShadow: `0 0 36px ${item.type === 'success' ? 'rgba(16,185,129,0.22)' : 'rgba(239,68,68,0.22)'}, 0 10px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)`,
+      pointerEvents: 'all',
+      opacity: style.opacity,
+      transform: style.transform,
+    }}>
       <div style={{
-        position: 'fixed', bottom: '2rem', left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 9999,
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '0.7rem 1.15rem',
-        background: 'rgba(7,7,18,0.94)',
-        border: `1px solid ${accent}55`,
-        borderRadius: '999px',
-        backdropFilter: 'blur(22px)',
-        WebkitBackdropFilter: 'blur(22px)',
-        boxShadow: `0 0 36px ${glow}, 0 10px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)`,
-        animation: '_cyberIn 0.38s cubic-bezier(0.16,1,0.3,1) forwards',
-        pointerEvents: 'all',
+        width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+        background: item.type === 'success' ? 'rgba(16,185,129,0.09)' : 'rgba(239,68,68,0.09)',
+        border: `1px solid ${item.type === 'success' ? '#10b981' : '#ef4444'}44`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <div style={{
-          width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-          background: bg, border: `1px solid ${accent}44`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {ok
-            ? <CheckCircle style={{ width: '13px', height: '13px', color: accent }} />
-            : <AlertCircle style={{ width: '13px', height: '13px', color: accent }} />
-          }
-        </div>
-        <span style={{
-          fontSize: '0.84rem', fontWeight: 600,
-          color: '#eeeeff', letterSpacing: '0.01em',
-          fontFamily: "'Inter', sans-serif",
-          whiteSpace: 'nowrap',
-        }}>
-          {msg}
-        </span>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(255,255,255,0.32)', padding: '2px',
-            borderRadius: '50%', display: 'flex', alignItems: 'center',
-            lineHeight: 0,
-          }}
-        >
-          <X style={{ width: '13px', height: '13px' }} />
-        </button>
+        {item.type === 'success'
+          ? <CheckCircle style={{ width: '13px', height: '13px', color: '#10b981' }} />
+          : <AlertCircle style={{ width: '13px', height: '13px', color: '#ef4444' }} />
+        }
       </div>
-    </>
-  );
+      <span style={{
+        fontSize: '0.84rem', fontWeight: 600,
+        color: '#eeeeff', letterSpacing: '0.01em',
+        fontFamily: "var(--font-body)",
+        whiteSpace: 'nowrap',
+      }}>
+        {item.msg}
+      </span>
+      <button
+        onClick={onClose}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'rgba(255,255,255,0.32)', padding: '2px',
+          borderRadius: '50%', display: 'flex', alignItems: 'center',
+          lineHeight: 0,
+        }}
+      >
+        <X style={{ width: '13px', height: '13px' }} />
+      </button>
+    </animated.div>
+  ));
 }
 
 // ─── ToggleSwitch ─────────────────────────────────────────────────────────────
@@ -163,7 +168,7 @@ function MetricTile({ icon, label, value, unit, status, accent, T }: MetricTileP
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', marginBottom: '0.4rem' }}>
         <span style={{
           fontSize: '1.65rem', fontWeight: 800, color: hasData ? accent : T.muted,
-          fontFamily: "'Michroma', sans-serif", lineHeight: 1,
+          fontFamily: "var(--font-display)", lineHeight: 1,
           textShadow: hasData ? `0 0 20px ${accent}55` : 'none',
         }}>
           {value}
@@ -175,7 +180,7 @@ function MetricTile({ icon, label, value, unit, status, accent, T }: MetricTileP
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '4px',
         padding: '2px 8px', borderRadius: '6px', fontSize: '0.65rem',
-        fontWeight: 700, fontFamily: "'Michroma', sans-serif", letterSpacing: '0.06em',
+        fontWeight: 700, fontFamily: "var(--font-display)", letterSpacing: '0.06em',
         background: `${statusColor}18`, color: statusColor,
         border: `1px solid ${statusColor}30`,
       }}>
@@ -486,8 +491,8 @@ export function Settings() {
     warnBg: 'rgba(245,158,11,0.08)', warnTxt: '#d97706',
   };
 
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
   const glass = {
     background: T.cardBg, border: `1px solid ${T.cardBdr}`,
     boxShadow: T.shadow, backdropFilter: 'blur(24px)',
@@ -582,9 +587,7 @@ export function Settings() {
     <div ref={ref} style={{ fontFamily: I, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {/* ── Cyberpunk Toast ─────────────────────────────────────────────────── */}
-      {toast && (
-        <CyberToast msg={toast.msg} type={toast.type} onClose={clearToast} />
-      )}
+      <CyberToast toast={toast} onClose={clearToast} />
 
       {/* ── Admin Global Controls ──────────────────────────────────────────── */}
       {userData.role === 'admin' && (
@@ -765,8 +768,8 @@ export function Settings() {
             onClick={() => setShowAddDependent(v => !v)}
             style={{
               padding: '0.45rem 0.9rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 600,
-              background: showAddDependent ? 'transparent' : 'rgba(34,211,238,0.10)',
-              border: `1px solid ${showAddDependent ? T.cardBdr : 'rgba(34,211,238,0.30)'}`,
+              background: showAddDependent ? 'transparent' : 'rgba(38,103,255,0.10)',
+              border: `1px solid ${showAddDependent ? T.cardBdr : 'rgba(38,103,255,0.30)'}`,
               color: showAddDependent ? T.muted : '#22d3ee',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
             }}
@@ -782,7 +785,7 @@ export function Settings() {
             {dependents.map(dep => (
               <div key={dep.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderRadius: '12px', background: T.rowBg, border: `1px solid ${T.cardBdr}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,rgba(34,211,238,0.15),rgba(139,92,246,0.15))', border: '1px solid rgba(34,211,238,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,rgba(38,103,255,0.15),rgba(139,92,246,0.15))', border: '1px solid rgba(38,103,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <User className="w-4 h-4 text-cyan-400" />
                   </div>
                   <div>
@@ -813,7 +816,7 @@ export function Settings() {
 
         {/* Add Dependent form */}
         {showAddDependent && (
-          <div style={{ padding: '1.25rem', background: 'rgba(34,211,238,0.04)', border: '1px solid rgba(34,211,238,0.14)', borderRadius: '14px' }}>
+          <div style={{ padding: '1.25rem', background: 'rgba(38,103,255,0.04)', border: '1px solid rgba(38,103,255,0.14)', borderRadius: '14px' }}>
             <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#22d3ee', marginBottom: '1rem', fontFamily: S }}>New Dependent Profile</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1rem' }}>
               <div>
@@ -1056,7 +1059,7 @@ export function Settings() {
             padding: '5px 13px', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 700,
             fontFamily: S, letterSpacing: '0.06em', flexShrink: 0,
             background: isLive
-              ? 'linear-gradient(135deg,rgba(16,185,129,0.14),rgba(34,211,238,0.14))'
+              ? 'linear-gradient(135deg,rgba(16,185,129,0.14),rgba(38,103,255,0.14))'
               : 'rgba(255,255,255,0.05)',
             border: isLive
               ? '1px solid rgba(16,185,129,0.35)'
@@ -1093,7 +1096,7 @@ export function Settings() {
             {isLive && (
               <div style={{
                 padding: '0.85rem 1.1rem', borderRadius: '12px', marginBottom: '1.25rem',
-                background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.18)',
+                background: 'rgba(38,103,255,0.06)', border: '1px solid rgba(38,103,255,0.18)',
                 display: 'flex', gap: '10px', alignItems: 'flex-start',
               }}>
                 <Wifi className="w-4 h-4" style={{ color: '#22d3ee', flexShrink: 0, marginTop: '2px' }} />
@@ -1162,12 +1165,12 @@ export function Settings() {
                 style={{
                   padding: '0.55rem 1.1rem', borderRadius: '10px',
                   fontSize: '0.8rem', fontWeight: 600,
-                  background: isSyncing ? 'rgba(34,211,238,0.08)' : 'rgba(34,211,238,0.10)',
-                  border: '1px solid rgba(34,211,238,0.30)',
+                  background: isSyncing ? 'rgba(38,103,255,0.08)' : 'rgba(38,103,255,0.10)',
+                  border: '1px solid rgba(38,103,255,0.30)',
                   color: '#22d3ee', cursor: isSyncing ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px',
                   transition: 'all 0.2s', opacity: isSyncing ? 0.65 : 1,
-                  boxShadow: isSyncing ? 'none' : '0 0 18px rgba(34,211,238,0.12)',
+                  boxShadow: isSyncing ? 'none' : '0 0 18px rgba(38,103,255,0.12)',
                 }}
               >
                 {isSyncing

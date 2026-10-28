@@ -2,7 +2,7 @@
    CuraSense — GOD-LEVEL App Shell  (UI/UX v2 — premium pass)
    ═══════════════════════════════════════════════════════ */
 
-import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback, useRef, lazy, Suspense } from 'react';
 import { useTranslation, useAppSettings } from './state/AppSettingsContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { SymptomChecker } from './features/symptom-checker/SymptomChecker';
@@ -29,17 +29,25 @@ import {
   useHeaderDensify,
   useNavPillIndicator,
   useMobileDrawerAnimation,
-  playThemeBodyTransition,
+  swapThemeWithReveal,
+  navigateWithViewTransition,
 } from './animations';
 
 // ── Background effects ──
-import ParticleField from './components/backgrounds/ParticleField';
-import CustomCursor from './components/backgrounds/CustomCursor';
+import AuroraBackdrop from './components/backgrounds/AuroraBackdrop';
+import { SectionLabel, PageIndex } from './components/shared/DarkMoon';
+import type { SceneName } from './components/backgrounds/scenes';
+const TAB_TITLES: Record<string, string> = { dashboard: 'Overview', analyze: 'AI Analysis', history: 'Records', booking: 'Consultation', settings: 'Settings', admin: 'Overwatch' };
+const Scene3D = lazy(() => import('./components/backgrounds/Scene3D'));
 import SmoothScroll from './components/backgrounds/SmoothScroll';
-import CinematicSequence from './components/backgrounds/CinematicSequence';
+// Lazy: a heavy Three.js scene (90k particles, custom shaders) shown once,
+// right after auth succeeds — no reason to pay for it in the first-load
+// bundle. Safe to split here specifically because it's gated by its own
+// boolean (cinematicDone), not part of the tab-switch/Suspense-sensitive
+// page-transition system.
+const CinematicSequence = lazy(() => import('./components/backgrounds/CinematicSequence'));
 import SystemBootSequence from './components/backgrounds/SystemBootSequence';
 import { MagneticCard } from './components/backgrounds/MagneticCard';
-import NeuralPulseField from './components/backgrounds/NeuralPulseField';
 import InteractionLayer from './components/backgrounds/InteractionLayer';
 import ElementTransitions from './components/backgrounds/ElementTransitions';
 
@@ -51,7 +59,7 @@ export type Theme = ThemeName;
 export const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (t: Theme) => void;
-  toggleTheme: () => void;
+  toggleTheme: (originX?: number, originY?: number) => void;
 }>({ theme: 'dark', setTheme: () => {}, toggleTheme: () => {} });
 export const useTheme = () => useContext(ThemeContext);
 
@@ -70,9 +78,6 @@ export interface Prediction {
   biomarkers?: { name: string; value: number; unit?: string; status?: string; normal_min?: number; normal_max?: number }[];
   scanSections?: { title: string; findings: string[] }[];
 }
-
-/* ── Theme order for cycling ── */
-const themeOrder: ThemeName[] = ['dark', 'light', 'cyberpunk', 'medical', 'aurora'];
 
 /* ── Prediction localStorage cache (keyed by userId so multi-user devices stay isolated) ── */
 const predCacheKey = (userId: string) => `curasense_pred_${userId}`;
@@ -107,7 +112,13 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [theme, setThemeState] = useState<ThemeName>('dark');
+  // The no-flash bootstrap script in index.html already picked dark/light
+  // (saved choice, else system preference) and stamped it on <html> before
+  // this ever runs — just read it back so there's no post-mount correction.
+  const [theme, setThemeState] = useState<ThemeName>(() => {
+    const attr = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : null;
+    return attr === 'light' ? 'light' : 'dark';
+  });
   const [cinematicDone, setCinematicDone] = useState(false);
   const [bootDone, setBootDone] = useState(false);
   const [bookingKey, setBookingKey] = useState(0);
@@ -122,21 +133,28 @@ export default function App() {
   const setTheme = useCallback((t: ThemeName) => {
     setThemeState(t);
     localStorage.setItem('curasense_theme', t);
-    playThemeBodyTransition();
+    const root = document.documentElement;
+    root.setAttribute('data-theme', t);
+    Object.entries(themes[t].vars).forEach(([k, v]) => root.style.setProperty(k, v));
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    const idx = themeOrder.indexOf(theme);
-    setTheme(themeOrder[(idx + 1) % themeOrder.length]);
+  const toggleTheme = useCallback((originX?: number, originY?: number) => {
+    const next: ThemeName = theme === 'dark' ? 'light' : 'dark';
+    const x = originX ?? window.innerWidth / 2;
+    const y = originY ?? window.innerHeight / 2;
+    swapThemeWithReveal(x, y, () => setTheme(next));
   }, [theme, setTheme]);
+
+  // Every tab switch goes through here instead of calling setActiveTab
+  // directly, so native View Transitions (when supported) can wrap it —
+  // see usePageTransition's GSAP-fallback comment for why that hook can't
+  // just check "does the browser support it" on its own.
+  const navigateTab = useCallback((tab: string) => {
+    navigateWithViewTransition(() => setActiveTab(tab));
+  }, []);
 
   const currentTheme = themes[theme];
   const themeVars = currentTheme.vars as React.CSSProperties;
-
-  useEffect(() => {
-    const saved = localStorage.getItem('curasense_theme') as ThemeName | null;
-    if (saved && themes[saved]) setThemeState(saved);
-  }, []);
 
   // ── On authentication: sync settings from DB then load predictions ─────────
   useEffect(() => {
@@ -214,7 +232,7 @@ export default function App() {
   const handleMyBookings = useCallback(() => {
     setBookingInitialView('my-bookings');
     setBookingKey((k: number) => k + 1);
-    setActiveTab('booking');
+    navigateTab('booking');
   }, []);
 
   const navItems = [
@@ -240,9 +258,8 @@ export default function App() {
       <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
         {!bootDone && <SystemBootSequence onComplete={() => setBootDone(true)} />}
         <div style={themeVars}>
-          <NeuralPulseField colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet']]} />
-          <ParticleField count={typeof window !== 'undefined' && window.innerWidth < 768 ? 14 : 26} />
-          <CustomCursor />
+          <AuroraBackdrop />
+          <Suspense fallback={null}><Scene3D scene="welcome" a={currentTheme.vars['--accent-cyan']} b={currentTheme.vars['--accent-violet']} dark={theme === 'dark'} /></Suspense>
           <InteractionLayer />
           <ElementTransitions />
           <div className="relative z-10 min-h-dvh">
@@ -256,20 +273,23 @@ export default function App() {
   /* ── Authenticated ── */
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-      {!cinematicDone && <CinematicSequence onComplete={() => setCinematicDone(true)} />}
+      {!cinematicDone && (
+        <Suspense fallback={<div className="fixed inset-0 z-[99999]" style={{ background: 'radial-gradient(ellipse at center, #0a0118 0%, #000005 70%, #000000 100%)' }} />}>
+          <CinematicSequence onComplete={() => setCinematicDone(true)} />
+        </Suspense>
+      )}
 
       <SmoothScroll>
         <div
           className="min-h-dvh relative overflow-hidden transition-colors duration-500 text-[--text-primary]"
           style={themeVars}
         >
-          <ParticleField count={typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 60} />
-          <NeuralPulseField colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet']]} />
-          <CustomCursor />
+          <AuroraBackdrop />
+          <Suspense fallback={null}><Scene3D scene={(['dashboard','analyze','history','booking','settings','admin'].includes(activeTab) ? activeTab : 'dashboard') as SceneName} a={currentTheme.vars['--accent-cyan']} b={currentTheme.vars['--accent-violet']} dark={theme === 'dark'} /></Suspense>
           <InteractionLayer />
           <ElementTransitions />
 
-          <div className="relative z-10" style={{ background: 'radial-gradient(ellipse 90% 45% at 20% -5%, rgba(139,92,246,0.18) 0%, rgba(34,211,238,0.06) 40%, transparent 65%)' }}>
+          <div className="relative z-10" style={{ background: 'radial-gradient(ellipse 90% 45% at 20% -5%, rgba(135,191,255,0.18) 0%, rgba(38,103,255,0.06) 40%, transparent 65%)' }}>
             {/* ── SCROLL PROGRESS RAIL ── */}
             <div
               aria-hidden
@@ -291,13 +311,13 @@ export default function App() {
               />
 
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
-                <MagneticCard intensity={6} perspective={600} onClick={() => setActiveTab('dashboard')}>
+                <MagneticCard intensity={6} perspective={600} onClick={() => navigateTab('dashboard')}>
                   <div
                     role="button"
                     aria-label="Go to Dashboard"
                     tabIndex={0}
                     onKeyDown={(e: { key: string; preventDefault: () => void }) => {
-                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('dashboard'); }
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateTab('dashboard'); }
                     }}
                     className="flex items-center gap-3 cursor-pointer group select-none"
                   >
@@ -317,7 +337,7 @@ export default function App() {
                     <div>
                       <h1
                         className="text-xl font-bold tracking-[0.18em] leading-none bg-clip-text text-transparent"
-                        style={{ fontFamily: "'Michroma', sans-serif", backgroundImage: 'linear-gradient(120deg, var(--text-primary) 0%, var(--accent-violet) 50%, var(--accent-cyan) 100%)' }}
+                        style={{ fontFamily: "var(--font-display)", backgroundImage: 'linear-gradient(120deg, var(--text-primary) 0%, var(--accent-violet) 50%, var(--accent-cyan) 100%)' }}
                       >
                         CuraSense
                       </h1>
@@ -347,20 +367,20 @@ export default function App() {
                       className="absolute top-0 left-0 pointer-events-none opacity-0"
                       style={{
                         borderRadius: '14px',
-                        background: 'linear-gradient(135deg, rgba(139,92,246,0.5) 0%, rgba(34,211,238,0.22) 55%, rgba(139,92,246,0.18) 100%)',
-                        border: '1px solid rgba(139,92,246,0.58)',
-                        boxShadow: '0 0 30px -4px rgba(139,92,246,0.8),0 0 14px -4px rgba(34,211,238,0.5),inset 0 1px 0 rgba(255,255,255,0.22),inset 0 0 24px rgba(139,92,246,0.08)',
+                        background: 'linear-gradient(135deg, rgba(135,191,255,0.5) 0%, rgba(38,103,255,0.22) 55%, rgba(135,191,255,0.18) 100%)',
+                        border: '1px solid rgba(135,191,255,0.58)',
+                        boxShadow: '0 0 30px -4px rgba(135,191,255,0.8),0 0 14px -4px rgba(38,103,255,0.5),inset 0 1px 0 rgba(255,255,255,0.22),inset 0 0 24px rgba(135,191,255,0.08)',
                       }}
                     />
 
                     {navItems.filter(n => !n.cta).map(({ id, label, icon: Icon }) => {
                       const isActive = activeTab === id;
-                      const accent   = NAV_ACCENTS[id] ?? '#8b5cf6';
+                      const accent   = NAV_ACCENTS[id] ?? '#2dd4bf';
                       return (
                         <button
                           key={id}
                           data-nav-id={id}
-                          onClick={() => setActiveTab(id)}
+                          onClick={() => navigateTab(id)}
                           onMouseEnter={e => gsap.to(e.currentTarget, { y: -2, duration: 0.2, ease: 'power2.out' })}
                           onMouseLeave={e => gsap.to(e.currentTarget, { y: 0,  duration: 0.2, ease: 'power2.out' })}
                           className="relative z-[1] flex items-center gap-1.5 px-3.5 py-2 rounded-[14px]"
@@ -387,22 +407,22 @@ export default function App() {
                       <button
                         key={id}
                         data-nav-id={id}
-                        onClick={() => setActiveTab(id)}
+                        onClick={() => navigateTab(id)}
                         onMouseEnter={e => gsap.to(e.currentTarget, { y: -2, scale: 1.03, duration: 0.2, ease: 'power2.out' })}
                         onMouseLeave={e => gsap.to(e.currentTarget, { y: 0,  scale: 1,    duration: 0.2, ease: 'power2.out' })}
                         className="relative flex items-center gap-1.5 px-4 py-2"
                         style={{
                           borderRadius: '14px',
-                          background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 55%, #06b6d4 100%)',
-                          border: isActive ? '1px solid rgba(34,211,238,0.65)' : '1px solid rgba(139,92,246,0.55)',
+                          background: 'linear-gradient(135deg, #0d9488 0%, #2563eb 55%, #06b6d4 100%)',
+                          border: isActive ? '1px solid rgba(38,103,255,0.65)' : '1px solid rgba(135,191,255,0.55)',
                           boxShadow: isActive
-                            ? '0 0 32px -4px rgba(139,92,246,0.95), 0 0 18px -4px rgba(34,211,238,0.65), inset 0 1px 0 rgba(255,255,255,0.25)'
-                            : '0 0 22px -6px rgba(139,92,246,0.65), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
+                            ? '0 0 32px -4px rgba(135,191,255,0.95), 0 0 18px -4px rgba(38,103,255,0.65), inset 0 1px 0 rgba(255,255,255,0.25)'
+                            : '0 0 22px -6px rgba(135,191,255,0.65), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
                           color: '#fff', fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em',
                           cursor: 'pointer', transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
                         }}
                       >
-                        <span aria-hidden className="animate-ping absolute inset-0 pointer-events-none" style={{ borderRadius: '14px', background: 'rgba(139,92,246,0.18)', animationDuration: '2.8s' }} />
+                        <span aria-hidden className="animate-ping absolute inset-0 pointer-events-none" style={{ borderRadius: '14px', background: 'rgba(135,191,255,0.18)', animationDuration: '2.8s' }} />
                         <span aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: '14px' }}>
                           <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 50%, transparent 65%)' }} />
                         </span>
@@ -416,7 +436,7 @@ export default function App() {
                 {/* Right side */}
                 <div className="flex items-center gap-2">
                   <div aria-hidden className="hidden md:block w-px h-5 mx-1 opacity-50" style={{ background: 'var(--border-color)' }} />
-                  <UserProfile predictionsCount={predictions.length} onNavigate={setActiveTab} onLogout={handleLogout} onMyBookings={handleMyBookings} />
+                  <UserProfile predictionsCount={predictions.length} onNavigate={navigateTab} onLogout={handleLogout} onMyBookings={handleMyBookings} />
                   <ThemeToggleButton />
                   <button
                     aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -445,7 +465,7 @@ export default function App() {
                 <button
                   key={id}
                   data-drawer-item
-                  onClick={() => { setActiveTab(id); setMobileMenuOpen(false); }}
+                  onClick={() => { navigateTab(id); setMobileMenuOpen(false); }}
                   className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-2xl text-lg font-medium border"
                   style={{
                     borderColor: 'var(--border-color)',
@@ -464,14 +484,16 @@ export default function App() {
 
             {/* ── Main Content ── */}
             <main id="page-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <PageIndex watch={activeTab} />
+              <SectionLabel n={Math.max(0, Object.keys(TAB_TITLES).indexOf(activeTab)) + 1} title={TAB_TITLES[activeTab] ?? activeTab} />
               {activeTab === 'dashboard' && (
-                <Dashboard predictions={predictions} onNavigate={setActiveTab} />
+                <Dashboard predictions={predictions} onNavigate={navigateTab} />
               )}
 
               {activeTab === 'analyze' && (
                 <div>
                   <div className="mb-8" data-reveal>
-                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "'Michroma', sans-serif" }}>
+                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.analyze.title')}
                     </h2>
                     <p className="text-base leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)' }}>
@@ -501,7 +523,7 @@ export default function App() {
               {activeTab === 'history' && (
                 <div>
                   <div className="mb-8" data-reveal>
-                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "'Michroma', sans-serif" }}>
+                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.history.title')}
                     </h2>
                     <p className="text-base leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)' }}>
@@ -516,14 +538,14 @@ export default function App() {
 
               {activeTab === 'booking' && (
                 <div key={bookingKey}>
-                  <ConsultationBooking predictions={predictions} onNavigate={setActiveTab} initialView={bookingInitialView} />
+                  <ConsultationBooking predictions={predictions} onNavigate={navigateTab} initialView={bookingInitialView} />
                 </div>
               )}
 
               {activeTab === 'settings' && (
                 <div>
                   <div className="mb-8" data-reveal>
-                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "'Michroma', sans-serif" }}>
+                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.settings.title')}
                     </h2>
                     <p className="text-base leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)' }}>

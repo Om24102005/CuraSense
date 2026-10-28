@@ -121,7 +121,7 @@ const URGENCY_MAP_CB = {
 // ── DiagnosisSummary — urgency + conditions + confidence mini-panel ────────────
 
 function DiagnosisSummary({ p, isDark }: { p: Prediction; isDark: boolean }) {
-  const S = "'Michroma', sans-serif";
+  const S = "var(--font-display)";
   const typeColor  = TYPE_COLORS[p.type] || '#8b5cf6';
   const urgencyKey = (p.urgency && p.urgency in URGENCY_MAP_CB) ? p.urgency as keyof typeof URGENCY_MAP_CB : null;
   const urgency    = urgencyKey ? URGENCY_MAP_CB[urgencyKey] : null;
@@ -231,8 +231,8 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
   const userData  = JSON.parse(localStorage.getItem('curasense_user') || '{}');
   const userEmail = userData.email || '';
 
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
 
   const T = isDark ? {
     card:    'rgba(12,12,26,0.90)',
@@ -427,7 +427,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
               <div style={{
                 width:30, height:30, borderRadius:'50%', flexShrink:0,
                 display:'flex', alignItems:'center', justifyContent:'center',
-                background: done ? '#10b981' : active ? 'rgba(34,211,238,0.16)' : T.rowBg,
+                background: done ? '#10b981' : active ? 'rgba(38,103,255,0.16)' : T.rowBg,
                 border: `2px solid ${c}`,
                 transition:'all 0.3s ease',
               }}>
@@ -462,12 +462,12 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
         onClick={() => setSelectedDiagnosis(null)}
         style={{
           padding:'0.85rem 1rem', borderRadius:'13px', marginBottom:'0.65rem', cursor:'pointer',
-          background: selectedDiagnosis === null ? 'rgba(34,211,238,0.10)' : T.rowBg,
+          background: selectedDiagnosis === null ? 'rgba(38,103,255,0.10)' : T.rowBg,
           border: `1px solid ${selectedDiagnosis === null ? '#22d3ee' : T.rowBdr}`,
           display:'flex', alignItems:'center', gap:'12px', transition:'all 0.2s ease',
         }}
       >
-        <div style={{ width:34, height:34, borderRadius:'9px', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(34,211,238,0.12)', color:'#22d3ee' }}>
+        <div style={{ width:34, height:34, borderRadius:'9px', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(38,103,255,0.12)', color:'#22d3ee' }}>
           <X style={{ width:15, height:15 }} />
         </div>
         <div style={{ flex:1 }}>
@@ -668,7 +668,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                   onClick={() => { setSelectedDate(d.iso); setSelectedTime(''); }}
                   style={{
                     flexShrink:0, padding:'0.7rem 0.8rem', borderRadius:'12px', cursor:'pointer', textAlign:'center',
-                    background: sel ? 'rgba(34,211,238,0.14)' : T.rowBg,
+                    background: sel ? 'rgba(38,103,255,0.14)' : T.rowBg,
                     border: `1px solid ${sel ? '#22d3ee' : T.rowBdr}`,
                     minWidth:'52px', transition:'all 0.2s ease',
                   }}
@@ -698,7 +698,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                       padding:'0.6rem 0.45rem', borderRadius:'10px',
                       cursor: isBooked ? 'not-allowed' : 'pointer',
                       fontFamily:S, fontWeight:700, fontSize:'0.67rem', letterSpacing:'0.03em',
-                      background: isBooked ? T.rowBg : isSel ? 'rgba(34,211,238,0.18)' : T.rowBg,
+                      background: isBooked ? T.rowBg : isSel ? 'rgba(38,103,255,0.18)' : T.rowBg,
                       border: `1px solid ${isBooked ? T.divider : isSel ? '#22d3ee' : T.rowBdr}`,
                       color: isBooked ? T.muted : isSel ? '#22d3ee' : T.text,
                       opacity: isBooked ? 0.35 : 1,
@@ -782,7 +782,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
           </div>
         )}
 
-        <div style={{ padding:'0.8rem 1rem', borderRadius:'13px', background:'rgba(34,211,238,0.06)', border:'1px solid rgba(34,211,238,0.18)', display:'flex', alignItems:'center', gap:'10px', marginBottom:'0.25rem' }}>
+        <div style={{ padding:'0.8rem 1rem', borderRadius:'13px', background:'rgba(38,103,255,0.06)', border:'1px solid rgba(38,103,255,0.18)', display:'flex', alignItems:'center', gap:'10px', marginBottom:'0.25rem' }}>
           <Mail style={{ width:15, height:15, color:'#22d3ee', flexShrink:0 }} />
           <span style={{ fontSize:'0.77rem', color:T.text }}>
             Confirmation will be sent to <strong style={{ color:'#22d3ee' }}>{userEmail || 'your email'}</strong>
@@ -817,8 +817,8 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
 
         <div style={{
           padding:'0.7rem 1rem', borderRadius:'12px', marginBottom:'1.35rem',
-          background: emailStatus === 'sent' ? 'rgba(16,185,129,0.10)' : 'rgba(34,211,238,0.08)',
-          border: `1px solid ${emailStatus === 'sent' ? 'rgba(16,185,129,0.30)' : 'rgba(34,211,238,0.20)'}`,
+          background: emailStatus === 'sent' ? 'rgba(16,185,129,0.10)' : 'rgba(38,103,255,0.08)',
+          border: `1px solid ${emailStatus === 'sent' ? 'rgba(16,185,129,0.30)' : 'rgba(38,103,255,0.20)'}`,
           display:'flex', alignItems:'center', gap:'10px', transition:'all 0.4s ease',
         }}>
           <Mail style={{ width:15, height:15, color: emailStatus === 'sent' ? '#10b981' : '#22d3ee', flexShrink:0 }} />
@@ -846,7 +846,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
             color: emailStatus === 'sending' ? T.muted : '#fff',
             fontFamily:S, fontWeight:800, fontSize:'0.82rem', letterSpacing:'0.06em',
             border: emailStatus === 'sending' ? `1px solid ${T.rowBdr}` : 'none',
-            boxShadow: emailStatus !== 'sending' ? '0 8px 24px rgba(34,211,238,0.35)' : 'none',
+            boxShadow: emailStatus !== 'sending' ? '0 8px 24px rgba(38,103,255,0.35)' : 'none',
             transition:'all 0.25s ease',
           }}
         >
@@ -878,7 +878,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
             <button onClick={openMyBookings} style={{ padding:'0.5rem 1rem', borderRadius:'10px', background:T.rowBg, border:`1px solid ${T.rowBdr}`, color:T.text, fontFamily:S, fontWeight:700, fontSize:'0.68rem', cursor:'pointer', letterSpacing:'0.06em' }}>
               MY BOOKINGS
             </button>
-            <button onClick={resetWizard} style={{ padding:'0.5rem 1rem', borderRadius:'10px', background:'linear-gradient(135deg,#22d3ee,#8b5cf6)', border:'none', color:'#fff', fontFamily:S, fontWeight:700, fontSize:'0.68rem', cursor:'pointer', letterSpacing:'0.06em', boxShadow:'0 4px 14px rgba(34,211,238,0.3)' }}>
+            <button onClick={resetWizard} style={{ padding:'0.5rem 1rem', borderRadius:'10px', background:'linear-gradient(135deg,#22d3ee,#8b5cf6)', border:'none', color:'#fff', fontFamily:S, fontWeight:700, fontSize:'0.68rem', cursor:'pointer', letterSpacing:'0.06em', boxShadow:'0 4px 14px rgba(38,103,255,0.3)' }}>
               + NEW BOOKING
             </button>
           </div>
@@ -973,7 +973,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
         </div>
         <button
           onClick={resetWizard}
-          style={{ padding:'0.55rem 1.1rem', borderRadius:'11px', background:'linear-gradient(135deg,#22d3ee,#8b5cf6)', border:'none', color:'#fff', fontFamily:S, fontWeight:700, fontSize:'0.68rem', cursor:'pointer', letterSpacing:'0.06em', boxShadow:'0 4px 14px rgba(34,211,238,0.3)' }}
+          style={{ padding:'0.55rem 1.1rem', borderRadius:'11px', background:'linear-gradient(135deg,#22d3ee,#8b5cf6)', border:'none', color:'#fff', fontFamily:S, fontWeight:700, fontSize:'0.68rem', cursor:'pointer', letterSpacing:'0.06em', boxShadow:'0 4px 14px rgba(38,103,255,0.3)' }}
         >
           + NEW BOOKING
         </button>
@@ -1059,7 +1059,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
           <p style={{ fontSize:'0.88rem', color:T.muted, marginBottom:'1.25rem' }}>No bookings yet</p>
           <button
             onClick={resetWizard}
-            style={{ padding:'0.6rem 1.25rem', borderRadius:'11px', background:'rgba(34,211,238,0.12)', border:'1px solid rgba(34,211,238,0.30)', color:'#22d3ee', fontFamily:S, fontWeight:700, fontSize:'0.72rem', cursor:'pointer' }}
+            style={{ padding:'0.6rem 1.25rem', borderRadius:'11px', background:'rgba(38,103,255,0.12)', border:'1px solid rgba(38,103,255,0.30)', color:'#22d3ee', fontFamily:S, fontWeight:700, fontSize:'0.72rem', cursor:'pointer' }}
           >
             Book Your First Appointment
           </button>
@@ -1323,7 +1323,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                 border: canAdvance() ? 'none' : `1px solid ${T.rowBdr}`,
                 color: canAdvance() ? '#fff' : T.muted,
                 fontFamily:S, fontWeight:700, fontSize:'0.75rem', letterSpacing:'0.06em',
-                boxShadow: canAdvance() ? '0 6px 20px rgba(34,211,238,0.35)' : 'none',
+                boxShadow: canAdvance() ? '0 6px 20px rgba(38,103,255,0.35)' : 'none',
                 transition:'all 0.2s ease',
               }}
             >
@@ -1341,7 +1341,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                 background:'linear-gradient(135deg,#22d3ee,#8b5cf6)',
                 border:'none', color:'#fff',
                 fontFamily:S, fontWeight:700, fontSize:'0.75rem', letterSpacing:'0.06em',
-                boxShadow:'0 6px 20px rgba(34,211,238,0.35)',
+                boxShadow:'0 6px 20px rgba(38,103,255,0.35)',
                 opacity: isSubmitting ? 0.72 : 1,
                 transition:'all 0.2s ease',
               }}

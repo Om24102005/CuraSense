@@ -125,8 +125,8 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   };
 
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
 
   const handleAnalyze = async () => {
     const hasText = reportText.trim().length > 0;

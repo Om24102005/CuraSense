@@ -18,7 +18,7 @@ const SECTION_DEFS = [
   { re: /assessment|diagnosis|impression|clinical picture/i,        color: '#34d399', bg: 'rgba(52,211,153,0.10)', bd: 'rgba(52,211,153,0.30)',  Icon: Stethoscope  },
   { re: /risk|concern|warning|caution|red flag/i,                   color: '#fbbf24', bg: 'rgba(251,191,36,0.10)', bd: 'rgba(251,191,36,0.30)',  Icon: AlertCircle  },
   { re: /recommend|treatment|next step|action|what to do|plan/i,    color: '#a78bfa', bg: 'rgba(167,139,250,0.10)',bd: 'rgba(167,139,250,0.30)', Icon: CheckCircle  },
-  { re: /follow.?up|monitor|schedule|surveillance/i,                 color: '#2dd4bf', bg: 'rgba(45,212,191,0.10)', bd: 'rgba(45,212,191,0.30)',  Icon: Clock        },
+  { re: /follow.?up|monitor|schedule|surveillance/i,                 color: '#2dd4bf', bg: 'rgba(135,191,255,0.10)', bd: 'rgba(135,191,255,0.30)',  Icon: Clock        },
   { re: /summary|overview|highlights|key finding/i,                  color: '#a78bfa', bg: 'rgba(167,139,250,0.10)',bd: 'rgba(167,139,250,0.30)', Icon: Info         },
   { re: /analysis|result|report|scan type|interpretation/i,          color: '#60a5fa', bg: 'rgba(96,165,250,0.10)', bd: 'rgba(96,165,250,0.30)',  Icon: Activity     },
 ];
@@ -177,7 +177,7 @@ function parseSections(text: string): Section[] {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MedicalAIOutput({ text, isDark, textColor, mutedColor }: Props) {
-  const M = "'Michroma', sans-serif";
+  const M = "var(--font-display)";
   if (!text?.trim()) return null;
   const sections = parseSections(text);
 
