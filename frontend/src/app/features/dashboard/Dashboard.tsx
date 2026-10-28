@@ -1,4 +1,3 @@
-import { SectionLabel } from '../../components/shared/DarkMoon';
 import { ExpandCard } from '../../components/shared/ExpandCard';
 import { useEffect, useRef } from 'react';
 import { Activity, Brain, FileText, TrendingUp, Calendar, Clock, CircleAlert, Zap, Target } from 'lucide-react';
@@ -65,7 +64,6 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
         <p style={{ color: T.sub, fontSize: '0.85rem' }}>{t('dashboard.overview')}</p>
       </div>
 
-      <SectionLabel n={2} title="Vitals" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {T.statCards.map(({ from, to, label, icon: Icon, badge }, i) => (
           <ExpandCard key={label} className="dash-card relative overflow-hidden transition-transform duration-300 hover:-translate-y-1" style={{ borderRadius: '14px', padding: '1.1rem', background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 6px 18px ${from}44` }} detail={<>{statDetails[i]} <button onClick={() => onNavigate('history')} style={{ textDecoration: 'underline', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>View history</button></>}>
@@ -80,7 +78,6 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
         ))}
       </div>
 
-      <SectionLabel n={3} title="Actions" />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="dash-card lg:col-span-2" style={glassCard}>
           <h3 style={{ fontFamily: "var(--font-display)", fontSize: '0.9rem', fontWeight: 700, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.quickActions')}</h3>
@@ -115,7 +112,6 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      <SectionLabel n={4} title="Recent" />
       <div className="dash-card mb-6" style={glassCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>

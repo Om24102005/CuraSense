@@ -7,7 +7,6 @@ import { ThemeToggleButton } from '../../components/shared/ThemeToggleButton';
 import { useTheme } from '../../App';
 import { login, register, forgotPassword, verifyResetCode, resetPassword, totpSetup, totpVerify, loginTotp } from '../../services/api';
 import NarrativeReel from './NarrativeReel';
-import { SectionLabel, PageIndex, Marquee } from '../../components/shared/DarkMoon';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -460,7 +459,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
   return (
     <div ref={containerRef} className="relative w-full" style={{ fontFamily: I, background: T.bg }}>
       
-      <div id="section-hero" data-sec="Access" className="scroll-section min-h-dvh relative flex flex-col" style={{ padding: '2rem 4rem' }}>
+      <div id="section-hero" className="scroll-section min-h-dvh relative flex flex-col" style={{ padding: '2rem 4rem' }}>
         <header className="grid grid-cols-3 items-center fade-up w-full max-w-[1600px] mx-auto">
           <div className="justify-self-start"><ThemeToggleButton /></div>
           <div className="flex items-center gap-3 justify-self-center">
@@ -501,7 +500,6 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
         <div className="flex-1 flex items-center max-w-[1600px] mx-auto w-full mt-8">
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 items-center gap-12">
             <div className="w-full lg:col-span-5" style={{ perspective: '1000px' }}>
-              <SectionLabel n={1} title="Clinical AI" />
               <h1 className="hero-text" style={{ fontFamily: S, fontSize: 'clamp(3rem, 6vw, 5.75rem)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.045em', color: T.logoName }}>Clinical precision,</h1>
               <h1 className="hero-text hero-gradient-text" style={{ fontFamily: S, fontSize: 'clamp(3rem, 6vw, 5.75rem)', fontWeight: 700, lineHeight: 1.05, letterSpacing: '-0.045em', marginBottom: '1rem', paddingBottom: '0.08em', background: 'linear-gradient(100deg, var(--accent-cyan), var(--accent-violet), var(--accent-cyan))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>redefined.</h1>
               
@@ -530,7 +528,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
               </p>
               
               <div className="fade-up mt-12 flex items-center gap-6">
-                <button onClick={() => scrollToSection('reel-problem')} className="mag dm-rim px-8 py-4 rounded-full font-semibold text-base transition-all" style={{ background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.logoName, fontFamily: S }}>
+                <button onClick={() => scrollToSection('reel-problem')} className="mag px-8 py-4 rounded-full font-semibold text-base transition-all" style={{ background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.logoName, fontFamily: S }}>
                   Explore Medical Framework <ChevronDown className="inline w-4 h-4 ml-2" />
                 </button>
               </div>
@@ -637,7 +635,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                       </div>
                       <h3 className="auth-stagger" style={{ fontFamily: I, fontSize: '2rem', fontWeight: 700, lineHeight: 1.15, color: T.cardTitle, marginBottom: '2.5rem' }}>Sign in</h3>
                       <div className="flex flex-col gap-4">
-                        <button onClick={() => switchAuthMode('login')} className="auth-stagger mag dm-rim w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow }}>
+                        <button onClick={() => switchAuthMode('login')} className="auth-stagger mag w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow }}>
                           Sign in
                         </button>
                         <button onClick={() => switchAuthMode('register')} className="auth-stagger mag w-full py-4 rounded-full font-semibold transition-all hover:bg-opacity-80 hover:scale-[1.02] active:scale-[0.98]" style={{ fontFamily: I, fontSize: '0.95rem', background: T.secBtnBg, border: `1px solid ${T.secBtnBdr}`, color: T.cardTitle }}>
@@ -664,7 +662,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                       <button
                         type="submit"
                         disabled={isAuthenticating}
-                        className="auth-stagger mag dm-rim w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
+                        className="auth-stagger mag w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
                         style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.7 : 1, cursor: isAuthenticating ? 'wait' : 'pointer' }}
                       >
                         {isAuthenticating ? 'Signing in…' : <>Sign in <ArrowRight className="inline w-5 h-5 ml-2" /></>}
@@ -690,7 +688,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
                       <button
                         type="submit"
                         disabled={isAuthenticating}
-                        className="auth-stagger mag dm-rim w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
+                        className="auth-stagger mag w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
                         style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.7 : 1, cursor: isAuthenticating ? 'wait' : 'pointer' }}
                       >
                         {isAuthenticating ? 'Creating account…' : <>Continue <ArrowRight className="inline w-5 h-5 ml-2" /></>}
@@ -887,9 +885,7 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
             </div>
           </div>
         </div>
-        <div className="fade-up -mx-16 mt-10"><Marquee /></div>
       </div>
-      <PageIndex />
 
       {/* ── NARRATIVE REEL ─────────────────────────────────
           Six full-viewport scenes — Problem → Approach →

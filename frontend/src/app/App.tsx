@@ -35,10 +35,6 @@ import {
 
 // ── Background effects ──
 import AuroraBackdrop from './components/backgrounds/AuroraBackdrop';
-import { SectionLabel, PageIndex } from './components/shared/DarkMoon';
-import type { SceneName } from './components/backgrounds/scenes';
-const TAB_TITLES: Record<string, string> = { dashboard: 'Overview', analyze: 'AI Analysis', history: 'Records', booking: 'Consultation', settings: 'Settings', admin: 'Overwatch' };
-const Scene3D = lazy(() => import('./components/backgrounds/Scene3D'));
 import SmoothScroll from './components/backgrounds/SmoothScroll';
 // Lazy: a heavy Three.js scene (90k particles, custom shaders) shown once,
 // right after auth succeeds — no reason to pay for it in the first-load
@@ -259,7 +255,6 @@ export default function App() {
         {!bootDone && <SystemBootSequence onComplete={() => setBootDone(true)} />}
         <div style={themeVars}>
           <AuroraBackdrop />
-          <Suspense fallback={null}><Scene3D scene="welcome" a={currentTheme.vars['--accent-cyan']} b={currentTheme.vars['--accent-violet']} dark={theme === 'dark'} /></Suspense>
           <InteractionLayer />
           <ElementTransitions />
           <div className="relative z-10 min-h-dvh">
@@ -285,7 +280,6 @@ export default function App() {
           style={themeVars}
         >
           <AuroraBackdrop />
-          <Suspense fallback={null}><Scene3D scene={(['dashboard','analyze','history','booking','settings','admin'].includes(activeTab) ? activeTab : 'dashboard') as SceneName} a={currentTheme.vars['--accent-cyan']} b={currentTheme.vars['--accent-violet']} dark={theme === 'dark'} /></Suspense>
           <InteractionLayer />
           <ElementTransitions />
 
@@ -484,8 +478,6 @@ export default function App() {
 
             {/* ── Main Content ── */}
             <main id="page-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <PageIndex watch={activeTab} />
-              <SectionLabel n={Math.max(0, Object.keys(TAB_TITLES).indexOf(activeTab)) + 1} title={TAB_TITLES[activeTab] ?? activeTab} />
               {activeTab === 'dashboard' && (
                 <Dashboard predictions={predictions} onNavigate={navigateTab} />
               )}
