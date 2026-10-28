@@ -39,6 +39,16 @@ before(async () => {
 });
 after(() => { server.close(); fakePython.close(); });
 
+test('2FA bypass closed: pre-2FA purpose tokens cannot call protected endpoints', async () => {
+  for (const purpose of ['totp_login', 'totp_setup']) {
+    const t = jwt.sign({ _id: '64b000000000000000000002', purpose }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    for (const path of ['/analyze-report', '/predictions', '/api/user/settings']) {
+      const r = await fetch(base + path, { method: path === '/analyze-report' ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: path === '/analyze-report' ? '{"reportText":"x"}' : undefined });
+      assert.equal(r.status, 403, `${purpose} on ${path}`);
+    }
+  }
+});
+
 test('rejects unauthenticated AI calls', async () => {
   const r = await fetch(base + '/analyze-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   assert.equal(r.status, 401);

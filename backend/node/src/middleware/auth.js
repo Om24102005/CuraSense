@@ -17,6 +17,9 @@ export const verifyToken = (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'Access denied.' });
   try {
     const verified = jwt.verify(token, JWT_SECRET);
+    // Setup / login-TOTP tokens (15 min, `purpose` claim) are issued before the
+    // second factor is complete; they must never authorise normal API calls.
+    if (verified.purpose) return res.status(403).json({ error: 'Wrong token type.' });
     req.user = verified;
     next();
   } catch {
