@@ -62,3 +62,8 @@ coverage/
 
 # Claude Code local state
 .claude/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

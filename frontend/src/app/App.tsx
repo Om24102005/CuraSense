@@ -24,6 +24,7 @@ import { getPredictions, savePrediction } from './services/api';
 
 // ── Animations (dedicated module — see ./animations) ──
 import {
+  gsap,
   usePageTransition,
   useScrollProgressRail,
   useHeaderDensify,
