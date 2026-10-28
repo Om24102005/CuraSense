@@ -1,2 +1,13 @@
 packages:
   - 'frontend'
+
+allowBuilds:
+  '@tailwindcss/oxide': true
+  esbuild: true
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild
+
+overrides:
+  three: 0.184.0

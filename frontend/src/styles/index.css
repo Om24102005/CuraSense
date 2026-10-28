@@ -21,9 +21,19 @@
     -moz-osx-font-smoothing: grayscale;
     transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease;
     overflow-x: hidden;
+    /* iOS rubber-band bounce + Android Chrome pull-to-refresh both hook the
+       same boundary-overscroll gesture — killing it on html/body stops both
+       without touching any inner scroll container's own scrolling. */
+    overscroll-behavior-y: none;
   }
 
-  /* ── Michroma for all headings ── */
+  html {
+    overscroll-behavior-y: none;
+  }
+
+  /* ── Michroma for all headings ──
+     Fluid font-size (clamp) so headings scale with viewport width instead of
+     jumping at fixed breakpoints — min/preferred/max per heading level. */
   h1, h2, h3, h4,
   .font-syncopate, [class*="font-syncopate"] {
     font-family: 'Michroma', sans-serif !important;
@@ -31,6 +41,11 @@
     color: var(--text-primary);
     text-transform: none !important;
   }
+
+  h1 { font-size: clamp(1.75rem, 1.2rem + 3vw, 3rem); }
+  h2 { font-size: clamp(1.4rem, 1rem + 2vw, 2.25rem); }
+  h3 { font-size: clamp(1.15rem, 0.95rem + 1vw, 1.5rem); }
+  h4 { font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem); }
 
   /* ── Selection ── */
   ::selection {
@@ -77,8 +92,12 @@
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
-.glass-card:hover {
-  box-shadow: 0 12px 40px rgba(0,0,0,0.2) !important;
+/* Decorative hover lift — gated to fine pointers so a tap on touch devices
+   doesn't leave a "stuck" hover state active until the next tap elsewhere. */
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover {
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2) !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -103,12 +122,14 @@
   border-radius: inherit;
 }
 
-.liquid-btn:hover::before {
-  opacity: 1;
-}
+@media (hover: hover) and (pointer: fine) {
+  .liquid-btn:hover::before {
+    opacity: 1;
+  }
 
-.liquid-btn:hover {
-  transform: scale(1.03);
+  .liquid-btn:hover {
+    transform: scale(1.03);
+  }
 }
 
 .liquid-btn:active {
@@ -123,10 +144,12 @@
   transition: all 0.3s ease;
 }
 
-.ghost-btn:hover {
-  border-color: var(--accent-violet);
-  color: var(--accent-violet);
-  box-shadow: 0 0 20px var(--glow-violet, rgba(139,92,246,0.15));
+@media (hover: hover) and (pointer: fine) {
+  .ghost-btn:hover {
+    border-color: var(--accent-violet);
+    color: var(--accent-violet);
+    box-shadow: 0 0 20px var(--glow-violet, rgba(139,92,246,0.15));
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -137,8 +160,10 @@
   transition: box-shadow 0.3s ease;
 }
 
-.magnetic-card:hover {
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+@media (hover: hover) and (pointer: fine) {
+  .magnetic-card:hover {
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -218,9 +243,11 @@
 .hover-glow {
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-.hover-glow:hover {
-  box-shadow: 0 0 0 1px var(--accent-violet), 0 8px 32px color-mix(in srgb, var(--accent-violet) 20%, transparent);
-  transform: translateY(-2px);
+@media (hover: hover) and (pointer: fine) {
+  .hover-glow:hover {
+    box-shadow: 0 0 0 1px var(--accent-violet), 0 8px 32px color-mix(in srgb, var(--accent-violet) 20%, transparent);
+    transform: translateY(-2px);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -236,8 +263,10 @@
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
-.card:hover, [data-slot="card"]:hover {
-  box-shadow: 0 12px 40px rgba(0,0,0,0.2) !important;
+@media (hover: hover) and (pointer: fine) {
+  .card:hover, [data-slot="card"]:hover {
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2) !important;
+  }
 }
 
 p, span, li, label, td, th {
@@ -327,6 +356,28 @@ button:not([id="theme-toggle"]) {
   .glass-card {
     backdrop-filter: blur(16px) !important;
   }
+
+  /* iOS Safari auto-zooms the viewport on focus for any input/textarea/select
+     with a computed font-size under 16px. Several components intentionally
+     use smaller inline font sizes for density — this overrides JUST the
+     font-size (not layout) on mobile viewports, via !important so it wins
+     over the inline style. Desktop/tablet keep each component's own size. */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Minimum touch target — iOS Human Interface Guidelines call for 44x44pt,
+   Material Design calls for 48x48dp; 48px (CSS px) clears both. Scoped to
+   coarse pointers only, so mouse/trackpad users see no size change, and it
+   only raises undersized controls (min-*), never shrinks anything. */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a[href] {
+    min-height: 48px;
+    min-width: 48px;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -392,8 +443,10 @@ select:focus-visible {
 
 /* Premium link hover — text-decoration-thickness animates,
    and a subtle glow. Skip on nav buttons (they have own hover). */
-a:not([data-no-hover]):hover {
-  text-shadow: 0 0 12px currentColor;
+@media (hover: hover) and (pointer: fine) {
+  a:not([data-no-hover]):hover {
+    text-shadow: 0 0 12px currentColor;
+  }
 }
 
 /* Inputs: focus state with cyan accent rather than browser default */
@@ -540,12 +593,14 @@ html.lenis, html.lenis body { height: auto; }
   transition: box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: inherit;
 }
-.holographic-card:hover {
-  box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.10),
-    0 0 32px var(--glow-violet, rgba(168, 85, 247, 0.25)),
-    0 0 64px var(--glow-cyan, rgba(34, 211, 238, 0.18));
+@media (hover: hover) and (pointer: fine) {
+  .holographic-card:hover {
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.10),
+      0 0 32px var(--glow-violet, rgba(168, 85, 247, 0.25)),
+      0 0 64px var(--glow-cyan, rgba(34, 211, 238, 0.18));
+  }
 }
 
 /* Pulsing ring used in feature cards */

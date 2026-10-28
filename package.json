@@ -1,10 +1,5 @@
 {
   "private": true,
-  "pnpm": {
-    "overrides": {
-      "three": "0.184.0"
-    }
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.4.0",

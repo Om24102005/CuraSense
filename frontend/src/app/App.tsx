@@ -3,43 +3,48 @@
    ═══════════════════════════════════════════════════════ */
 
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
-import { useTranslation, useAppSettings } from './contexts/AppSettingsContext';
+import { useTranslation, useAppSettings } from './state/AppSettingsContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
-import { SymptomChecker } from './components/SymptomChecker';
-import { ImageAnalysis } from './components/ImageAnalysis';
-import { ReportAnalysis } from './components/ReportAnalysis';
-import { PredictionHistory } from './components/PredictionHistory';
-import { Dashboard } from './components/Dashboard';
-import { ConsultationBooking } from './components/ConsultationBooking';
-import { Settings } from './components/Settings';
-import { WelcomeScreen } from './components/WelcomeScreen';
-import { AdminDashboard } from './components/AdminDashboard';
+import { SymptomChecker } from './features/symptom-checker/SymptomChecker';
+import { ImageAnalysis } from './features/image-analysis/ImageAnalysis';
+import { ReportAnalysis } from './features/report-analysis/ReportAnalysis';
+import { PredictionHistory } from './features/history/PredictionHistory';
+import { Dashboard } from './features/dashboard/Dashboard';
+import { ConsultationBooking } from './features/booking/ConsultationBooking';
+import { Settings } from './features/settings/Settings';
+import { WelcomeScreen } from './features/auth/WelcomeScreen';
+import { AdminDashboard } from './features/admin/AdminDashboard';
 import {
   Activity, Brain, FileText, History, LayoutDashboard,
   Settings as SettingsIcon, ShieldAlert, Menu, X, CalendarPlus,
 } from 'lucide-react';
-import { ThemeToggleButton } from './components/ThemeToggleButton';
-import { UserProfile } from './components/UserProfile';
-import { getPredictions, savePrediction } from './utils/api';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ThemeToggleButton } from './components/shared/ThemeToggleButton';
+import { UserProfile } from './components/shared/UserProfile';
+import { getPredictions, savePrediction } from './services/api';
 
-// ── Effects ──
-import ParticleField from './components/effects/ParticleField';
-import FluidGradient from './components/effects/FluidGradient';
-import CustomCursor from './components/effects/CustomCursor';
-import SmoothScroll from './components/effects/SmoothScroll';
-import CinematicSequence from './components/effects/CinematicSequence';
-import SystemBootSequence from './components/effects/SystemBootSequence';
-import { MagneticCard } from './components/effects/MagneticCard';
-import ThreeBackground from './components/ThreeBackground';
-import InteractionLayer from './components/effects/InteractionLayer';
-import ElementTransitions from './components/effects/ElementTransitions';
+// ── Animations (dedicated module — see ./animations) ──
+import {
+  usePageTransition,
+  useScrollProgressRail,
+  useHeaderDensify,
+  useNavPillIndicator,
+  useMobileDrawerAnimation,
+  playThemeBodyTransition,
+} from './animations';
+
+// ── Background effects ──
+import ParticleField from './components/backgrounds/ParticleField';
+import CustomCursor from './components/backgrounds/CustomCursor';
+import SmoothScroll from './components/backgrounds/SmoothScroll';
+import CinematicSequence from './components/backgrounds/CinematicSequence';
+import SystemBootSequence from './components/backgrounds/SystemBootSequence';
+import { MagneticCard } from './components/backgrounds/MagneticCard';
+import NeuralPulseField from './components/backgrounds/NeuralPulseField';
+import InteractionLayer from './components/backgrounds/InteractionLayer';
+import ElementTransitions from './components/backgrounds/ElementTransitions';
 
 // ── Themes ──
 import { themes, ThemeName } from './themes';
-
-gsap.registerPlugin(ScrollTrigger);
 
 /* ── Context ── */
 export type Theme = ThemeName;
@@ -117,7 +122,7 @@ export default function App() {
   const setTheme = useCallback((t: ThemeName) => {
     setThemeState(t);
     localStorage.setItem('curasense_theme', t);
-    gsap.to('body', { duration: 0.6, ease: 'power2.inOut' });
+    playThemeBodyTransition();
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -167,118 +172,14 @@ export default function App() {
     }
   }, [isAuthenticated, syncFromDB]);
 
-  /* ── PAGE TRANSITION ── */
-  useEffect(() => {
-    if (!isAuthenticated || !cinematicDone) return;
-    const main = document.getElementById('page-content');
-    if (!main) return;
+  // ── Shell animations (dedicated module — see ./animations) ──
+  const transitionsEnabled = isAuthenticated && cinematicDone;
 
-    const tween = gsap.fromTo(
-      main,
-      { opacity: 0, y: 24 },
-      { opacity: 1, y: 0, duration: 0.55, ease: 'expo.out', clearProps: 'transform,opacity' }
-    );
-
-    return () => {
-      tween.kill();
-      gsap.set(main, { clearProps: 'transform,opacity,clipPath,filter' });
-    };
-  }, [activeTab, isAuthenticated, cinematicDone]);
-
-  /* ── SCROLL PROGRESS RAIL ── */
-  useEffect(() => {
-    if (!isAuthenticated || !cinematicDone) return;
-    const rail = scrollRailRef.current;
-    if (!rail) return;
-
-    const onScroll = () => {
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - doc.clientHeight;
-      const ratio = max > 0 ? doc.scrollTop / max : 0;
-      gsap.to(rail, { scaleX: ratio, duration: 0.25, ease: 'power2.out', overwrite: 'auto' });
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [isAuthenticated, cinematicDone]);
-
-  /* ── HEADER DENSIFICATION ── */
-  useEffect(() => {
-    if (!isAuthenticated || !cinematicDone) return;
-    const el = headerRef.current;
-    if (!el) return;
-
-    const trigger = ScrollTrigger.create({
-      start: 40,
-      end: 99999,
-      onUpdate: (self) => {
-        const condensed = self.scroll() > 40;
-        gsap.to(el, {
-          paddingTop: condensed ? 6 : 0,
-          paddingBottom: condensed ? 6 : 0,
-          backdropFilter: condensed ? 'blur(28px) saturate(180%)' : 'blur(24px)',
-          duration: 0.4,
-          ease: 'power3.out',
-        });
-      },
-    });
-
-    return () => trigger.kill();
-  }, [isAuthenticated, cinematicDone]);
-
-  /* ── NAV PILL INDICATOR (FLIP-style) ── */
-  useEffect(() => {
-    if (!isAuthenticated || !cinematicDone) return;
-    const list = navListRef.current;
-    const pill = navPillRef.current;
-    if (!list || !pill) return;
-
-    const active = list.querySelector<HTMLElement>(`[data-nav-id="${activeTab}"]`);
-    if (!active) {
-      gsap.to(pill, { opacity: 0, duration: 0.2 });
-      return;
-    }
-
-    const listBox = list.getBoundingClientRect();
-    const btnBox  = active.getBoundingClientRect();
-
-    gsap.to(pill, {
-      x: btnBox.left - listBox.left,
-      y: btnBox.top  - listBox.top,
-      width: btnBox.width,
-      height: btnBox.height,
-      opacity: 1,
-      duration: 0.55,
-      ease: 'expo.out',
-    });
-  }, [activeTab, isAuthenticated, cinematicDone]);
-
-  /* ── MOBILE DRAWER ── */
-  useEffect(() => {
-    const drawer = mobileDrawerRef.current;
-    if (!drawer) return;
-
-    if (mobileMenuOpen) {
-      gsap.set(drawer, { display: 'flex' });
-      gsap.fromTo(drawer,
-        { opacity: 0, clipPath: 'circle(0% at 95% 5%)' },
-        { opacity: 1, clipPath: 'circle(150% at 95% 5%)', duration: 0.7, ease: 'expo.out' }
-      );
-      gsap.fromTo(drawer.querySelectorAll('[data-drawer-item]'),
-        { y: 28, opacity: 0 },
-        { y: 0, opacity: 1, stagger: 0.06, duration: 0.5, ease: 'expo.out', delay: 0.18 }
-      );
-    } else {
-      gsap.to(drawer, {
-        opacity: 0,
-        clipPath: 'circle(0% at 95% 5%)',
-        duration: 0.45,
-        ease: 'power3.in',
-        onComplete: () => gsap.set(drawer, { display: 'none' }),
-      });
-    }
-  }, [mobileMenuOpen]);
+  usePageTransition(transitionsEnabled, activeTab);
+  useScrollProgressRail(scrollRailRef, transitionsEnabled);
+  useHeaderDensify(headerRef, transitionsEnabled);
+  useNavPillIndicator(navListRef, navPillRef, activeTab, transitionsEnabled);
+  useMobileDrawerAnimation(mobileDrawerRef, mobileMenuOpen);
 
   const addPrediction = async (prediction: Omit<Prediction, 'id' | 'timestamp'>) => {
     const response = await savePrediction(prediction);
@@ -339,13 +240,12 @@ export default function App() {
       <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
         {!bootDone && <SystemBootSequence onComplete={() => setBootDone(true)} />}
         <div style={themeVars}>
-          <ThreeBackground />
+          <NeuralPulseField colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet']]} />
           <ParticleField count={typeof window !== 'undefined' && window.innerWidth < 768 ? 14 : 26} />
-          <FluidGradient colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet'], '#ec4899', '#10b981']} />
           <CustomCursor />
           <InteractionLayer />
           <ElementTransitions />
-          <div className="relative z-10 min-h-screen">
+          <div className="relative z-10 min-h-dvh">
             <WelcomeScreen onAuthenticate={() => setIsAuthenticated(true)} />
           </div>
         </div>
@@ -360,11 +260,11 @@ export default function App() {
 
       <SmoothScroll>
         <div
-          className="min-h-screen relative overflow-hidden transition-colors duration-500 text-[--text-primary]"
+          className="min-h-dvh relative overflow-hidden transition-colors duration-500 text-[--text-primary]"
           style={themeVars}
         >
           <ParticleField count={typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 60} />
-          <FluidGradient colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet'], '#ec4899', '#10b981']} />
+          <NeuralPulseField colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet']]} />
           <CustomCursor />
           <InteractionLayer />
           <ElementTransitions />
@@ -382,7 +282,7 @@ export default function App() {
             <header
               ref={headerRef}
               className="sticky top-0 z-50 backdrop-blur-2xl border-b transition-[padding] duration-300"
-              style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)' }}
+              style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)', top: 'env(safe-area-inset-top)' }}
             >
               <div
                 aria-hidden
@@ -537,6 +437,8 @@ export default function App() {
               style={{
                 background: 'radial-gradient(120% 120% at 95% 5%, color-mix(in srgb, var(--accent-violet) 35%, transparent), color-mix(in srgb, var(--accent-cyan) 18%, transparent) 40%, var(--header-bg) 75%)',
                 backdropFilter: 'blur(32px) saturate(180%)',
+                paddingTop: 'env(safe-area-inset-top)',
+                paddingBottom: 'env(safe-area-inset-bottom)',
               }}
             >
               {navItems.map(({ id, label, icon: Icon }) => (
