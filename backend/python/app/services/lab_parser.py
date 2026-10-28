@@ -81,7 +81,8 @@ def _normalise_lab_response(raw: str) -> dict:
 
 def analyze_lab_report(report_text: str):
     """Lab analysis from raw text (paste-text path)."""
-    raw = chat_service.chat(_LAB_SYSTEM_PROMPT, f"Report:\n{report_text}", max_tokens=900)
+    # See triage.py's comment — same reasoning-model token-budget issue.
+    raw = chat_service.chat(_LAB_SYSTEM_PROMPT, f"Report:\n{report_text}", max_tokens=1500)
     if not raw:
         return {"error": "AI analyst unavailable. Check API keys in backend/.env"}
     return _normalise_lab_response(raw)

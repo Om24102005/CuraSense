@@ -43,7 +43,12 @@ def analyze_symptoms_with_mistral(symptoms_text: str, wearable_context: str | No
         else f"Symptoms: {symptoms_text}"
     )
 
-    raw = chat_service.chat(system, user_msg, max_tokens=600)
+    # deepseek-v4-pro is a reasoning model — it spends tokens on internal
+    # reasoning_content before emitting the actual `content` field. A tight
+    # budget here risks hitting max_tokens mid-reasoning and returning
+    # empty content, which (with no other provider configured) falls
+    # straight through to the offline rule-based fallback below.
+    raw = chat_service.chat(system, user_msg, max_tokens=1200)
     if not raw:
         return _local_triage_fallback(symptoms_text)
 
