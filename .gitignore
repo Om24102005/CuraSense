@@ -43,3 +43,22 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Env variants (keep the examples)
+.env.*
+!.env.example
+
+# Virtual environments (any level)
+venv/
+.venv/
+
+# Keys and certificates
+*.pem
+*.key
+*.p12
+
+# Coverage reports
+coverage/
+
+# Claude Code local state
+.claude/
