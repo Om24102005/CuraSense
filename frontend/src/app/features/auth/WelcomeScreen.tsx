@@ -29,28 +29,20 @@ export function WelcomeScreen({ onAuthenticate }: WelcomeScreenProps) {
     const POLL_MS = 15000;
     const TIMEOUT_MS = 5000;
 
-    const pyBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
     const nodeBase = (import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:5001').replace(/\/$/, '');
 
-    const probe = async (url: string) => {
+    // Node's /health also reports whether the Python AI service is reachable,
+    // so the browser never talks to the AI service directly.
+    const checkAll = async () => {
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+      let healthy = false;
       try {
-        const r = await fetch(url, { method: 'GET', signal: ctl.signal, cache: 'no-store' });
-        return r.ok;
-      } catch {
-        return false;
-      } finally {
-        clearTimeout(timer);
-      }
-    };
-
-    const checkAll = async () => {
-      const [py, node] = await Promise.all([
-        probe(`${pyBase}/health`),
-        probe(`${nodeBase}/health`),
-      ]);
-      if (!cancelled) setServerStatus(py && node ? 'online' : 'offline');
+        const r = await fetch(`${nodeBase}/health`, { signal: ctl.signal, cache: 'no-store' });
+        const j = r.ok ? await r.json() : null;
+        healthy = !!j && j.server === 'ok' && j.python === 'ok';
+      } catch { /* offline */ } finally { clearTimeout(timer); }
+      if (!cancelled) setServerStatus(healthy ? 'online' : 'offline');
     };
 
     checkAll();

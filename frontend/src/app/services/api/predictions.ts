@@ -1,17 +1,30 @@
-import { fetchAPI } from './client';
+import { fetchAPI, postForm } from './client';
 
 // ── Analysis ──────────────────────────────────────────────────────────────────
 
-export async function analyzeSymptoms(symptoms: string[]) {
-  return fetchAPI('/analyze-symptoms', { method: 'POST', body: JSON.stringify({ symptoms }) });
+/* All AI calls go through the Node gateway, which holds the gateway secret
+   and applies per-user rate limits and upload validation. Responses keep the
+   Python gateway's shape ({ status, analysis } / { status, vision_analysis }). */
+
+export async function analyzeSymptoms(symptoms: string | string[]) {
+  return fetchAPI<any>('/analyze-symptoms', { method: 'POST', body: JSON.stringify({ symptoms }) });
 }
 
-export async function analyzeImage(imageType: string, imageData: string) {
-  return fetchAPI('/analyze-image', { method: 'POST', body: JSON.stringify({ imageType, imageData }) });
+export async function analyzeImage(file: File, scanType: string) {
+  const fd = new FormData();
+  fd.append('scan_type', scanType);
+  fd.append('file', file);
+  return postForm<any>('/analyze-image', fd);
 }
 
-export async function analyzeReport(reportText: string) {
-  return fetchAPI('/analyze-report', { method: 'POST', body: JSON.stringify({ reportText }) });
+export async function analyzeReportText(reportText: string) {
+  return fetchAPI<any>('/analyze-report', { method: 'POST', body: JSON.stringify({ reportText }) });
+}
+
+export async function analyzeReportFile(file: File) {
+  const fd = new FormData();
+  fd.append('file', file);
+  return postForm<any>('/analyze-report', fd);
 }
 
 // ── Predictions ───────────────────────────────────────────────────────────────

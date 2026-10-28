@@ -7,11 +7,14 @@ from app.routers import symptoms, imaging, lab_report
 
 app = FastAPI(title="CuraSense AI Gateway")
 
+# Browsers no longer call this service (Node proxies every AI request and holds
+# the gateway secret), so no cross-origin access is granted by default.
+# Set CORS_ORIGINS="http://a.example,http://b.example" only if a trusted tool needs it.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(symptoms.router)

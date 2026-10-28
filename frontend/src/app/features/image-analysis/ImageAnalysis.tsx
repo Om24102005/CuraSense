@@ -1,3 +1,4 @@
+import { analyzeImage } from '../../services/api';
 import { useState, useRef, useEffect } from 'react';
 import { Upload, Image as ImageIcon, X, FileText, AlertTriangle, Plus, Layers as LayersIcon, ChevronDown } from 'lucide-react';
 import type { Prediction } from '../../App';
@@ -305,23 +306,10 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
     if (files.length === 0) return;
     setAnalyzing(true); setResult(null);
     try {
-      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
-      const token = (import.meta as any).env?.VITE_API_TOKEN;
-
-      const requests = files.map((uf: UploadedFile) => {
-        const fd = new FormData();
-        fd.append('patient_id', 'demo-user');
-        fd.append('scan_type', scanType);
-        if (customContext.trim()) fd.append('clinical_context', customContext.trim());
-        fd.append('file', uf.file);
-        return fetch(`${apiBase}/api/v1/diagnostics/imaging`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        }).then(async (r: Response) => {
-          if (!r.ok) throw new Error(`Gateway error on ${uf.file.name}`);
-          return { name: uf.file.name, data: await r.json() };
-        });
+      const requests = files.map(async (uf: UploadedFile) => {
+        const res = await analyzeImage(uf.file, scanType);
+        if (res.error || !res.data) throw new Error(res.error || `Gateway error on ${uf.file.name}`);
+        return { name: uf.file.name, data: res.data };
       });
 
       const settled = await Promise.allSettled(requests);
@@ -379,7 +367,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
       console.error(error);
       setResult({
         diagnosis: 'Processing Error', confidence: 0,
-        details: 'Image Core Offline. Ensure Python backend is running on port 8000 with VITE_API_TOKEN set.',
+        details: 'Image Core Offline. Check that the API server and AI service are running, then try again.',
         scanSections: [], recommendations: [], findings: [],
       });
     } finally {

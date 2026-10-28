@@ -1,3 +1,4 @@
+import { analyzeSymptoms } from '../../services/api';
 import { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, CircleAlert, CircleCheck, X, Plus } from 'lucide-react';
 import type { Prediction } from '../../App';
@@ -298,15 +299,10 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
         ...customSymptoms,
       ].join(", ");
 
-      // LIVE API CALL TO FASTAPI BACKEND
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/diagnostics/symptoms`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_API_TOKEN}` },
-        body: JSON.stringify({ patient_id: "demo-user", symptoms: symptomString })
-      });
-
-      if (!response.ok) throw new Error("API Gateway Offline");
-      const data = await response.json();
+      // Authenticated call to the Node gateway, which proxies to the AI service.
+      const res = await analyzeSymptoms(symptomString);
+      if (res.error || !res.data) throw new Error(res.error || "API Gateway Offline");
+      const data = res.data;
 
       // Backend may return structured fields in data.analysis, or a JSON string
       // in data.result when data.analysis is absent — try both.

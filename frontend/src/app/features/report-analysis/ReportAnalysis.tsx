@@ -1,3 +1,4 @@
+import { analyzeReportText, analyzeReportFile } from '../../services/api';
 import { useState, useRef, useEffect } from 'react';
 import { FileText, CircleCheck, AlertTriangle, Play, Upload, X, Image as ImageIcon } from 'lucide-react';
 import type { Prediction } from '../../App';
@@ -135,37 +136,16 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
     if (mode === 'upload' && !hasFile) return;
     setAnalyzing(true); setResult(null);
 
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-    const token = import.meta.env.VITE_API_TOKEN;
-
     try {
-      let response: Response;
+      let res;
       if (mode === 'upload' && selectedFile) {
-        const fd = new FormData();
-        fd.append('patient_id', 'demo-user');
-        if (customContext.trim()) fd.append('clinical_context', customContext.trim());
-        fd.append('file', selectedFile);
-        response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report-file`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        });
+        res = await analyzeReportFile(selectedFile);
       } else {
         const contextNote = customContext.trim() ? `\n\n[CLINICAL CONTEXT: ${customContext.trim()}]` : '';
-        response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ patient_id: 'demo-user', report_text: reportText + contextNote }),
-        });
+        res = await analyzeReportText(reportText + contextNote);
       }
-
-      if (!response.ok) {
-        let detail = 'API Gateway Offline';
-        try { const j = await response.json(); detail = j.detail || j.error || detail; } catch { /* ignore */ }
-        throw new Error(detail);
-      }
-      const data = await response.json();
-      console.log('[Reports] backend response:', data);
+      if (res.error || !res.data) throw new Error(res.error || 'API Gateway Offline');
+      const data = res.data;
 
       let a = (data.analysis || {}) as any;
       // Same fallback as SymptomChecker: backend may return JSON string in data.result
