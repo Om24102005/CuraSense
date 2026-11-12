@@ -59,7 +59,7 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
 
   return (
     <div ref={ref} style={{ fontFamily: "var(--font-body)" }}>
-      <div data-lg="plate" className="mb-6 w-fit px-6 py-4 rounded-2xl">
+      <div data-lg="plate" className="mb-6 w-full sm:w-fit px-6 py-4 rounded-2xl">
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: '1.35rem', fontWeight: 800, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.welcome')}</h2>
         <p style={{ color: T.sub, fontSize: '0.85rem' }}>{t('dashboard.overview')}</p>
       </div>

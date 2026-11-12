@@ -66,6 +66,12 @@
   --lg-plate-bright: 1.04;
   --lg-inset: rgba(20, 50, 110, 0.06);
 }
+/* No blur left (data-fx 2): the 34% clear tint and the 66% plate would let text behind them show through, so both go dense. */
+:root[data-fx="2"] { --lg-plate: rgba(8, 12, 26, 0.9); }
+:root[data-fx="2"][data-theme="light"] { --lg-plate: rgba(255, 255, 255, 0.92); }
+:root[data-fx="2"] [data-lg="clear"][data-lg] { background: var(--bg-card, var(--lg-plate)) !important; }
+:root[data-fx="2"] [data-narrator] { background: rgba(10, 16, 32, 0.92) !important; }   /* the Home caption: inline 55% tint */
+:root[data-fx="2"] [data-drawer] { background-color: var(--bg-base, #05070f) !important; }   /* the signed-in menu: the gradient stays on top of a solid base */
 [data-lg="plate"][data-lg],
 :root.lg-refract [data-lg="plate"][data-lg] {
   background: linear-gradient(145deg, var(--lg-plate-hi), transparent 55%), var(--lg-plate) !important;

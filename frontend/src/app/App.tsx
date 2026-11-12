@@ -331,7 +331,7 @@ export default function App() {
             {/* ── Header ── */}
             <header
               ref={headerRef}
-              className="sticky top-0 z-50 backdrop-blur-2xl border-b transition-[padding] duration-300"
+              className={`sticky top-0 ${mobileMenuOpen ? 'z-[56]' : 'z-50'} backdrop-blur-2xl border-b transition-[padding] duration-300`}   /* above the drawer (z-55) while it is open, so its close button stays tappable; z-50 otherwise, level with dialogs and popovers */
               style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)' }}
             >
               <div
@@ -342,7 +342,8 @@ export default function App() {
 
               {/* the header's own background runs up under the notch / status bar; its content starts below it */}
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between pb-4" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
-                <MagneticCard intensity={6} perspective={600} onClick={() => navigateTab('dashboard')}>
+                {/* index.css paints every class containing "card" (this one is "magnetic-card") as a card, and the wrapper clips the logo glow: both off here */}
+                <MagneticCard className="overflow-visible! bg-transparent! backdrop-blur-none!" intensity={6} perspective={600} onClick={() => navigateTab('dashboard')}>
                   <div
                     role="button"
                     aria-label="Go to Dashboard"
@@ -484,11 +485,12 @@ export default function App() {
             {/* ── MOBILE DRAWER ── */}
             <div
               ref={mobileDrawerRef}
+              data-drawer
               className="fixed inset-0 z-[55] flex-col items-center justify-center gap-2 px-6 hidden"
               style={{
                 background: 'radial-gradient(120% 120% at 95% 5%, color-mix(in srgb, var(--accent-violet) 35%, transparent), color-mix(in srgb, var(--accent-cyan) 18%, transparent) 40%, var(--header-bg) 75%)',
                 backdropFilter: 'blur(32px) saturate(180%)',
-                paddingTop: 'env(safe-area-inset-top)',
+                paddingTop: 'calc(5.5rem + env(safe-area-inset-top))',   /* the header (5.5rem tall) now stays visible above the drawer */
                 paddingBottom: 'env(safe-area-inset-bottom)',
               }}
             >
@@ -531,7 +533,7 @@ export default function App() {
 
               {activeTab === 'analyze' && (
                 <div>
-                  <div className="mb-8 w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
+                  <div className="mb-8 w-full sm:w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
                     <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.analyze.title')}
                     </h2>
@@ -561,7 +563,7 @@ export default function App() {
 
               {activeTab === 'history' && (
                 <div>
-                  <div className="mb-8 w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
+                  <div className="mb-8 w-full sm:w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
                     <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.history.title')}
                     </h2>
@@ -583,7 +585,7 @@ export default function App() {
 
               {activeTab === 'settings' && (
                 <div>
-                  <div className="mb-8 w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
+                  <div className="mb-8 w-full sm:w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
                     <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.settings.title')}
                     </h2>

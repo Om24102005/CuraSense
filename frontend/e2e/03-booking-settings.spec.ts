@@ -21,7 +21,7 @@ test('consultation booking: doctor → mode → slot → confirm', async () => {
   await page.getByRole('button', { name: 'CONTINUE' }).click();
   // First date tile, then first free slot.
   await page.locator('#page-content [data-lenis-prevent] > div').first().click();
-  await page.getByText('09:00 AM', { exact: true }).click();
+  await page.locator('button:enabled', { hasText: /^\d\d:\d\d [AP]M$/ }).first().click();   // the app books some slots per date, so 09:00 AM is disabled on one day in five
   await page.getByRole('button', { name: 'CONTINUE' }).click();
   await page.getByRole('button', { name: 'CONFIRM BOOKING' }).click();
   await expect(page.getByText('Booking Confirmed!')).toBeVisible({ timeout: 15_000 });

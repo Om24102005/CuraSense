@@ -28,8 +28,9 @@ export default function CellNarrator() {
   return (
     <div
       aria-hidden
+      data-narrator
       style={{
-        position: 'fixed', left: '50%', bottom: 20, zIndex: 40, width: 'min(680px, calc(100vw - 32px))',
+        position: 'fixed', left: '50%', bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))', zIndex: 40, width: 'min(680px, calc(100vw - 32px))',
         transform: `translateX(-50%) translateY(${show ? 0 : 16}px)`, opacity: show ? 1 : 0,
         transition: 'opacity 0.5s ease, transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1)',
         pointerEvents: 'none', padding: '12px 18px', borderRadius: 18,

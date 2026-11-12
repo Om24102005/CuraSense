@@ -57,11 +57,14 @@
 @keyframes rv-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
 
 /* ── navigation ──────────────────────────────────────────────────── */
-.sn { position: fixed; z-index: 50; inset: 0 0 auto 0; height: var(--sn-h); box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); border-bottom: 1px solid transparent; transition: background 0.35s ease, border-color 0.35s ease, -webkit-backdrop-filter 0.35s ease, backdrop-filter 0.35s ease; }
+/* z-index 56 keeps the header above .sn-drawer (55): the burger that closes the drawer lives in this header and must stay tappable */
+.sn { position: fixed; z-index: 56; inset: 0 0 auto 0; height: var(--sn-h); box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); border-bottom: 1px solid transparent; transition: background 0.35s ease, border-color 0.35s ease, -webkit-backdrop-filter 0.35s ease, backdrop-filter 0.35s ease; }
 .sn[data-scrolled="true"] {
   background: color-mix(in srgb, var(--bg-base) 66%, transparent); border-bottom-color: var(--pg-line);
   -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
 }
+/* data-fx 2 removes every blur: a 66% bar would then let page text show through, so it goes dense */
+:root[data-fx="2"] .sn[data-scrolled="true"] { background: color-mix(in srgb, var(--bg-base) 97%, transparent); }
 .sn-in { height: 100%; max-width: calc(var(--pg-max) + 2 * var(--pg-pad)); margin: 0 auto; padding: 0 var(--pg-pad); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem; }
 .sn-left { display: flex; align-items: center; gap: 0.95rem; min-width: 0; justify-self: start; }
 .sn-right { display: flex; align-items: center; gap: 0.6rem; justify-self: end; }

@@ -39,6 +39,21 @@ test('signed in on a phone: every page fits, the menu reaches them all, and Sign
   expect(errorsOf(page).filter(noise)).toEqual([]);
 });
 
+test('the open menu closes with its own button, on the public site and signed in', async ({ page, request }) => {
+  await page.addInitScript(() => sessionStorage.setItem('cs_booted', '1'));   // no first-visit intro in the way
+  await page.goto('/');
+  await openMenu(page);
+  await page.getByRole('button', { name: 'Close menu' }).click();   // the click lands on the drawer if the drawer covers the header
+  await expect(page.locator('#site-drawer')).toBeHidden();
+
+  await signedInAs(page, await apiSession(request, 'close'));
+  await page.goto('/');
+  await expect(page.locator('#page-content')).toBeVisible({ timeout: 20_000 });
+  await openMenu(page);
+  await page.getByRole('button', { name: 'Close menu' }).click();
+  await expect(page.locator('[data-drawer-item]').first()).toBeHidden();
+});
+
 test('the three Analyze tabs show their names on a phone, not only an icon', async ({ page, request }) => {
   await signedInAs(page, await apiSession(request, 'tabs'));
   await page.goto('/');
