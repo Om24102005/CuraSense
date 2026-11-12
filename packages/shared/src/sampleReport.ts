@@ -1,0 +1,2 @@
+// The demo lab report behind the "Load Sample Report" link. Shared by the website and the phone app.
+export const SAMPLE_REPORT = `LABORATORY REPORT\n\nPatient: John Doe\nDate: December 20, 2025\n\nLIPID PANEL:\n- Total Cholesterol: 245 mg/dL (H)\n- LDL Cholesterol: 165 mg/dL (H)\n- HDL Cholesterol: 35 mg/dL (L)\n- Triglycerides: 225 mg/dL (H)\n\nGLUCOSE METABOLISM:\n- Fasting Glucose: 165 mg/dL (H)\n- HbA1c: 8.2% (H)`;

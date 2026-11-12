@@ -22,6 +22,7 @@ export default function TabsLayout() {
         headerTitleStyle: { fontWeight: '700' },
         sceneStyle: { backgroundColor: t.bg },
         tabBarStyle: { backgroundColor: t.card, borderTopColor: t.border },
+        tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
         tabBarActiveTintColor: t.accent,
         tabBarInactiveTintColor: t.textMuted,
       }}
@@ -30,7 +31,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           key={name}
           name={name}
-          options={{ title, tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? active : icon} size={size} color={color as string} /> }}
+          options={{ title, headerShown: name !== 'analyze', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? active : icon} size={size} color={color as string} /> }}
         />
       ))}
     </Tabs>

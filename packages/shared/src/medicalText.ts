@@ -32,7 +32,7 @@ export function parseSections(text: string): Section[] {
 
   for (const raw of text.split('\n')) {
     const hm  = raw.match(/^#{1,4}\s+(.+)/);
-    const bm  = !hm && raw.match(/^\*\*([^*]{3,55})\*\*\s*[:-]?\s*$/);
+    const bm  = hm ? null : raw.match(/^\*\*([^*]{3,55})\*\*\s*[:-]?\s*$/);
     const title = hm?.[1]?.trim() || bm?.[1]?.trim();
 
     if (title) {

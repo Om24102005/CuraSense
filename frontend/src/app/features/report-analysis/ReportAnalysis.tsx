@@ -7,6 +7,7 @@ import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
 import { WrongPageNotice, type Redirect } from '../../components/shared/WrongPageNotice';
+import { SAMPLE_REPORT } from '@curasense/shared/sampleReport';
 
 interface ReportAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
@@ -277,7 +278,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
   };
 
   const loadSampleReport = () => {
-    setReportText(`LABORATORY REPORT\n\nPatient: John Doe\nDate: December 20, 2025\n\nLIPID PANEL:\n- Total Cholesterol: 245 mg/dL (H)\n- LDL Cholesterol: 165 mg/dL (H)\n- HDL Cholesterol: 35 mg/dL (L)\n- Triglycerides: 225 mg/dL (H)\n\nGLUCOSE METABOLISM:\n- Fasting Glucose: 165 mg/dL (H)\n- HbA1c: 8.2% (H)`);
+    setReportText(SAMPLE_REPORT);
   };
 
   if (analyzing) return <LoadingScreen message="REPORT UNDER REVIEW..." variant="reports" subject={{ lines: mode === 'paste' ? reportText.split('\n') : [] }} />;

@@ -27,6 +27,14 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "CuraSense reads the photos you choose so they can be analyzed.",
+          "cameraPermission": "CuraSense uses the camera so you can photograph a scan or a lab report.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/icon.png",

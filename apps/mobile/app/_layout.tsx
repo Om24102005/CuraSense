@@ -15,6 +15,9 @@ function Routes() {
   useEffect(() => {
     if (status !== 'loading') SplashScreen.hideAsync().catch(() => {});
   }, [status]);
+  // No navigator until the saved session is known: a link that opens the app on a signed-in screen would otherwise be resolved
+  // against empty guards and lost. The native splash screen covers this short wait.
+  if (status === 'loading') return null;
   return (
     <>
       <StatusBar style={t.name === 'dark' ? 'light' : 'dark'} />
