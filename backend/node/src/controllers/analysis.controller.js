@@ -3,7 +3,12 @@ import { requestSymptomTriage, requestImaging, requestLabReport, requestLabRepor
 
 const MAX_SYMPTOM_CHARS = 2000;
 const MAX_REPORT_CHARS = 60000;
-const SCAN_TYPES = new Set(['scan', 'xray', 'ct', 'mri', 'ultrasound', 'mammogram', 'pet', 'dermatology', 'other']);
+// Modalities the Scans page can ask for. Python refuses files that are not this kind of scan.
+const SCAN_TYPES = new Set(['scan', 'xray', 'ct', 'mri', 'ultrasound', 'nuclear', 'mammogram', 'skin_lesion', 'ecg', 'endoscopy', 'retinal', 'dexa', 'fluoroscopy']);
+// Body regions a study covers (see routing.REGIONS in the Python service). Python compares them with what the file shows.
+const REGIONS = new Set(['head', 'neck', 'chest', 'heart', 'breast', 'abdomen', 'pelvis', 'spine', 'upper_limb', 'lower_limb', 'whole_body', 'eye', 'skin']);
+const clip = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const regionList = (v) => (typeof v === 'string' ? [...new Set(v.split(',').map((r) => r.trim()).filter((r) => REGIONS.has(r)))].join(',') : '');
 
 /* Relay a Python response. Health data is never logged: only the status code. */
 async function relay(res, aiRes, label) {
@@ -62,11 +67,14 @@ export async function analyzeSymptoms(req, res) {
   }
 }
 
-/** POST /analyze-image  multipart: file, scan_type. Replaces the former fake stub. */
+/** POST /analyze-image  multipart: file, scan_type, study, regions, context. */
 export async function analyzeImage(req, res) {
   try {
     const scanType = SCAN_TYPES.has(req.body?.scan_type) ? req.body.scan_type : 'scan';
-    const aiRes = await requestImaging({ patientId: req.user._id.toString(), scanType, file: req.file });
+    const aiRes = await requestImaging({
+      patientId: req.user._id.toString(), scanType, file: req.file,
+      study: clip(req.body?.study, 200), context: clip(req.body?.context, 1000), regions: regionList(req.body?.regions),
+    });
     return await relay(res, aiRes, '/analyze-image');
   } catch (err) {
     return unavailable(res, '/analyze-image', err);
@@ -77,11 +85,12 @@ export async function analyzeImage(req, res) {
 export async function analyzeReport(req, res) {
   try {
     const patientId = req.user._id.toString();
-    if (req.file) return await relay(res, await requestLabReportFile({ patientId, file: req.file }), '/analyze-report');
+    const context = clip(req.body?.context, 1000);
+    if (req.file) return await relay(res, await requestLabReportFile({ patientId, file: req.file, context }), '/analyze-report');
     const reportText = req.body?.reportText ?? req.body?.report_text;
     if (typeof reportText !== 'string' || !reportText.trim()) return res.status(400).json({ error: 'Provide report text or a file.' });
     if (reportText.length > MAX_REPORT_CHARS) return res.status(400).json({ error: `Report too long (max ${MAX_REPORT_CHARS} characters).` });
-    return await relay(res, await requestLabReport({ patientId, reportText }), '/analyze-report');
+    return await relay(res, await requestLabReport({ patientId, reportText, context }), '/analyze-report');
   } catch (err) {
     return unavailable(res, '/analyze-report', err);
   }

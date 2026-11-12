@@ -28,6 +28,8 @@ GROQ_API_KEY    = _RAW_GROQ     if _is_real_key(_RAW_GROQ)     else ""
 # ── DeepSeek (primary — text only) ───────────────────────────────────────
 DEEPSEEK_URL        = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_TEXT_MODEL = os.getenv("DEEPSEEK_TEXT_MODEL", "deepseek-v4-pro")
+# Fast model that also accepts images: vision calls use it, text calls fall back to it.
+DEEPSEEK_FAST_MODEL = os.getenv("DEEPSEEK_FAST_MODEL", "deepseek-flash")
 
 # ── HuggingFace Mistral (secondary) ──────────────────────────────────────
 HF_BASE_URL    = "https://api-inference.huggingface.co/models"

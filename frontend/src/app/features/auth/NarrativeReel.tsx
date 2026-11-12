@@ -38,12 +38,25 @@ interface NarrativeReelProps {
 const S = "var(--font-display)";
 const I = "var(--font-body)";
 
+/* Copy sits on glass plates (data-lg="plate"). Neon accents fail contrast on the light plate, so use their deep twins there. */
+const DEEP: Record<string, string> = { '#22d3ee': '#0e7490', '#a855f7': '#7e22ce', '#ec4899': '#be185d', '#ef4444': '#b91c1c' };
+const ink = (c: string, isDark: boolean) => (isDark ? c : DEEP[c] ?? c);
+const bodyInk = (isDark: boolean) => (isDark ? 'rgba(255,255,255,0.84)' : 'rgba(10,10,26,0.82)');
+
 /* ─────────────────────────────────────────────────────────────────────
    BACKDROP COMPONENTS — one per scene, CSS/SVG only.
    Each receives `active: boolean` and fades opacity accordingly.
    ───────────────────────────────────────────────────────────────────── */
 
 function Backdrop({ active, children }: { active: boolean; children: ReactNode }) {
+  // The backdrops are fixed to the viewport, so a scene that merely sat at opacity 0 kept its CSS and SVG animations restyling
+  // the page for as long as it was open. Only the active scene (plus the fade-out) is mounted.
+  const [live, setLive] = useState(active);
+  useEffect(() => {
+    if (active) { setLive(true); return; }
+    const t = window.setTimeout(() => setLive(false), 1000);   // after the 0.9s fade
+    return () => window.clearTimeout(t);
+  }, [active]);
   return (
     <div
       aria-hidden
@@ -55,7 +68,7 @@ function Backdrop({ active, children }: { active: boolean; children: ReactNode }
         pointerEvents: 'none',
       }}
     >
-      {children}
+      {(active || live) && children}
     </div>
   );
 }
@@ -326,7 +339,7 @@ function BgFinale({ active }: { active: boolean }) {
    BACKDROP MANAGER — fixed full-viewport, picks active scene
    ───────────────────────────────────────────────────────────────────── */
 
-function BackdropManager({ active }: { active: SceneKey }) {
+function BackdropManager({ active, show }: { active: SceneKey; show: boolean }) {
   return (
     <div
       aria-hidden
@@ -336,14 +349,16 @@ function BackdropManager({ active }: { active: SceneKey }) {
         zIndex: 0,
         pointerEvents: 'none',
         overflow: 'hidden',
+        opacity: show ? 1 : 0,
+        transition: 'opacity 0.9s cubic-bezier(0.65, 0, 0.35, 1)',
       }}
     >
-      <BgProblem active={active === 'problem'} />
-      <BgApproach active={active === 'approach'} />
-      <BgSymptoms active={active === 'symptoms'} />
-      <BgImaging active={active === 'imaging'} />
-      <BgLabs active={active === 'labs'} />
-      <BgFinale active={active === 'finale'} />
+      <BgProblem active={show && active === 'problem'} />
+      <BgApproach active={show && active === 'approach'} />
+      <BgSymptoms active={show && active === 'symptoms'} />
+      <BgImaging active={show && active === 'imaging'} />
+      <BgLabs active={show && active === 'labs'} />
+      <BgFinale active={show && active === 'finale'} />
     </div>
   );
 }
@@ -409,10 +424,8 @@ function Scene({ id, scene, onActivate, children }: SceneProps) {
 function SceneProblem({ isDark }: { isDark: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleClr = isDark ? '#ffffff' : '#0a0a1a';
-  const textClr = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(10,10,26,0.65)';
-  const eyeClr = '#ef4444';
-  const cardBg = isDark ? 'rgba(15, 8, 8, 0.55)' : 'rgba(255,255,255,0.85)';
-  const cardBdr = isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.25)';
+  const textClr = bodyInk(isDark);
+  const eyeClr = ink('#ef4444', isDark);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -460,11 +473,9 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
   return (
     <div ref={ref} className="text-center">
       <div
+        data-lg="plate"
         className="problem-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
-        style={{
-          fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase',
-          color: eyeClr, border: `1px solid ${eyeClr}55`, background: `${eyeClr}10`,
-        }}
+        style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: eyeClr }}
       >
         <span className="w-1.5 h-1.5 rounded-full" style={{ background: eyeClr, animation: 'errorPulse 2s ease-in-out infinite' }} />
         The problem
@@ -479,7 +490,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
         </h2>
       </div>
 
-      <p className="mt-8 mb-16 mx-auto max-w-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
+      <p data-lg="plate" className="mt-8 mb-16 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
         Clinicians work with incomplete signal. Reports sit in queues, scans get under-read,
         labs go uncorrelated. Patients wait — and the picture stays partial.
       </p>
@@ -490,15 +501,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
           { num: '1', sep: 'in', secondary: '7', label: 'diagnoses contain errors' },
           { num: '33', unit: '%', label: 'relevant data missed' },
         ].map((s, i) => (
-          <div
-            key={i}
-            className="problem-stat p-8 rounded-2xl backdrop-blur-md"
-            style={{
-              background: cardBg,
-              border: `1px solid ${cardBdr}`,
-              boxShadow: `0 16px 48px rgba(239, 68, 68, 0.10), inset 0 0 24px rgba(239, 68, 68, 0.04)`,
-            }}
-          >
+          <div key={i} data-lg="plate" className="problem-stat p-8 rounded-2xl">
             <div className="flex items-baseline gap-3 justify-center" style={{ fontFamily: S, fontWeight: 900, color: titleClr, lineHeight: 1 }}>
               <span className="problem-counter" data-to={s.num} style={{ fontSize: 'clamp(3rem, 7vw, 5rem)', background: `linear-gradient(135deg, ${eyeClr}, #f59e0b)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                 0
@@ -526,14 +529,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
           { v: '×4',     k: 'mortality on delayed sepsis recognition' },
           { v: 'Top-5',  k: 'WHO-listed source of patient harm' },
         ].map((f, i) => (
-          <div
-            key={i}
-            className="problem-fact text-left p-4 rounded-xl backdrop-blur-sm"
-            style={{
-              background: isDark ? '#120a12' : '#f4f7fd',
-              border: `1px solid ${cardBdr}`,
-            }}
-          >
+          <div key={i} data-lg="plate" className="problem-fact text-left p-4 rounded-xl">
             <div style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: '#fb923c', lineHeight: 1, marginBottom: '0.55rem' }}>{f.v}</div>
             <div style={{ fontFamily: I, fontSize: '0.78rem', color: textClr, lineHeight: 1.5 }}>{f.k}</div>
           </div>
@@ -541,25 +537,19 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
       </div>
 
       {/* ── Pull quote ───────────────────────────────────────────── */}
-      <blockquote
-        className="problem-quote mx-auto mt-14 max-w-3xl text-left p-6 rounded-2xl"
-        style={{
-          background: isDark ? '#140c10' : '#f4f7fd',
-          border: `1px solid ${cardBdr}`,
-          borderLeft: `3px solid ${eyeClr}`,
-        }}
-      >
+      <blockquote data-lg="plate" className="problem-quote mx-auto mt-14 max-w-3xl text-left p-6 pl-8 rounded-2xl">
+        <span aria-hidden className="absolute left-3 top-5 bottom-5 w-[3px] rounded-full" style={{ background: eyeClr }} />
         <p style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.3vw, 1.15rem)', color: titleClr, lineHeight: 1.7, fontStyle: 'italic', marginBottom: '0.75rem' }}>
           "Misdiagnosis remains the single largest source of preventable harm in modern medicine — yet
           most of the signal a clinician needs to avoid it already exists in the patient's record. It
           just isn't being read together."
         </p>
-        <footer style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.25em', textTransform: 'uppercase', color: eyeClr, opacity: 0.85 }}>
+        <footer style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.25em', textTransform: 'uppercase', color: eyeClr }}>
           — Society to Improve Diagnosis in Medicine, 2024
         </footer>
       </blockquote>
 
-      <div className="mt-16 flex flex-col items-center gap-2" style={{ color: textClr, opacity: 0.6 }}>
+      <div data-lg="plate" className="mt-16 mx-auto w-fit flex flex-col items-center gap-2 px-6 py-3 rounded-full" style={{ color: textClr }}>
         <span style={{ fontFamily: S, fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase' }}>Scroll · the approach</span>
         <ChevronDown className="w-5 h-5 animate-bounce" />
       </div>
@@ -574,7 +564,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
 function SceneApproach({ isDark }: { isDark: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleClr = isDark ? '#ffffff' : '#0a0a1a';
-  const textClr = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(10,10,26,0.65)';
+  const textClr = bodyInk(isDark);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -616,6 +606,7 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
     violet: '#a855f7',
     pink: '#ec4899',
   };
+  const cyanInk = ink(accents.cyan, isDark);
   const lenses = [
     { icon: Brain, label: 'SYMPTOMS', sub: 'natural language', clr: accents.cyan },
     { icon: Microscope, label: 'IMAGING', sub: 'computer vision', clr: accents.violet },
@@ -625,11 +616,9 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
   return (
     <div ref={ref} className="text-center">
       <div
+        data-lg="plate"
         className="approach-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
-        style={{
-          fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase',
-          color: accents.cyan, border: `1px solid ${accents.cyan}55`, background: `${accents.cyan}10`,
-        }}
+        style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: cyanInk }}
       >
         <Sparkles className="w-3 h-3" />
         Our approach
@@ -642,7 +631,7 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
         </span>
       </h2>
 
-      <p className="approach-sub mt-8 mb-20 mx-auto max-w-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
+      <p data-lg="plate" className="approach-sub mt-8 mb-20 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
         Symptoms, imaging, and labs each tell a slice of the story. CuraSense
         reads all three and resolves them into one coherent assessment.
       </p>
@@ -674,7 +663,7 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
                   }}
                 />
               </div>
-              <div>
+              <div data-lg="plate" className="px-5 py-3 rounded-2xl">
                 <div style={{ fontFamily: S, fontSize: '0.9rem', fontWeight: 800, letterSpacing: '0.3em', color: titleClr }}>
                   {l.label}
                 </div>
@@ -701,17 +690,10 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
       </div>
 
       {/* ── How it differs panel ──────────────────────────────────── */}
-      <div
-        className="approach-panel mt-20 mx-auto max-w-5xl text-left p-7 md:p-9 rounded-2xl backdrop-blur-md"
-        style={{
-          background: isDark ? '#0a0e1a' : '#f4f7fd',
-          border: `1px solid ${isDark ? 'rgba(34, 211, 238, 0.18)' : 'rgba(0,0,0,0.08)'}`,
-          boxShadow: '0 16px 60px rgba(34, 211, 238, 0.08), 0 0 0 1px rgba(168, 85, 247, 0.06) inset',
-        }}
-      >
+      <div data-lg="plate" className="approach-panel mt-20 mx-auto max-w-5xl text-left p-7 md:p-9 rounded-2xl">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
           <div className="md:max-w-md">
-            <div style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: '#22d3ee', marginBottom: '0.5rem' }}>
+            <div style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: cyanInk, marginBottom: '0.5rem' }}>
               How this differs
             </div>
             <h3 style={{ fontFamily: S, fontSize: 'clamp(1.4rem, 2vw, 1.8rem)', fontWeight: 900, color: titleClr, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
@@ -730,14 +712,7 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
               { t: 'Temporal aware',  d: 'reads patient timeline as context, not a snapshot' },
               { t: 'Reversible',      d: 'edit any input, watch the assessment update live' },
             ].map((b, i) => (
-              <li
-                key={i}
-                className="approach-bullet p-3.5 rounded-xl"
-                style={{
-                  background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
-                }}
-              >
+              <li key={i} data-lg="inset" className="approach-bullet p-3.5 rounded-xl">
                 <div style={{ fontFamily: S, fontSize: '0.78rem', fontWeight: 800, color: titleClr, letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
                   {b.t}
                 </div>
@@ -764,7 +739,7 @@ function SceneSymptoms({ isDark }: { isDark: boolean }) {
       number="01"
       eyebrow="Symptoms · Natural language"
       eyebrowClr="#22d3ee"
-      title={<>Read the patient.<br /><span style={{ color: '#22d3ee' }}>Word by word.</span></>}
+      title={<>Read the patient.<br /><span style={{ color: ink('#22d3ee', isDark) }}>Word by word.</span></>}
       desc={
         <>
           <p>
@@ -868,7 +843,7 @@ function SceneImaging({ isDark }: { isDark: boolean }) {
       number="02"
       eyebrow="Imaging · Vision"
       eyebrowClr="#a855f7"
-      title={<>See what radiologists see.<br /><span style={{ color: '#a855f7' }}>Surface what they might miss.</span></>}
+      title={<>See what radiologists see.<br /><span style={{ color: ink('#a855f7', isDark) }}>Surface what they might miss.</span></>}
       desc={
         <>
           <p>
@@ -979,7 +954,7 @@ function SceneLabs({ isDark }: { isDark: boolean }) {
       number="03"
       eyebrow="Labs · Biomarker patterns"
       eyebrowClr="#ec4899"
-      title={<>Numbers. In context.<br /><span style={{ color: '#ec4899' }}>Across panels.</span></>}
+      title={<>Numbers. In context.<br /><span style={{ color: ink('#ec4899', isDark) }}>Across panels.</span></>}
       desc={
         <>
           <p>
@@ -1086,14 +1061,12 @@ function SceneTemplate({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleClr = isDark ? '#ffffff' : '#0a0a1a';
-  const textClr = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(10,10,26,0.65)';
-  const subBdr  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-  const subBg   = isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)';
+  const textClr = bodyInk(isDark);
+  const accent = ink(eyebrowClr, isDark);
 
   useEffect(() => {
     if (!ref.current) return;
     const ctx = gsap.context(() => {
-      gsap.from('.tpl-eyebrow', { scrollTrigger: { trigger: ref.current, start: 'top 70%', once: true }, opacity: 0, y: 16, duration: 0.7, ease: 'expo.out' });
       gsap.from('.tpl-number', { scrollTrigger: { trigger: ref.current, start: 'top 70%', once: true }, opacity: 0, x: -40, duration: 0.9, ease: 'expo.out', delay: 0.1 });
       gsap.from('.tpl-title', { scrollTrigger: { trigger: ref.current, start: 'top 65%', once: true }, opacity: 0, y: 50, duration: 1, ease: 'expo.out', delay: 0.2 });
       gsap.from('.tpl-desc', { scrollTrigger: { trigger: ref.current, start: 'top 60%', once: true }, opacity: 0, y: 30, duration: 0.9, ease: 'power3.out', delay: 0.35 });
@@ -1107,24 +1080,20 @@ function SceneTemplate({
   return (
     <div ref={ref} className={`grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center ${reverse ? 'lg:grid-flow-col-dense' : ''}`}>
       <div className={reverse ? 'lg:col-start-2' : ''}>
-        <div className="tpl-number mb-3" style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.5em', color: eyebrowClr, opacity: 0.7 }}>
+        <div data-lg="plate" className="tpl-number mb-4 w-fit px-4 py-1.5 rounded-full" style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.5em', color: accent }}>
           {number} ·  {eyebrow}
         </div>
         <h2 className="tpl-title" style={{ fontFamily: S, fontSize: 'clamp(2rem, 4.5vw, 3.6rem)', fontWeight: 900, color: titleClr, lineHeight: 1.1, letterSpacing: '-0.015em', marginBottom: '1.5rem' }}>
           {title}
         </h2>
-        <div className="tpl-desc" style={{ fontFamily: I, fontSize: 'clamp(0.95rem, 1.2vw, 1.1rem)', color: textClr, lineHeight: 1.75, maxWidth: 540 }}>
+        <div data-lg="plate" className="tpl-desc px-6 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(0.95rem, 1.2vw, 1.1rem)', color: textClr, lineHeight: 1.75, maxWidth: 540 }}>
           {desc}
         </div>
 
         {bullets && bullets.length > 0 && (
           <ul className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-xl">
             {bullets.map((b, i) => (
-              <li
-                key={i}
-                className="tpl-bullet p-3 rounded-xl"
-                style={{ background: subBg, border: `1px solid ${subBdr}` }}
-              >
+              <li key={i} data-lg="plate" className="tpl-bullet p-3 rounded-xl">
                 <div style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 800, color: titleClr, letterSpacing: '0.08em', marginBottom: '0.2rem' }}>
                   {b.t}
                 </div>
@@ -1137,13 +1106,13 @@ function SceneTemplate({
         )}
 
         {stats && stats.length > 0 && (
-          <div className="mt-7 flex flex-wrap gap-x-7 gap-y-3">
+          <div data-lg="plate" className="mt-7 flex flex-wrap gap-x-7 gap-y-3 w-fit px-6 py-4 rounded-2xl">
             {stats.map((s, i) => (
               <div key={i} className="tpl-stat">
-                <div style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: eyebrowClr, lineHeight: 1 }}>
+                <div style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: accent, lineHeight: 1 }}>
                   {s.v}
                 </div>
-                <div className="mt-1" style={{ fontFamily: S, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase', color: textClr, opacity: 0.75 }}>
+                <div className="mt-1" style={{ fontFamily: S, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase', color: textClr }}>
                   {s.k}
                 </div>
               </div>
@@ -1165,7 +1134,8 @@ function SceneTemplate({
 function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleClr = isDark ? '#ffffff' : '#0a0a1a';
-  const textClr = isDark ? 'rgba(255,255,255,0.65)' : 'rgba(10,10,26,0.65)';
+  const textClr = bodyInk(isDark);
+  const cyanInk = ink('#22d3ee', isDark);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -1190,11 +1160,9 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
   return (
     <div ref={ref} className="text-center">
       <div
+        data-lg="plate"
         className="fin-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
-        style={{
-          fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase',
-          color: '#22d3ee', border: '1px solid rgba(34, 211, 238, 0.4)', background: 'rgba(34, 211, 238, 0.08)',
-        }}
+        style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: cyanInk }}
       >
         <Sparkles className="w-3 h-3" />
         Synthesis
@@ -1211,7 +1179,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
         </h2>
       </div>
 
-      <p className="fin-desc mt-8 mx-auto max-w-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
+      <p data-lg="plate" className="fin-desc mt-8 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
         Three signals reasoned together — written history, imaging, and labs —
         resolved into a single citation-backed assessment a clinician can audit
         line by line. Built as an educational demo, not a medical device.
@@ -1224,16 +1192,8 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
           { n: '02', t: 'Cross-modal read',  d: 'Each modality conditions the others. Reasoning is joint, not parallel.' },
           { n: '03', t: 'Auditable output',  d: 'Plain-language summary, every claim cited to source, exportable.' },
         ].map((s, i) => (
-          <div
-            key={i}
-            className="fin-step text-left p-5 rounded-2xl"
-            style={{
-              background: isDark ? '#0a0e1a' : '#f4f7fd',
-              border: `1px solid ${isDark ? 'rgba(34, 211, 238, 0.16)' : 'rgba(0,0,0,0.06)'}`,
-              backdropFilter: 'blur(10px)',
-            }}
-          >
-            <div style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.4em', color: '#22d3ee', marginBottom: '0.5rem' }}>{s.n}</div>
+          <div key={i} data-lg="plate" className="fin-step text-left p-5 rounded-2xl">
+            <div style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.4em', color: cyanInk, marginBottom: '0.5rem' }}>{s.n}</div>
             <div style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 800, color: titleClr, lineHeight: 1.2, marginBottom: '0.5rem' }}>{s.t}</div>
             <div style={{ fontFamily: I, fontSize: '0.85rem', color: textClr, lineHeight: 1.6 }}>{s.d}</div>
           </div>
@@ -1248,14 +1208,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
           { t: 'Multilingual', d: '40+ languages of free-text intake' },
           { t: 'Exportable',  d: 'JSON · PDF · FHIR R4 bundle' },
         ].map((p, i) => (
-          <div
-            key={i}
-            className="fin-pillar text-left p-3.5 rounded-xl"
-            style={{
-              background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
-            }}
-          >
+          <div key={i} data-lg="plate" className="fin-pillar text-left p-3.5 rounded-xl">
             <div style={{ fontFamily: S, fontSize: '0.78rem', fontWeight: 800, color: titleClr, letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
               {p.t}
             </div>
@@ -1267,13 +1220,13 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
       </div>
 
       {/* ── Original key stats row ─────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-6 mb-14 max-w-2xl mx-auto">
+      <div data-lg="plate" className="grid grid-cols-3 gap-6 mb-14 max-w-2xl mx-auto px-6 py-5 rounded-2xl">
         {stats.map((s, i) => (
           <div key={i} className="fin-stat text-center">
             <div style={{ fontFamily: S, fontSize: 'clamp(1.2rem, 2vw, 1.6rem)', fontWeight: 800, color: titleClr, letterSpacing: '0.02em' }}>
               {s.val}
             </div>
-            <div className="mt-2" style={{ fontFamily: S, fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.3em', textTransform: 'uppercase', color: textClr, opacity: 0.7 }}>
+            <div className="mt-2" style={{ fontFamily: S, fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.3em', textTransform: 'uppercase', color: textClr }}>
               {s.label}
             </div>
           </div>
@@ -1296,7 +1249,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
         <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
       </button>
 
-      <div className="mt-6 text-center" style={{ fontFamily: I, fontSize: '0.78rem', color: textClr, opacity: 0.6, lineHeight: 1.7 }}>
+      <div data-lg="plate" className="mt-6 mx-auto w-fit px-6 py-3 rounded-2xl text-center" style={{ fontFamily: I, fontSize: '0.78rem', color: textClr, lineHeight: 1.7 }}>
         Not a medical device · educational preview only · all output for research and discussion<br />
         © CuraSense {new Date().getFullYear()} — built with React, Three.js, and a healthy respect for clinicians
       </div>
@@ -1310,6 +1263,16 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
 
 export default function NarrativeReel({ onPrimaryCta, isDark }: NarrativeReelProps) {
   const [active, setActive] = useState<SceneKey>('problem');
+  // the backdrops are fixed to the viewport: keep the Problem scene's red dots off the hero above the reel
+  const root = useRef<HTMLDivElement>(null);
+  const [onScreen, setOnScreen] = useState(false);
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting), { rootMargin: '0px 0px -40% 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   // Refresh ScrollTrigger on mount + after layout settles
   useEffect(() => {
@@ -1319,12 +1282,13 @@ export default function NarrativeReel({ onPrimaryCta, isDark }: NarrativeReelPro
 
   return (
     <div
+      ref={root}
       className="narrative-reel relative"
       style={{
         scrollSnapType: 'y proximity',
       }}
     >
-      <BackdropManager active={active} />
+      <BackdropManager active={active} show={onScreen} />
 
       <Scene id="reel-problem"   scene="problem"   onActivate={setActive}><SceneProblem  isDark={isDark} /></Scene>
       <Scene id="reel-approach"  scene="approach"  onActivate={setActive}><SceneApproach isDark={isDark} /></Scene>

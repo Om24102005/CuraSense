@@ -1,0 +1,25 @@
+/* ═══════════════════════════════════════════════════════
+   TOUCH SCREENS AND THE iPHONE / ANDROID APP
+   ───────────────────────────────────────────────────────
+   The first block is for every touch screen (phone browsers too); the rest only applies inside the app, where
+   src/app/native/index.ts puts `native`, `ios` or `android` on <html>. Notch and home-bar padding lives next to
+   each fixed element (nav, header, drawers, dialogs, loading page), using env(safe-area-inset-*).
+   ═══════════════════════════════════════════════════════ */
+
+/* A tap is just a tap: no grey flash, no 300 ms wait for a double-tap zoom, no text resizing when the phone turns */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (pointer: coarse) {
+  html { -webkit-tap-highlight-color: transparent; }
+  button, a[href], [role="button"], [role="tab"], label, select, summary { touch-action: manipulation; }
+}
+
+/* In the app the interface behaves like an app, not a page: no rubber-band at the ends, no long-press menu on
+   buttons and images, no accidental selection of labels. Text you read (results, paragraphs, inputs) stays selectable. */
+html.native, html.native body { overscroll-behavior: none; }
+html.native { -webkit-touch-callout: none; }
+html.native body { -webkit-user-select: none; user-select: none; }
+html.native :is(p, h1, h2, h3, h4, h5, li, td, th, pre, code, blockquote, input, textarea, [contenteditable], [data-selectable]) { -webkit-user-select: text; user-select: text; }
+
+/* The page content starts below the notch / status bar, so the landing page's cell (and its labels) move down with it and keep
+   their composition. Only in the app: a translate makes the canvas a transformed layer, which a desktop browser does not need. */
+html.native .cs-inset { translate: 0 env(safe-area-inset-top, 0px); }

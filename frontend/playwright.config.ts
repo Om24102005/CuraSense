@@ -23,7 +23,12 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   globalSetup: './e2e/global-setup.ts',
   use: { baseURL: E2E.web, trace: 'retain-on-failure', screenshot: 'only-on-failure', reducedMotion: 'reduce' },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: /10-mobile/ },
+    // The phone checks run twice: in real WebKit (what every iPhone and the iOS app use) and in Chromium (Android).
+    { name: 'iphone', use: { ...devices['iPhone 15'] }, testMatch: /10-mobile/ },
+    { name: 'android', use: { ...devices['Pixel 7'] }, testMatch: /10-mobile/ },
+  ],
   webServer: [
     { command: 'node e2e/fake-ai.mjs', url: `http://localhost:${AI_PORT}/health`, env: backendEnv, reuseExistingServer: false },
     { command: 'node server.js', cwd: '../backend/node', url: `${E2E.api}/health`, env: backendEnv, reuseExistingServer: false },

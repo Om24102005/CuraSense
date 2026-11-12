@@ -4,9 +4,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-  <title>CuraSense | AI HEALTH ANALYSER Diagnostics</title>
+  <title>CuraSense — AI health analysis for symptoms, scans and lab reports</title>
+  <meta name="description" content="CuraSense reads symptoms, medical images and lab reports with AI-assisted analysis and shows the result in plain language, with an urgency level and next steps.">
+  <meta name="theme-color" content="#05070f">
+  <meta name="format-detection" content="telephone=no">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CuraSense">
+  <meta property="og:title" content="CuraSense — AI health analysis for symptoms, scans and lab reports">
+  <meta property="og:description" content="AI-assisted analysis of symptoms, medical images and lab reports, shown in plain language with an urgency level.">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' blob: https: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*;">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' blob: https: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* __API_ORIGIN__;">
   <script>
     // No-flash theme bootstrap: runs before first paint, before React mounts.
     // Keep this in sync with the dark/light `vars` in src/app/themes.ts —
@@ -30,14 +37,12 @@
         };
         var root = document.documentElement;
         root.setAttribute('data-theme', theme);
+        root.style.backgroundColor = vars['--bg-base'];   // no white flash before the stylesheet arrives
+        root.style.colorScheme = theme;                   // native controls, scrollbars and the phone keyboard follow the theme
         for (var k in vars) root.style.setProperty(k, vars[k]);
       } catch (e) { /* localStorage/matchMedia unavailable — default dark CSS stays */ }
     })();
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
-    rel="stylesheet">
 </head>
 
 <body>

@@ -2,6 +2,13 @@
 @import './tailwind.css';
 @import './theme.css';
 @import './typography.css';
+@import './liquid-glass.css';
+@import './cell-scene.css';
+@import './landing-ui.css';
+@import './site.css';
+@import './site-pages.css';
+@import './intro.css';
+@import './native.css';
 
 /* ═══════════════════════════════════════════════════════
    CuraSense — GOD-LEVEL CSS Architecture
@@ -10,7 +17,7 @@
 @layer base {
   html {
     background: #05070f;
-    scroll-behavior: auto; /* Lenis handles this */
+    scroll-behavior: auto;
   }
 
   body {
@@ -291,7 +298,6 @@ input, textarea, select {
   background: var(--bg-surface) !important;
   border: 1px solid var(--border-color) !important;
   color: var(--text-primary) !important;
-  backdrop-filter: blur(20px) !important;
   transition: all 0.3s ease;
   border-radius: 10px !important;
 }
@@ -324,6 +330,8 @@ input:focus, textarea:focus, select:focus {
   color: #ffffff !important;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-violet) 40%, transparent) !important;
 }
+/* the global `span { color }` rule would otherwise win over the pill's white and leave the label dark-on-navy in the light theme */
+[role="tab"][data-state="active"] * { color: inherit !important; }
 
 [type="checkbox"] {
   accent-color: var(--accent-violet);
@@ -583,10 +591,6 @@ select:focus {
   }
 }
 
-/* Lenis state hooks (for the html element) */
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
 
 /* Neon utilities */
 .neon-cyan {
@@ -821,15 +825,13 @@ html.cura-large-text {
 }
 
 /* ═══════════════════════════════════════════════════════
-   VIEW TRANSITIONS — two distinct treatments, gated by a class on
-   <html> so they don't bleed into each other.
+   VIEW TRANSITIONS — theme switch only.
    ───────────────────────────────────────────────────────
    .vt-circle  — theme switch: circular reveal centered on the toggle
                  button's click point (--vt-x/--vt-y). Set/removed by
                  animations/presets/themeTransition.ts.
-   (no class)  — tab switch: the browser's own default cross-fade is
-                 already correct for this and needs no extra CSS —
-                 see animations/hooks/usePageTransition.ts.
+   Page and tab switches do not use a View Transition: it froze the live
+   background for a frame or more on every click.
    ═══════════════════════════════════════════════════════ */
 html.vt-circle::view-transition-old(root),
 html.vt-circle::view-transition-new(root) {
@@ -851,5 +853,3 @@ html.vt-circle::view-transition-new(root) {
   html.vt-circle::view-transition-new(root) { animation: none; clip-path: none; }
 }
 
-/* No glassmorphism: surfaces are solid, edges are hairlines. */
-*, *::before, *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

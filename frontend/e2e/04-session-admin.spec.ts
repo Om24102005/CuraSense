@@ -22,7 +22,7 @@ test('session survives a reload; secure sign out clears it', async ({ page }) =>
 
   await page.getByRole('button', { name: new RegExp(`^${user.name.slice(0, 3)}`) }).first().click();
   await page.getByRole('button', { name: /Secure Sign Out/ }).click();
-  await expect(page.getByRole('button', { name: 'Create an account' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign up' })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('curasense_token'))).toBeNull();
 });
 

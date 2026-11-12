@@ -10,19 +10,24 @@ export async function analyzeSymptoms(symptoms: string | string[]) {
   return fetchAPI<any>('/analyze-symptoms', { method: 'POST', body: JSON.stringify({ symptoms }) });
 }
 
-export async function analyzeImage(file: File, scanType: string) {
+/** scanType is the modality (xray, ct, mri, ...); study is the full name the user picked; regions the body regions it covers. */
+export async function analyzeImage(file: File, scanType: string, study = '', context = '', regions = '') {
   const fd = new FormData();
   fd.append('scan_type', scanType);
+  fd.append('study', study);
+  fd.append('regions', regions);
+  fd.append('context', context);
   fd.append('file', file);
   return postForm<any>('/analyze-image', fd);
 }
 
-export async function analyzeReportText(reportText: string) {
-  return fetchAPI<any>('/analyze-report', { method: 'POST', body: JSON.stringify({ reportText }) });
+export async function analyzeReportText(reportText: string, context = '') {
+  return fetchAPI<any>('/analyze-report', { method: 'POST', body: JSON.stringify({ reportText, context }) });
 }
 
-export async function analyzeReportFile(file: File) {
+export async function analyzeReportFile(file: File, context = '') {
   const fd = new FormData();
+  fd.append('context', context);
   fd.append('file', file);
   return postForm<any>('/analyze-report', fd);
 }

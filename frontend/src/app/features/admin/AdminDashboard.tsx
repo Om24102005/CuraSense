@@ -59,15 +59,16 @@ export function AdminDashboard() {
     const points = new THREE.Points(pGeo, pMat);
     scene.add(points);
 
-    let id: number;
-    const animate = () => {
+    let id: number, last = performance.now();
+    const animate = (now: number) => {
       id = requestAnimationFrame(animate);
-      mesh.rotation.y += 0.005;
-      mesh.rotation.x += 0.002;
-      points.rotation.y -= 0.002;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;   // rad/s, so the spin is the same at any refresh rate
+      mesh.rotation.y += 0.3 * dt;
+      mesh.rotation.x += 0.12 * dt;
+      points.rotation.y -= 0.12 * dt;
       renderer.render(scene, camera);
     };
-    animate();
+    animate(last);
 
     const ctx = gsap.context(() => {
       gsap.fromTo('.admin-panel', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'expo.out' });
@@ -92,7 +93,7 @@ export function AdminDashboard() {
         <div ref={canvasRef} />
       </div>
 
-      <div className="relative z-10 flex items-center gap-4 admin-panel">
+      <div data-lg="plate" className="relative z-10 flex items-center gap-4 admin-panel w-fit px-6 py-4 rounded-2xl">
         <div className="p-4 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/50">
           <ShieldAlert className="w-8 h-8 text-fuchsia-500" />
         </div>

@@ -3,15 +3,11 @@ import { gsap } from '../engine/gsapEngine';
 import { useDeviceTier } from '../deviceTier';
 import { useReducedMotion } from './useReducedMotion';
 import { getDuration, easings } from '../config';
-import { consumeNativeTransitionFlag } from '../presets/pageTransition';
 
 /**
  * Fades/slides #page-content in whenever activeTab changes, while enabled.
- * Skips its own tween when this particular change was already animated by
- * a native View Transition (see navigateWithViewTransition in App.tsx) —
- * otherwise it's the fallback, covering unsupported browsers, reduced
- * motion, and activeTab changes that don't go through that path at all
- * (e.g. the dashboard appearing right after the cinematic intro).
+ * Deliberately not a native View Transition: that freezes the live background while it snapshots the whole screen and
+ * showed up as a dropped frame on every tab switch (measured; the frames were clean once it was gone).
  */
 export function usePageTransition(enabled: boolean, activeTab: string) {
   const tier = useDeviceTier();
@@ -19,7 +15,6 @@ export function usePageTransition(enabled: boolean, activeTab: string) {
 
   useEffect(() => {
     if (!enabled) return;
-    if (consumeNativeTransitionFlag()) return;
 
     const main = document.getElementById('page-content');
     if (!main) return;

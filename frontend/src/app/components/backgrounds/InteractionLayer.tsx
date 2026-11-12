@@ -13,16 +13,6 @@
                        edges briefly pulse on every click — frames
                        the action like a film cut.
 
-     ✦ Page curtain    A horizontal aurora bar wipes left→right
-                       whenever fireCurtain() is called (tab changes,
-                       major navigations). Triggered via the global
-                       `window.__curasenseCurtain()` function so any
-                       component can fire it without prop-drilling.
-
-     ✦ Hover-link      Live updates a CSS var --pointer-x / --pointer-y
-                       at document level so any element can reference
-                       pointer position for radial gradient effects.
-
    Companion CSS (in styles/index.css) handles universal press scale
    and focus-visible glow — those need to apply to every button on
    the page, not just elements that import this layer.
@@ -31,55 +21,15 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
-declare global {
-  interface Window {
-    __curasenseCurtain?: () => void;
-  }
-}
-
 export default function InteractionLayer() {
   const layerRef = useRef<HTMLDivElement | null>(null);
-  const curtainPrimaryRef = useRef<HTMLDivElement | null>(null);
-  const curtainTrailRef = useRef<HTMLDivElement | null>(null);
   const edgesRef = useRef<HTMLDivElement | null>(null);
-
-  /* ── CURTAIN ────────────────────────────────────────────────────────
-     Exposed globally so any component can fire it (e.g. App.tsx when
-     activeTab changes). Two layers — primary aurora bar and a softer
-     trail — sweep left→right with overlap for depth. */
-  useEffect(() => {
-    const primary = curtainPrimaryRef.current;
-    const trail = curtainTrailRef.current;
-    if (!primary || !trail) return;
-
-    const fire = () => {
-      gsap.killTweensOf([primary, trail]);
-      gsap.set(primary, { xPercent: -110, opacity: 1 });
-      gsap.set(trail,   { xPercent: -130, opacity: 0.6 });
-
-      gsap.to(primary, { xPercent: 110, duration: 0.85, ease: 'power3.inOut' });
-      gsap.to(trail,   { xPercent: 110, duration: 1.05, ease: 'power3.inOut', delay: 0.06 });
-      gsap.to([primary, trail], { opacity: 0, duration: 0.3, delay: 0.6 });
-    };
-
-    window.__curasenseCurtain = fire;
-    return () => {
-      delete window.__curasenseCurtain;
-    };
-  }, []);
 
   /* ── CLICK RIPPLE + EDGE FLASH ──────────────────────────────────── */
   useEffect(() => {
     const layer = layerRef.current;
     const edges = edgesRef.current;
     if (!layer || !edges) return;
-
-    const onPointerMove = (e: PointerEvent) => {
-      // Expose pointer position as CSS vars so any element can use
-      // it for spotlight gradients, magnet zones, etc.
-      document.documentElement.style.setProperty('--pointer-x', `${e.clientX}px`);
-      document.documentElement.style.setProperty('--pointer-y', `${e.clientY}px`);
-    };
 
     const onClick = (e: MouseEvent) => {
       // Skip inside form fields so the ripple never covers what the
@@ -92,8 +42,7 @@ export default function InteractionLayer() {
 
       // Primary expanding ring — violet, large
       spawnRing(layer, x, y, {
-        startSize: 0,
-        endSize: 220,
+        size: 220,
         color: 'var(--accent-violet, #a855f7)',
         borderWidth: 2,
         opacity: 0.85,
@@ -103,8 +52,7 @@ export default function InteractionLayer() {
 
       // Secondary tighter ring — cyan, smaller, faster
       spawnRing(layer, x, y, {
-        startSize: 0,
-        endSize: 90,
+        size: 90,
         color: 'var(--accent-cyan, #00e5ff)',
         borderWidth: 1.5,
         opacity: 0.7,
@@ -117,14 +65,13 @@ export default function InteractionLayer() {
       const dot = document.createElement('div');
       Object.assign(dot.style, {
         position: 'fixed',
-        left: `${x}px`,
-        top: `${y}px`,
-        width: '0px',
-        height: '0px',
+        left: `${x - 14}px`,
+        top: `${y - 14}px`,
+        width: '28px',
+        height: '28px',
         borderRadius: '50%',
         background:
           'radial-gradient(circle, rgba(255,255,255,0.95), var(--accent-cyan, #00e5ff) 40%, transparent 70%)',
-        transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
         mixBlendMode: 'screen',
         zIndex: '1',
@@ -132,10 +79,9 @@ export default function InteractionLayer() {
       layer.appendChild(dot);
       gsap.fromTo(
         dot,
-        { width: 0, height: 0, opacity: 1 },
+        { scale: 0, opacity: 1 },
         {
-          width: 28,
-          height: 28,
+          scale: 1,
           opacity: 0,
           duration: 0.45,
           ease: 'power2.out',
@@ -161,11 +107,9 @@ export default function InteractionLayer() {
     };
 
     document.addEventListener('click', onClick);
-    document.addEventListener('pointermove', onPointerMove, { passive: true });
 
     return () => {
       document.removeEventListener('click', onClick);
-      document.removeEventListener('pointermove', onPointerMove);
     };
   }, []);
 
@@ -230,56 +174,19 @@ export default function InteractionLayer() {
           }}
         />
       </div>
-
-      {/* Page-transition curtain — two stacked aurora bars that wipe
-          across the viewport on demand. Z above everything except
-          the click rings (which feel "above" everything regardless). */}
-      <div
-        aria-hidden
-        className="fixed inset-0 pointer-events-none overflow-hidden"
-        style={{ zIndex: 9996 }}
-      >
-        <div
-          ref={curtainTrailRef}
-          style={{
-            position: 'absolute',
-            top: 0, bottom: 0, width: '60vw',
-            left: 0,
-            transform: 'translateX(-130%)',
-            background:
-              'linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--accent-cyan, #00e5ff) 40%, transparent) 30%, color-mix(in srgb, var(--accent-violet, #a855f7) 60%, transparent) 50%, color-mix(in srgb, var(--accent-cyan, #00e5ff) 40%, transparent) 70%, transparent 100%)',
-            filter: 'blur(40px)',
-            opacity: 0,
-            mixBlendMode: 'screen',
-          }}
-        />
-        <div
-          ref={curtainPrimaryRef}
-          style={{
-            position: 'absolute',
-            top: 0, bottom: 0, width: '12vw',
-            left: 0,
-            transform: 'translateX(-110%)',
-            background:
-              'linear-gradient(90deg, transparent 0%, var(--accent-cyan, #00e5ff) 30%, var(--accent-violet, #a855f7) 70%, transparent 100%)',
-            opacity: 0,
-            boxShadow:
-              '0 0 80px 20px color-mix(in srgb, var(--accent-violet, #a855f7) 40%, transparent)',
-          }}
-        />
-      </div>
     </>
   );
 }
 
 /* ── helper: spawn one expanding ring ─────────────────────────────── */
+// The ring is built at its final size and grown with a transform: animating width/height would redo layout on every frame
+// of a click, right when the page may be switching.
 function spawnRing(
   host: HTMLElement,
   x: number,
   y: number,
   opts: {
-    startSize: number;
-    endSize: number;
+    size: number;
     color: string;
     borderWidth: number;
     opacity: number;
@@ -291,14 +198,13 @@ function spawnRing(
   const ring = document.createElement('div');
   Object.assign(ring.style, {
     position: 'fixed',
-    left: `${x}px`,
-    top: `${y}px`,
-    width: `${opts.startSize}px`,
-    height: `${opts.startSize}px`,
+    left: `${x - opts.size / 2}px`,
+    top: `${y - opts.size / 2}px`,
+    width: `${opts.size}px`,
+    height: `${opts.size}px`,
     borderRadius: '50%',
     border: `${opts.borderWidth}px solid ${opts.color}`,
     boxShadow: `0 0 24px ${opts.color}`,
-    transform: 'translate(-50%, -50%)',
     pointerEvents: 'none',
     mixBlendMode: 'screen',
     opacity: '0',
@@ -307,10 +213,9 @@ function spawnRing(
 
   gsap.fromTo(
     ring,
-    { width: opts.startSize, height: opts.startSize, opacity: opts.opacity },
+    { scale: 0.02, opacity: opts.opacity },
     {
-      width: opts.endSize,
-      height: opts.endSize,
+      scale: 1,
       opacity: 0,
       duration: opts.duration,
       ease: opts.ease,

@@ -6,9 +6,11 @@ import { useTheme } from '../../App';
 import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
+import { WrongPageNotice, type Redirect } from '../../components/shared/WrongPageNotice';
 
 interface ImageAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
+  onSwitchTab?: (tab: string) => void;
 }
 
 const SCAN_TYPES = [
@@ -140,6 +142,50 @@ const SCAN_GROUPS = [
   { label: 'Other Imaging', filter: (t: { id: string }) => ['skin', 'dexa', 'fluoroscopy', 'retinal', 'endoscopy', 'angiogram', 'ekg'].includes(t.id) },
 ];
 
+/* The kind of scan each study is. The AI service refuses files that are not this kind, so a
+   CT study only analyses CT images. Prefix rules cover most ids; the rest are listed here. */
+const MODALITY_OF_ID: Record<string, string> = Object.fromEntries(Object.entries({
+  nuclear: ['pet', 'pet-ct', 'bone-scan', 'thyroid-scan', 'spect', 'pet-full', 'psma-pet', 'dotatate', 'axumin', 'mibg', 'thyroid-rai', 'octreotide', 'sentinel', 'bone-spect', 'head-neck-pet', 'lymphoma-pet', 'melanoma-pet', 'lung-pet', 'gi-pet', 'mbi'],
+  ct: ['ldct', 'staging-cap', 'pancreas-ct', 'hepatic-ct', 'urography-ct', 'entero-ct', 'ovarian-ct', 'neck-ct'],
+  mri: ['wb-mri', 'dw-mri', 'dcemri', 'prostate-mri', 'rectal-mri', 'liver-mri', 'pancreas-mri', 'cervical-mri', 'endo-mri', 'bladder-mri', 'myeloma-mri', 'brain-spec', 'spine-mri', 'breast-mri'],
+  ultrasound: ['echo', 'eus', 'ceus', 'thyroid-us', 'lymph-us'],
+  mammogram: ['cem', 'ductogram'],
+  skin_lesion: ['skin'], dexa: ['dexa'], retinal: ['retinal'], ecg: ['ekg'],
+  endoscopy: ['endoscopy', 'capsule'], fluoroscopy: ['fluoroscopy', 'angiogram', 'ercp'],
+}).flatMap(([modality, ids]) => ids.map(id => [id, modality])));
+
+/* The body regions each study covers. The AI service reads which regions a file shows and refuses one that does not fit the
+   selected study (a chest CT under "CT Head / Brain"); a whole-body image does not fit a one-region study either. 'whole_body'
+   here means "any region" (survey studies). A study that is not listed takes any region: the kind of image already says what
+   it is (skin, retina, ECG, endoscopy), and a region adds nothing. */
+const IDS_BY_REGION: Record<string, string[]> = {
+  head: ['xray-dental', 'xray-skull', 'ct-head', 'ct-sinus', 'mri-brain', 'onco-brain-spec', 'onco-head-neck-pet'],
+  neck: ['ct-neck', 'us-thyroid', 'thyroid-scan', 'fluoroscopy', 'onco-neck-ct', 'onco-thyroid-us', 'onco-head-neck-pet'],
+  chest: ['xray-chest', 'ct-chest', 'ct-pulmonary', 'fluoroscopy', 'onco-ldct', 'onco-staging-cap'],
+  heart: ['ct-coronary', 'mri-cardiac', 'echo'],
+  breast: ['mri-breast', 'us-breast', 'mammo', 'mammo-3d', 'onco-breast-mri', 'onco-cem', 'onco-mbi', 'onco-ductogram'],
+  abdomen: ['xray-abdominal', 'ct-abdomen', 'ct-urogram', 'ct-colonoscopy', 'mri-abdomen', 'us-abdominal', 'us-obstetric', 'us-renal', 'fluoroscopy',
+    'onco-staging-cap', 'onco-pancreas-ct', 'onco-hepatic-ct', 'onco-urography-ct', 'onco-entero-ct', 'onco-ovarian-ct', 'onco-liver-mri', 'onco-pancreas-mri', 'onco-ceus', 'onco-ercp'],
+  pelvis: ['xray-abdominal', 'xray-pelvis', 'ct-abdomen', 'ct-urogram', 'ct-colonoscopy', 'mri-hip', 'mri-pelvis', 'us-pelvic', 'us-tv', 'us-obstetric', 'us-scrotal', 'fluoroscopy',
+    'onco-staging-cap', 'onco-urography-ct', 'onco-entero-ct', 'onco-ovarian-ct', 'onco-prostate-mri', 'onco-rectal-mri', 'onco-cervical-mri', 'onco-endo-mri', 'onco-bladder-mri'],
+  spine: ['xray-spine', 'ct-spine', 'mri-spine-c', 'mri-spine-l', 'onco-spine-mri'],
+  upper_limb: ['xray-bone', 'xray-hand', 'xray-shoulder', 'mri-shoulder', 'mri-wrist', 'us-msk'],
+  lower_limb: ['xray-bone', 'xray-pelvis', 'xray-foot', 'mri-knee', 'mri-hip', 'mri-ankle', 'us-msk'],
+  whole_body: ['mri-angio', 'us-doppler', 'pet', 'pet-ct', 'bone-scan', 'spect', 'dexa', 'onco-pet-full', 'onco-psma-pet', 'onco-dotatate', 'onco-axumin', 'onco-mibg',
+    'onco-thyroid-rai', 'onco-octreotide', 'onco-sentinel', 'onco-bone-spect', 'onco-lymphoma-pet', 'onco-melanoma-pet', 'onco-lung-pet', 'onco-gi-pet',
+    'onco-wb-mri', 'onco-dw-mri', 'onco-dcemri', 'onco-myeloma-mri', 'onco-lymph-us'],
+};
+const REGIONS_OF_ID: Record<string, string[]> = {};
+for (const [region, ids] of Object.entries(IDS_BY_REGION)) for (const id of ids) (REGIONS_OF_ID[id] ??= []).push(region);
+const regionsOf = (id: string) => (REGIONS_OF_ID[id] ?? []).join(',');
+
+const studyLabel = (id: string) => { const t = SCAN_TYPES.find(x => x.id === id); return t ? `${t.name} (${t.description})` : ''; };
+
+const modalityOf = (id: string) => {
+  const bare = id.replace(/^onco-/, '');
+  return MODALITY_OF_ID[bare] ?? (id.startsWith('xray') ? 'xray' : id.startsWith('ct-') ? 'ct' : id.startsWith('mri-') ? 'mri' : id.startsWith('us-') ? 'ultrasound' : id.startsWith('mammo') ? 'mammogram' : 'scan');
+};
+
 const URGENCY_MAP: Record<string, { color: string; bg: string; label: string }> = {
   normal: { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: 'Normal' },
   low: { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: 'Low' },
@@ -148,18 +194,24 @@ const URGENCY_MAP: Record<string, { color: string; bg: string; label: string }> 
   high: { color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: 'High' },
   critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.20)', label: 'Critical' },
   emergency: { color: '#ef4444', bg: 'rgba(239,68,68,0.25)', label: 'Emergency' },
+  monitor: { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', label: 'Monitor' },
+  urgent: { color: '#f97316', bg: 'rgba(249,115,22,0.18)', label: 'Urgent' },
 };
+const URGENCY_ORDER = ['normal', 'low', 'monitor', 'medium', 'moderate', 'urgent', 'high', 'critical', 'emergency'];
 
+// A multi-page file has one urgency line per page: show the worst one.
 const extractUrgency = (text: string) => {
-  const m = text.match(/urgency\s*(?:level)?\s*[:：]\s*(normal|low|medium|moderate|high|critical|emergency)/i);
-  return m ? URGENCY_MAP[m[1].toLowerCase()] : null;
+  const levels = [...text.matchAll(/urgency\s*(?:level)?\s*(?:\*\*)?\s*[:：]\s*(?:\*\*)?\s*(normal|low|monitor|medium|moderate|urgent|high|critical|emergency)/gi)].map(m => m[1].toLowerCase());
+  if (!levels.length) return null;
+  return URGENCY_MAP[levels.reduce((worst, l) => (URGENCY_ORDER.indexOf(l) > URGENCY_ORDER.indexOf(worst) ? l : worst))];
 };
 
 const MAX_FILES = 6;
 const MAX_FILE_MB = 25;
+const MAX_ZIP_MB = 60; // a ZIP of a whole study (DICOM series, images, PDFs); the server unpacks and reads it
 
 const ACCEPTED_SCAN_INPUTS =
-  'image/jpeg,image/png,image/webp,image/tiff,image/bmp,application/dicom,.dcm,.dicom,application/pdf,.txt,.md';
+  'image/jpeg,image/png,image/webp,image/tiff,image/bmp,application/dicom,.dcm,.dicom,application/zip,application/x-zip-compressed,.zip,application/pdf,.txt,.md';
 
 const SCAN_KEYWORDS = /\b(x-?ray|ct\s*scan|mri|ultrasound|sonograph|radiolog|imaging|dicom|tomograph|mammogra|pet\s*scan|fluorosc|skin\s*lesion|dermatosc)\b/i;
 const LAB_KEYWORDS = /\b(cbc|lipid\s*panel|hba1c|glucose|cholesterol|hemoglobin|wbc|rbc|platelet|biomarker|metabolic\s*panel|liver\s*function|kidney\s*function|electrolyte|tsh|vitamin\s*d|crp)\b/i;
@@ -175,12 +227,12 @@ interface ScanSection {
   num: number;
   filename: string;
   content: string;
-  isLabReport: boolean;
   detectedKind?: string;
   detectedConfidence?: number;
+  refusal?: { message: string; redirect?: Redirect };
 }
 
-export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
+export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps) {
   const ref = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -249,9 +301,12 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
   const validateScanFile = async (file: File): Promise<{ ok: boolean; reason?: string; kind: UploadedFile['kind'] }> => {
     const name = file.name.toLowerCase();
     const type = file.type.toLowerCase();
-    if (file.size > MAX_FILE_MB * 1024 * 1024) return { ok: false, reason: `Too large (max ${MAX_FILE_MB}MB)`, kind: 'other' };
+    const isZip = name.endsWith('.zip') || type === 'application/zip' || type === 'application/x-zip-compressed';
+    const maxMb = isZip ? MAX_ZIP_MB : MAX_FILE_MB;
+    if (file.size > maxMb * 1024 * 1024) return { ok: false, reason: `Too large (max ${maxMb}MB${isZip ? '' : `; zip several files together, up to ${MAX_ZIP_MB}MB`})`, kind: 'other' };
+    if (isZip) return { ok: true, kind: 'other' };
     if (type.startsWith('image/')) return { ok: true, kind: 'image' };
-    if (name.endsWith('.dcm') || name.endsWith('.dicom') || type === 'application/dicom') return { ok: true, kind: 'image' };
+    if (name.endsWith('.dcm') || name.endsWith('.dicom') || type === 'application/dicom') return { ok: true, kind: 'other' };
     if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
       try {
         const text = await file.text();
@@ -307,7 +362,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
     setAnalyzing(true); setResult(null);
     try {
       const requests = files.map(async (uf: UploadedFile) => {
-        const res = await analyzeImage(uf.file, scanType);
+        const res = await analyzeImage(uf.file, modalityOf(scanType), studyLabel(scanType), customContext.trim(), regionsOf(scanType));
         if (res.error || !res.data) throw new Error(res.error || `Gateway error on ${uf.file.name}`);
         return { name: uf.file.name, data: res.data };
       });
@@ -325,48 +380,45 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
           num: i + 1,
           filename: value.name,
           content: va.analysis || va.error || 'No analysis returned.',
-          isLabReport: va.detected_kind === 'lab_report',
           detectedKind: va.detected_kind,
           detectedConfidence: va.detected_confidence,
+          // The AI service refuses files that are not the selected kind of scan (see WrongPageNotice).
+          refusal: va.error ? { message: va.error, redirect: va.redirect } : undefined,
         };
       });
+      const analysed = scanSections.filter(s => !s.refusal);
 
       const combined = scanSections.map(s => `### ${s.num}. ${s.filename}\n\n${s.content}`).join('\n\n---\n\n');
       const failureNote = failed.length ? `\n\n> ⚠ ${failed.length} file${failed.length > 1 ? 's' : ''} failed to analyze.` : '';
 
-      const labResults = ok
-        .map(o => o.value.data?.vision_analysis)
-        .filter((va: any) => va?.redirected_to === 'lab_report' && Array.isArray(va?.lab?.biomarkers))
-        .flatMap((va: any) => va.lab.biomarkers);
-
-      const allDetected = ok.map(o => o.value.data?.vision_analysis?.detected_kind).filter(Boolean);
-      const labCount = allDetected.filter((k: string) => k === 'lab_report').length;
-      const confidence = Math.floor(Math.random() * (95 - 80 + 1)) + 80;
+      // Confidence is how sure the AI was about what kind of scan this is. It is reported by the model, not made up.
+      const confidence = analysed.length
+        ? Math.round(analysed.reduce((sum, s) => sum + (s.detectedConfidence ?? 0), 0) / analysed.length)
+        : null;
 
       const mappedResult = {
-        diagnosis: labCount === ok.length && ok.length > 0
-          ? `AI Auto-Detected: Lab Report${ok.length > 1 ? `s (${ok.length})` : ''}`
+        diagnosis: analysed.length === 0
+          ? 'Not Analysed'
           : files.length > 1
-            ? `Multi-Scan Radiology Assessment (${ok.length}/${files.length})`
+            ? `Multi-Scan Radiology Assessment (${analysed.length}/${files.length})`
             : 'AI Radiology Assessment',
         confidence,
         details: combined + failureNote,
         scanSections,
-        recommendations: [
-          labCount > 0 ? 'Re-upload lab reports under the Reports tab for full biomarker workflow.' : 'Review findings with a licensed radiologist.',
+        recommendations: analysed.length === 0 ? [] : [
+          'Review findings with a licensed radiologist.',
           'Cross-reference with patient medical history and clinical presentation.',
           files.length > 1 ? 'Compare findings across all submitted scans for temporal trends.' : 'Follow up as indicated by urgency level.',
         ],
         findings: [],
-        biomarkers: labResults,
       };
 
       setResult(mappedResult);
-      onPrediction({ type: 'image', ...mappedResult, scanSections: mappedResult.scanSections as any });
+      if (analysed.length) onPrediction({ type: 'image', ...mappedResult, confidence: confidence ?? 0, scanSections: mappedResult.scanSections as any });
     } catch (error) {
       console.error(error);
       setResult({
-        diagnosis: 'Processing Error', confidence: 0,
+        diagnosis: 'Processing Error', confidence: null,
         details: 'Image Core Offline. Check that the API server and AI service are running, then try again.',
         scanSections: [], recommendations: [], findings: [],
       });
@@ -375,7 +427,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
     }
   };
 
-  if (analyzing) return <LoadingScreen message="SCAN IS IN PROGRESS..." />;
+  if (analyzing) return <LoadingScreen message="SCAN IS IN PROGRESS..." variant="scans" subject={{ images: files.filter((f) => /^image\/(jpeg|png|webp|gif|bmp|avif)$/.test(f.file.type)).map((f) => f.preview) }} />;
 
   const selectedScan = SCAN_TYPES.find(t => t.id === scanType);
 
@@ -395,7 +447,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
         {/* ── LEFT: Upload panel ── */}
         <div className="ia-card" style={{ ...glass, padding: '1.75rem' }}>
           <h3 style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 700, color: T.head, marginBottom: '4px' }}>Upload Medical Scan</h3>
-          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Upload X-rays, CT scans, MRIs, or other medical images</p>
+          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Upload X-rays, CT scans, MRIs or other medical images: JPG, PNG, DICOM, ZIP (a whole study) or PDF</p>
 
           {/* ── Custom themed dropdown ── */}
           <div style={{ marginBottom: '1rem' }}>
@@ -556,7 +608,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                 <>
                   <Upload className="w-10 h-10 mb-3" style={{ color: isDark ? '#a78bfa' : '#6d28d9' }} />
                   <p style={{ fontFamily: S, fontWeight: 700, fontSize: '0.9rem', color: T.head, marginBottom: '4px' }}>Drop or click to add scans</p>
-                  <p style={{ fontSize: '0.72rem', color: T.muted, textAlign: 'center' }}>JPG · PNG · WEBP · TIFF · DICOM · PDF · TXT &nbsp;·&nbsp; up to {MAX_FILES} files, {MAX_FILE_MB}MB each</p>
+                  <p style={{ fontSize: '0.72rem', color: T.muted, textAlign: 'center' }}>JPG · PNG · WEBP · TIFF · DICOM · ZIP · PDF · TXT &nbsp;·&nbsp; up to {MAX_FILES} files, {MAX_FILE_MB}MB each (ZIP {MAX_ZIP_MB}MB)</p>
                 </>
               ) : (
                 <>
@@ -640,25 +692,30 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                     <div style={{ fontSize: '0.62rem', fontFamily: S, letterSpacing: '0.16em', color: T.accentPurple, marginBottom: '4px' }}>ASSESSMENT RESULT</div>
                     <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1rem', lineHeight: 1.3 }}>{result.diagnosis}</h4>
                   </div>
+                  {result.confidence != null && (
                   <span style={{ padding: '4px 14px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, whiteSpace: 'nowrap', flexShrink: 0, background: result.confidence >= 85 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 85 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 85 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}` }}>
-                    {result.confidence}% confidence
+                    {result.confidence}% scan match
                   </span>
+                  )}
                 </div>
+                {result.confidence != null && (
+                  <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '6px', color: T.muted }}>
-                  <span>Model Confidence</span>
+                  <span>Scan-type recognition</span>
                   <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
                 </div>
                 <div style={{ height: '6px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', boxShadow: '0 0 10px rgba(99,102,241,0.5)', transition: 'width 1s ease' }} />
                 </div>
+                  </>
+                )}
               </div>
 
               {/* Per-scan cards */}
               {result.scanSections && result.scanSections.length > 0 && result.scanSections.map((section: ScanSection, i: number) => {
                 const urgency = extractUrgency(section.content);
-                const isLab = section.isLabReport;
-                const cardBorder = isLab
-                  ? 'rgba(245,158,11,0.35)'
+                const cardBorder = section.refusal
+                  ? T.amberBdr
                   : urgency?.color
                     ? `${urgency.color}44`
                     : T.cardBdr;
@@ -675,12 +732,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                         {section.filename}
                       </span>
                       {/* Tags */}
-                      {isLab && (
-                        <span style={{ padding: '2px 9px', borderRadius: '6px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b', fontSize: '0.62rem', fontWeight: 800, fontFamily: S, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                          LAB REPORT
-                        </span>
-                      )}
-                      {section.detectedKind && section.detectedKind !== 'other' && !isLab && (
+                      {section.detectedKind && section.detectedKind !== 'other' && !section.refusal && (
                         <span style={{ padding: '2px 9px', borderRadius: '6px', background: isDark ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.10)', border: `1px solid ${isDark ? 'rgba(139,92,246,0.40)' : 'rgba(99,102,241,0.30)'}`, color: T.accentPurple, fontSize: '0.62rem', fontWeight: 800, fontFamily: S, whiteSpace: 'nowrap' }}>
                           {section.detectedKind.replace(/_/g, ' ').toUpperCase()}
                         </span>
@@ -693,39 +745,13 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                     </div>
                     {/* Analysis content */}
                     <div style={{ padding: '1rem 1.1rem' }}>
-                      <MedicalAIOutput text={section.content} isDark={isDark} textColor={T.text} mutedColor={T.muted} />
+                      {section.refusal
+                        ? <WrongPageNotice message={section.refusal.message} redirect={section.refusal.redirect} onSwitchTab={onSwitchTab} isDark={isDark} T={T} S={S} />
+                        : <MedicalAIOutput text={section.content} isDark={isDark} textColor={T.text} mutedColor={T.muted} />}
                     </div>
                   </div>
                 );
               })}
-
-              {/* Biomarkers (when AI auto-routed lab report) */}
-              {result.biomarkers && result.biomarkers.length > 0 && (
-                <div>
-                  <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}>
-                    <AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} /> Extracted Biomarkers
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {result.biomarkers.map((b: any, i: number) => {
-                      const status = b.status || 'normal';
-                      const color = status === 'critical' ? '#ef4444' : status === 'high' || status === 'low' ? '#f59e0b' : '#10b981';
-                      return (
-                        <div key={i} style={{ padding: '0.75rem 0.9rem', borderRadius: '10px', background: T.findBg, border: `1px solid ${color}22` }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: T.text }}>{b.name}</span>
-                            <span style={{ fontFamily: S, fontWeight: 700, color, fontSize: '0.95rem' }}>
-                              {Number.isInteger(b.value) ? b.value : Number(b.value).toFixed(1)} <span style={{ fontSize: '0.7rem', color: T.muted, fontWeight: 400 }}>{b.unit}</span>
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.65rem', color: T.muted, marginTop: 2 }}>
-                            Normal: {b.normal_min}–{b.normal_max} {b.unit} · <span style={{ color, fontWeight: 600, textTransform: 'uppercase' }}>{status}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Secondary findings */}
               {result.findings && result.findings.length > 0 && (

@@ -1,20 +1,23 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from ..deps import verify_gateway_auth
-from ..services.radiology import classify_medical_image_with_resnet
+from ..services.radiology import analyze_scan
 
 router = APIRouter()
 
 
+# Plain `def`: the AI calls block, so FastAPI runs them in its threadpool instead of the event loop.
 @router.post("/api/v1/diagnostics/imaging")
-async def process_imaging(
+def process_imaging(
     patient_id: str = Form(...),
     scan_type: str = Form("scan"),
+    study: str = Form(""),
+    context: str = Form(""),
+    regions: str = Form(""),
     file: UploadFile = File(...),
     token: str = Depends(verify_gateway_auth),
 ):
-    """Routes images to Pixtral-12B vision model."""
-    image_bytes = await file.read()
-    result = classify_medical_image_with_resnet(image_bytes, scan_type)
+    """Scans page: radiology read of an image, DICOM, ZIP, scanned PDF or report. Refuses other kinds of content."""
+    result = analyze_scan(file.file.read(), scan_type, study, context, regions)
     return {
         "status":          "success",
         "module":          "AI Medical Vision",

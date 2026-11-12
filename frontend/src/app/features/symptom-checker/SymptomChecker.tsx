@@ -6,6 +6,7 @@ import { useTheme } from '../../App';
 import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
+import { WrongPageNotice } from '../../components/shared/WrongPageNotice';
 import SuccessBurst from '../../components/shared/SuccessBurst';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 
@@ -225,9 +226,10 @@ const SYMPTOMS = [
 
 interface SymptomCheckerProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
+  onSwitchTab?: (tab: string) => void;
 }
 
-export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
+export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -314,6 +316,12 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
         } catch { /* data.result is plain text — leave a as-is */ }
       }
 
+      // Refused: the text is not a description of symptoms. `redirect` names the right page, if any.
+      if (a.redirect) {
+        setResult({ refusal: { message: a.error, redirect: a.redirect } });
+        return;
+      }
+
       const urgencyRaw = String(a.urgency || 'medium').trim().toLowerCase();
       const urgency = (['low', 'medium', 'high', 'emergency'] as const).includes(urgencyRaw as any)
         ? (urgencyRaw as 'low' | 'medium' | 'high' | 'emergency')
@@ -374,7 +382,7 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
     emergency: { emoji: '🚨', label: 'EMERGENCY', color: '#ef4444', sub: 'Seek immediate medical attention.' },
   } as const;
 
-  if (analyzing) return <LoadingScreen message="NEURAL NETWORK PROCESSING..." />;
+  if (analyzing) return <LoadingScreen message="NEURAL NETWORK PROCESSING..." variant="symptoms" subject={{ words: [...selectedSymptoms.map((id) => SYMPTOMS.find((s) => s.id === id)?.name ?? ''), ...customSymptoms] }} />;
 
   return (
     <div ref={ref} style={{ fontFamily: I }}>
@@ -495,7 +503,11 @@ export function SymptomChecker({ onPrediction }: SymptomCheckerProps) {
             </div>
           )}
 
-          {result && (
+          {result?.refusal && (
+            <WrongPageNotice message={result.refusal.message} redirect={result.refusal.redirect} onSwitchTab={onSwitchTab} isDark={isDark} T={T} S={S} />
+          )}
+
+          {result && !result.refusal && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ position: 'relative', overflow: 'hidden', padding: '1.25rem', borderRadius: '14px', background: T.resBg, border: `1px solid ${T.resBdr}` }}>
                 <SuccessBurst active={burstActive} />

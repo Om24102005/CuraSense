@@ -4,6 +4,8 @@ import { PYTHON_AI_URL, GATEWAY_SECRET } from '../config/env.js';
    server; browsers never see it. Functions return the raw fetch Response. */
 
 const auth = { Authorization: `Bearer ${GATEWAY_SECRET}` };
+// Every page of a file is checked and read (up to 40, several at a time), so uploads get minutes, not seconds.
+const FILE_TIMEOUT = 240000;
 const url = (p) => `${PYTHON_AI_URL}/api/v1/diagnostics/${p}`;
 
 export function requestSymptomTriage({ patientId, symptoms, wearableContext }) {
@@ -11,7 +13,7 @@ export function requestSymptomTriage({ patientId, symptoms, wearableContext }) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...auth },
     body: JSON.stringify({ patient_id: patientId, symptoms, wearable_context: wearableContext }),
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(60000),
   });
 }
 
@@ -23,21 +25,21 @@ const fileForm = (patientId, file, extra = {}) => {
   return fd;
 };
 
-export function requestImaging({ patientId, scanType, file }) {
-  return fetch(url('imaging'), { method: 'POST', headers: auth, body: fileForm(patientId, file, { scan_type: scanType }), signal: AbortSignal.timeout(90000) });
+export function requestImaging({ patientId, scanType, study, context, regions, file }) {
+  return fetch(url('imaging'), { method: 'POST', headers: auth, body: fileForm(patientId, file, { scan_type: scanType, study, context, regions }), signal: AbortSignal.timeout(FILE_TIMEOUT) });
 }
 
-export function requestLabReport({ patientId, reportText }) {
+export function requestLabReport({ patientId, reportText, context }) {
   return fetch(url('lab-report'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...auth },
-    body: JSON.stringify({ patient_id: patientId, report_text: reportText }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ patient_id: patientId, report_text: reportText, context }),
+    signal: AbortSignal.timeout(90000),
   });
 }
 
-export function requestLabReportFile({ patientId, file }) {
-  return fetch(url('lab-report-file'), { method: 'POST', headers: auth, body: fileForm(patientId, file), signal: AbortSignal.timeout(90000) });
+export function requestLabReportFile({ patientId, file, context }) {
+  return fetch(url('lab-report-file'), { method: 'POST', headers: auth, body: fileForm(patientId, file, { context }), signal: AbortSignal.timeout(FILE_TIMEOUT) });
 }
 
 /** Reachability probe for /health. No secret needed. */

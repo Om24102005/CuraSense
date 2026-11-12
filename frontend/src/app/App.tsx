@@ -3,6 +3,7 @@
    ═══════════════════════════════════════════════════════ */
 
 import { useState, useEffect, createContext, useContext, useCallback, useRef, lazy, Suspense } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation, useAppSettings } from './state/AppSettingsContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { SymptomChecker } from './features/symptom-checker/SymptomChecker';
@@ -12,15 +13,17 @@ import { PredictionHistory } from './features/history/PredictionHistory';
 import { Dashboard } from './features/dashboard/Dashboard';
 import { ConsultationBooking } from './features/booking/ConsultationBooking';
 import { Settings } from './features/settings/Settings';
-import { WelcomeScreen } from './features/auth/WelcomeScreen';
+import { PublicSite } from './features/site/PublicSite';
 import { AdminDashboard } from './features/admin/AdminDashboard';
 import {
   Activity, Brain, FileText, History, LayoutDashboard,
-  Settings as SettingsIcon, ShieldAlert, Menu, X, CalendarPlus,
+  Settings as SettingsIcon, ShieldAlert, Menu, X, CalendarPlus, LogOut,
 } from 'lucide-react';
 import { ThemeToggleButton } from './components/shared/ThemeToggleButton';
 import { UserProfile } from './components/shared/UserProfile';
 import { getPredictions, savePrediction } from './services/api';
+
+import { syncNativeTheme, useBackHandler } from './native';
 
 // ── Animations (dedicated module — see ./animations) ──
 import {
@@ -31,25 +34,30 @@ import {
   useNavPillIndicator,
   useMobileDrawerAnimation,
   swapThemeWithReveal,
-  navigateWithViewTransition,
 } from './animations';
 
 // ── Background effects ──
 import AuroraBackdrop from './components/backgrounds/AuroraBackdrop';
-import SmoothScroll from './components/backgrounds/SmoothScroll';
-// Lazy: a heavy Three.js scene (90k particles, custom shaders) shown once,
-// right after auth succeeds — no reason to pay for it in the first-load
-// bundle. Safe to split here specifically because it's gated by its own
-// boolean (cinematicDone), not part of the tab-switch/Suspense-sensitive
-// page-transition system.
-const CinematicSequence = lazy(() => import('./components/backgrounds/CinematicSequence'));
-import SystemBootSequence from './components/backgrounds/SystemBootSequence';
+// Per-page medical particle scene; code-split so the first load never pays for three.js.
+const PageScene = lazy(() => import('./scenes/PageScene'));
+import type { SceneKey } from './scenes/generators';
+import LiquidFlow from './components/flow/LiquidFlow';
+import IntroSequence from './components/intro/IntroSequence';
+import WelcomeSequence, { type WelcomeKind } from './components/intro/WelcomeSequence';
 import { MagneticCard } from './components/backgrounds/MagneticCard';
 import InteractionLayer from './components/backgrounds/InteractionLayer';
 import ElementTransitions from './components/backgrounds/ElementTransitions';
 
 // ── Themes ──
 import { themes, ThemeName } from './themes';
+
+/* ── Arrival animations ── */
+const firstName = (full?: string) => (full ?? '').trim().split(/\s+/)[0] ?? '';
+const storedFirstName = () => { try { return firstName(JSON.parse(localStorage.getItem('curasense_user') || '{}').name); } catch { return ''; } };
+/** The first-visit intro plays once per browser session, on the home page only, never under reduced motion or for a signed-in user. */
+const introWanted = () =>
+  !localStorage.getItem('curasense_token') && sessionStorage.getItem('cs_booted') !== '1' &&
+  (location.pathname === '/' || location.pathname === '') && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ── Context ── */
 export type Theme = ThemeName;
@@ -109,6 +117,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [analyzeTab, setAnalyzeTab] = useState('symptoms');   // which analysis tool the Analyze page shows
   // The no-flash bootstrap script in index.html already picked dark/light
   // (saved choice, else system preference) and stamped it on <html> before
   // this ever runs — just read it back so there's no post-mount correction.
@@ -116,8 +125,15 @@ export default function App() {
     const attr = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : null;
     return attr === 'light' ? 'light' : 'dark';
   });
-  const [cinematicDone, setCinematicDone] = useState(false);
-  const [bootDone, setBootDone] = useState(false);
+  const [cinematicDone, setCinematicDone] = useState(false);   // the arrival animation has started to open: the shell may animate and mount its scene
+  const [sceneOn, setSceneOn] = useState(false);   // the page's 3D scene and flow layer mount behind the arrival animation, in its calm moment, not as it opens
+  const [introOn, setIntroOn] = useState(introWanted);
+  // After login / sign-up the arrival animation covers the screen first and only then is the page swapped underneath it;
+  // a saved session that reloads gets the short version of the same animation.
+  const [arrival, setArrival] = useState<{ name: string; kind: WelcomeKind } | null>(() => (localStorage.getItem('curasense_token') ? { name: storedFirstName(), kind: 'resume' } : null));
+  const [historyReady, setHistoryReady] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [bootDone, setBootDone] = useState(() => !introWanted());   // gates the cell's own intro, which starts as the iris opens
   const [bookingKey, setBookingKey] = useState(0);
   const [bookingInitialView, setBookingInitialView] = useState<'new' | 'my-bookings'>('new');
 
@@ -132,7 +148,9 @@ export default function App() {
     localStorage.setItem('curasense_theme', t);
     const root = document.documentElement;
     root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
     Object.entries(themes[t].vars).forEach(([k, v]) => root.style.setProperty(k, v));
+    syncNativeTheme(t);
   }, []);
 
   const toggleTheme = useCallback((originX?: number, originY?: number) => {
@@ -142,16 +160,26 @@ export default function App() {
     swapThemeWithReveal(x, y, () => setTheme(next));
   }, [theme, setTheme]);
 
-  // Every tab switch goes through here instead of calling setActiveTab
-  // directly, so native View Transitions (when supported) can wrap it —
-  // see usePageTransition's GSAP-fallback comment for why that hook can't
-  // just check "does the browser support it" on its own.
-  const navigateTab = useCallback((tab: string) => {
-    navigateWithViewTransition(() => setActiveTab(tab));
-  }, []);
+  // usePageTransition fades the new tab in; no View Transition here (see its comment).
+  const navigateTab = useCallback((tab: string) => setActiveTab(tab), []);
+
+  // Android back button: close the open menu first, then go back to the dashboard, and only from there leave the app.
+  useBackHandler(mobileMenuOpen, () => setMobileMenuOpen(false));
+  useBackHandler(isAuthenticated && activeTab !== 'dashboard', () => setActiveTab('dashboard'));
 
   const currentTheme = themes[theme];
   const themeVars = currentTheme.vars as React.CSSProperties;
+
+  // A visitor who picked a tool on the landing page ("Read a scan") lands on it right after signing in.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const intent = sessionStorage.getItem('curasense_intent');
+    if (intent === 'symptoms' || intent === 'image' || intent === 'report') {
+      sessionStorage.removeItem('curasense_intent');
+      setAnalyzeTab(intent);
+      setActiveTab('analyze');
+    }
+  }, [isAuthenticated]);
 
   // ── On authentication: sync settings from DB then load predictions ─────────
   useEffect(() => {
@@ -161,7 +189,7 @@ export default function App() {
 
       // Fetch user settings from MongoDB — overwrites localStorage L1 cache.
       // Non-blocking: predictions load in parallel.
-      syncFromDB();
+      syncFromDB().finally(() => setSettingsReady(true));
 
       getPredictions().then(res => {
         if (res.data?.predictions) {
@@ -183,7 +211,7 @@ export default function App() {
           setPredictions(merged);
           savePredCache(uid, merged);
         }
-      });
+      }).finally(() => setHistoryReady(true));
     }
   }, [isAuthenticated, syncFromDB]);
 
@@ -250,18 +278,29 @@ export default function App() {
   };
 
   /* ── Unauthenticated ── */
+  // One arrival animation, mounted beside whichever tree is showing (keyed, so it survives the swap between them).
+  const arrivalOverlay = arrival && (
+    <WelcomeSequence
+      key="arrival"
+      name={arrival.name} kind={arrival.kind} ready={{ history: historyReady, settings: settingsReady }}
+      onCovered={() => flushSync(() => setIsAuthenticated(true))}   // one synchronous commit, now, while the screen is covered and still
+      onSettle={() => setSceneOn(true)}
+      onReveal={() => { setSceneOn(true); setCinematicDone(true); }}
+      onDone={() => setArrival(null)}
+    />
+  );
+
   if (!isAuthenticated) {
     return (
       <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-        {!bootDone && <SystemBootSequence onComplete={() => setBootDone(true)} />}
         <div style={themeVars}>
           <AuroraBackdrop />
           <InteractionLayer />
           <ElementTransitions />
-          <div className="relative z-10 min-h-dvh">
-            <WelcomeScreen onAuthenticate={() => setIsAuthenticated(true)} />
-          </div>
+          <PublicSite isDark={theme === 'dark'} bootDone={bootDone} onAuthenticate={(user, kind) => setArrival({ name: firstName(user?.name), kind })} />
         </div>
+        {introOn && <IntroSequence key="intro" onReveal={() => { sessionStorage.setItem('cs_booted', '1'); setBootDone(true); }} onDone={() => setIntroOn(false)} />}
+        {arrivalOverlay}
       </ThemeContext.Provider>
     );
   }
@@ -269,18 +308,14 @@ export default function App() {
   /* ── Authenticated ── */
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-      {!cinematicDone && (
-        <Suspense fallback={<div className="fixed inset-0 z-[99999]" style={{ background: 'radial-gradient(ellipse at center, #0a0118 0%, #000005 70%, #000000 100%)' }} />}>
-          <CinematicSequence onComplete={() => setCinematicDone(true)} />
-        </Suspense>
-      )}
-
-      <SmoothScroll>
+      <>
         <div
           className="min-h-dvh relative overflow-hidden transition-colors duration-500 text-[--text-primary]"
           style={themeVars}
         >
           <AuroraBackdrop />
+          {sceneOn && <Suspense fallback={null}><PageScene scene={activeTab as SceneKey} light={theme === 'light'} /></Suspense>}
+          {sceneOn && <LiquidFlow tabKey={activeTab} />}
           <InteractionLayer />
           <ElementTransitions />
 
@@ -297,7 +332,7 @@ export default function App() {
             <header
               ref={headerRef}
               className="sticky top-0 z-50 backdrop-blur-2xl border-b transition-[padding] duration-300"
-              style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)', top: 'env(safe-area-inset-top)' }}
+              style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)' }}
             >
               <div
                 aria-hidden
@@ -305,7 +340,8 @@ export default function App() {
                 style={{ background: 'linear-gradient(90deg, transparent 0%, var(--accent-cyan) 30%, var(--accent-violet) 70%, transparent 100%)' }}
               />
 
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
+              {/* the header's own background runs up under the notch / status bar; its content starts below it */}
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between pb-4" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
                 <MagneticCard intensity={6} perspective={600} onClick={() => navigateTab('dashboard')}>
                   <div
                     role="button"
@@ -472,20 +508,30 @@ export default function App() {
                   <span className="tracking-wide">{label}</span>
                 </button>
               ))}
+              {/* the profile menu is desktop-only, so on a phone this is where you sign out */}
+              <button
+                data-drawer-item
+                onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-2xl text-lg font-medium border mt-2"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--error)', background: 'transparent' }}
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="tracking-wide">Sign out</span>
+              </button>
               <p data-drawer-item className="mt-6 text-[10px] uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>
                 CuraSense — {t('app.tagline')}
               </p>
             </div>
 
             {/* ── Main Content ── */}
-            <main id="page-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main id="page-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
               {activeTab === 'dashboard' && (
                 <Dashboard predictions={predictions} onNavigate={navigateTab} />
               )}
 
               {activeTab === 'analyze' && (
                 <div>
-                  <div className="mb-8" data-reveal>
+                  <div className="mb-8 w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
                     <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.analyze.title')}
                     </h2>
@@ -493,7 +539,7 @@ export default function App() {
                       {t('page.analyze.subtitle')}
                     </p>
                   </div>
-                  <Tabs defaultValue="symptoms" className="space-y-6">
+                  <Tabs value={analyzeTab} onValueChange={setAnalyzeTab} className="space-y-6">
                     <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid rounded-2xl p-1 glass">
                       {[
                         { value: 'symptoms', label: t('page.analyze.symptoms'), icon: Activity },
@@ -502,20 +548,20 @@ export default function App() {
                       ].map(({ value, label, icon: Icon }) => (
                         <TabsTrigger key={value} value={value} className="gap-2 text-[--text-secondary] data-[state=active]:text-white">
                           <Icon className="w-4 h-4" />{' '}
-                          <span className="hidden sm:inline">{label}</span>
+                          <span>{label}</span>
                         </TabsTrigger>
                       ))}
                     </TabsList>
-                    <TabsContent value="symptoms"><SymptomChecker onPrediction={addPrediction} /></TabsContent>
-                    <TabsContent value="image"><ImageAnalysis onPrediction={addPrediction} /></TabsContent>
-                    <TabsContent value="report"><ReportAnalysis onPrediction={addPrediction} /></TabsContent>
+                    <TabsContent value="symptoms"><SymptomChecker onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
+                    <TabsContent value="image"><ImageAnalysis onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
+                    <TabsContent value="report"><ReportAnalysis onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
                   </Tabs>
                 </div>
               )}
 
               {activeTab === 'history' && (
                 <div>
-                  <div className="mb-8" data-reveal>
+                  <div className="mb-8 w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
                     <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.history.title')}
                     </h2>
@@ -537,7 +583,7 @@ export default function App() {
 
               {activeTab === 'settings' && (
                 <div>
-                  <div className="mb-8" data-reveal>
+                  <div className="mb-8 w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
                     <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.settings.title')}
                     </h2>
@@ -555,7 +601,8 @@ export default function App() {
             </main>
           </div>
         </div>
-      </SmoothScroll>
+      </>
+      {arrivalOverlay}
     </ThemeContext.Provider>
   );
 }

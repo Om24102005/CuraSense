@@ -7,7 +7,7 @@ router = APIRouter()
 
 
 @router.post("/api/v1/diagnostics/symptoms")
-async def process_symptoms(payload: SymptomPayload, token: str = Depends(verify_gateway_auth)):
+def process_symptoms(payload: SymptomPayload, token: str = Depends(verify_gateway_auth)):
     """
     DeepSeek V4 Pro structured triage. Returns conditions with
     probabilities, urgency level, and recommendations.

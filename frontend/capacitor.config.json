@@ -1,0 +1,24 @@
+{
+  "appId": "com.curasense.app",
+  "appName": "CuraSense",
+  "webDir": "dist",
+  "backgroundColor": "#05070f",
+  "ios": {
+    "contentInset": "never",
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#05070f",
+      "showSpinner": false
+    },
+    "SystemBars": {
+      "insetsHandling": "native",
+      "style": "DARK"
+    },
+    "Keyboard": {
+      "resize": "native"
+    }
+  }
+}

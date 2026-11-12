@@ -13,11 +13,22 @@
     "lint": "eslint src/**/*.{ts,tsx}",
     "lint:fix": "eslint src/**/*.{ts,tsx} --fix",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "app:sync": "vite build && cap sync",
+    "app:ios": "npm run app:sync && cap open ios",
+    "app:android": "npm run app:sync && cap open android",
+    "app:assets": "capacitor-assets generate --ios --android --iconBackgroundColor '#05070f' --iconBackgroundColorDark '#05070f' --splashBackgroundColor '#05070f' --splashBackgroundColorDark '#05070f'"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/ios": "8.6.0",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/splash-screen": "8.0.2",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
+    "@fontsource-variable/inter": "5.3.0",
     "@formkit/auto-animate": "^0.8.4",
     "@mui/icons-material": "7.3.5",
     "@mui/material": "7.3.5",
@@ -70,7 +81,6 @@
     "gsap": "^3.15.0",
     "input-otp": "1.4.2",
     "jsonwebtoken": "^9.0.3",
-    "lenis": "^1.3.23",
     "lucide-react": "^1.11.0",
     "mongoose": "^8.23.1",
     "motion": "12.23.24",
@@ -94,6 +104,8 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "4.1.12",

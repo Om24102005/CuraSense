@@ -1270,7 +1270,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
     <div style={{ fontFamily:I }}>
       <div style={{ maxWidth:'860px', margin:'0 auto' }}>
       <div style={{ marginBottom:'2rem', display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem' }}>
-        <div>
+        <div data-lg="plate" style={{ padding:'1rem 1.5rem', borderRadius:'1rem' }}>
           <h2 style={{ fontFamily:S, fontWeight:800, fontSize:'1.75rem', color:T.head, marginBottom:'5px', letterSpacing:'-0.01em' }}>Book a Consultation</h2>
           <p style={{ fontSize:'0.85rem', color:T.muted }}>Schedule an appointment with a specialist in a few steps</p>
         </div>

@@ -72,14 +72,15 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookin
     const mesh = new THREE.Mesh(geo, mat);
     scene.add(mesh);
 
-    let animationId: number;
-    const animate = () => {
+    let animationId: number, last = performance.now();
+    const animate = (now: number) => {
       animationId = requestAnimationFrame(animate);
-      mesh.rotation.x += 0.015;
-      mesh.rotation.y += 0.025;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;   // rad/s, so the spin is the same at any refresh rate
+      mesh.rotation.x += 0.9 * dt;
+      mesh.rotation.y += 1.5 * dt;
       renderer.render(scene, camera);
     };
-    animate();
+    animate(last);
 
     gsap.fromTo(menuRef.current, 
       { opacity: 0, y: -20, scale: 0.95 },

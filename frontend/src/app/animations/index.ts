@@ -10,4 +10,4 @@ export { useHeaderDensify } from './hooks/useHeaderDensify';
 export { useNavPillIndicator } from './hooks/useNavPillIndicator';
 export { useMobileDrawerAnimation } from './hooks/useMobileDrawerAnimation';
 export { playThemeBodyTransition, swapThemeWithReveal } from './presets/themeTransition';
-export { navigateWithViewTransition } from './presets/pageTransition';
+export { watchFrames, refreshRate, frameBudgetMs } from './frameRate';
