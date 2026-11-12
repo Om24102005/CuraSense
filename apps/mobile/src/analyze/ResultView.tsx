@@ -17,15 +17,15 @@ const BIOMARKER_STATUS = {
   critical: { color: '#ef4444', label: 'CRITICAL' },
 } as const;
 
-function Chip({ text, color }: { text: string; color: string }) {
+export function Chip({ text, color }: { text: string; color: string }) {
   return (
-    <View style={{ paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, backgroundColor: `${color}22`, borderWidth: 1, borderColor: `${color}66` }}>
+    <View style={{ alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, backgroundColor: `${color}22`, borderWidth: 1, borderColor: `${color}66` }}>
       <AppText variant="caption" style={{ color, fontWeight: '800' }}>{text}</AppText>
     </View>
   );
 }
 
-function UrgencyBanner({ urgency }: { urgency: keyof typeof URGENCY_LEVELS }) {
+export function UrgencyBanner({ urgency }: { urgency: keyof typeof URGENCY_LEVELS }) {
   const u = URGENCY_LEVELS[urgency];
   return (
     <View
@@ -42,11 +42,13 @@ function UrgencyBanner({ urgency }: { urgency: keyof typeof URGENCY_LEVELS }) {
   );
 }
 
-function ConditionRow({ c }: { c: { name: string; probability: number; description?: string } }) {
+/** A possible condition with its probability. `top` marks the best match. */
+export function ConditionRow({ c, top }: { c: { name: string; probability: number; description?: string }; top?: boolean }) {
   const t = useTheme();
   const pct = Math.max(0, Math.min(100, Number(c.probability) || 0));
   return (
     <View style={{ gap: 6, paddingVertical: 8 }}>
+      {top ? <Chip text="TOP MATCH" color={t.accent} /> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
         <AppText variant="headline" style={{ flex: 1 }}>{c.name}</AppText>
         <AppText variant="headline" tone="accent">{pct}%</AppText>
@@ -59,16 +61,21 @@ function ConditionRow({ c }: { c: { name: string; probability: number; descripti
   );
 }
 
-type Biomarker = NonNullable<AnalysisResult['biomarkers']>[number];
+export interface BiomarkerData { name: string; value: number | string; unit?: string; status?: string; normal_min?: number; normal_max?: number }
 
-function BiomarkerCard({ b }: { b: Biomarker }) {
+/** One lab value: the number, a status chip and, when the range is known, a bar with the normal zone and where the value falls. */
+export function BiomarkerCard({ b }: { b: BiomarkerData }) {
   const t = useTheme();
-  const s = BIOMARKER_STATUS[String(b.status).toLowerCase() as keyof typeof BIOMARKER_STATUS] ?? BIOMARKER_STATUS.normal;
+  const status = String(b.status || 'normal').toLowerCase();
+  const s = BIOMARKER_STATUS[status as keyof typeof BIOMARKER_STATUS] ?? BIOMARKER_STATUS.normal;
   const value = Number(b.value), min = Number(b.normal_min), max = Number(b.normal_max);
   const hasRange = [value, min, max].every(Number.isFinite) && max > min;
   // The bar runs from one normal-range width below the normal range to one above it, so the normal zone sits in the middle.
   const span = Math.max(1, max - min), lo = min - span, hi = max + span;
   const pct = (n: number) => Math.max(0, Math.min(100, ((n - lo) / (hi - lo)) * 100));
+  const note = status === 'normal' ? 'Within range'
+    : status === 'critical' ? `Dangerously ${value > max ? 'elevated' : 'low'}`
+    : value > max ? `${(value - max).toFixed(1)} above the maximum` : `${(min - value).toFixed(1)} below the minimum`;
   return (
     <View style={{ gap: 8, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: `${s.color}44`, backgroundColor: t.surface }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -77,7 +84,7 @@ function BiomarkerCard({ b }: { b: Biomarker }) {
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
         <AppText variant="title" style={{ color: s.color }}>{Number.isFinite(value) ? (Number.isInteger(value) ? String(value) : value.toFixed(1)) : String(b.value)}</AppText>
-        <AppText variant="callout" tone="muted">{b.unit}</AppText>
+        {b.unit ? <AppText variant="callout" tone="muted">{b.unit}</AppText> : null}
       </View>
       {hasRange ? (
         <View style={{ height: 8, borderRadius: 4, backgroundColor: t.border }}>
@@ -85,10 +92,33 @@ function BiomarkerCard({ b }: { b: Biomarker }) {
           <View style={{ position: 'absolute', top: -3, left: `${pct(value)}%`, width: 14, height: 14, marginLeft: -7, borderRadius: 7, backgroundColor: s.color, borderWidth: 2, borderColor: t.bg }} />
         </View>
       ) : null}
-      {hasRange ? <AppText variant="caption" tone="muted">Normal range {min} to {max} {b.unit}</AppText> : null}
+      {hasRange ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+          <AppText variant="caption" tone="muted">Normal {min} to {max} {b.unit}</AppText>
+          <AppText variant="caption" style={{ color: status === 'normal' ? t.success : s.color, fontWeight: '700' }}>{note}</AppText>
+        </View>
+      ) : null}
     </View>
   );
 }
+
+export function Recommendations({ items }: { items: string[] }) {
+  const t = useTheme();
+  if (!items.length) return null;
+  return (
+    <Card>
+      <AppText variant="headline">Recommendations</AppText>
+      {items.map((r, i) => (
+        <View key={i} style={{ flexDirection: 'row', gap: 10, paddingVertical: 3 }}>
+          <Ionicons name="checkmark-circle" size={18} color={t.success} style={{ marginTop: 2 }} />
+          <AppText variant="callout" style={{ flex: 1, lineHeight: 22 }}>{r}</AppText>
+        </View>
+      ))}
+    </Card>
+  );
+}
+
+export const DISCLAIMER = 'AI-assisted information, not a medical diagnosis. Talk to a clinician about your results.';
 
 function ScanSectionCard({ s }: { s: ScanSection }) {
   const urgency = s.refusal ? null : extractUrgency(s.content);
@@ -108,7 +138,6 @@ function ScanSectionCard({ s }: { s: ScanSection }) {
 
 /** A finished analysis: urgency, the written answer, conditions, lab values, scan sections and next steps. */
 export function ResultView({ result, onReset }: { result: AnalysisResult; onReset: () => void }) {
-  const t = useTheme();
   const hasSections = !!result.scanSections?.length;
   return (
     <View testID="result" style={{ gap: 16 }}>
@@ -135,19 +164,9 @@ export function ResultView({ result, onReset }: { result: AnalysisResult; onRese
         </View>
       ) : null}
 
-      {result.recommendations.length ? (
-        <Card>
-          <AppText variant="headline">Recommendations</AppText>
-          {result.recommendations.map((r, i) => (
-            <View key={i} style={{ flexDirection: 'row', gap: 10, paddingVertical: 3 }}>
-              <Ionicons name="checkmark-circle" size={18} color={t.success} style={{ marginTop: 2 }} />
-              <AppText variant="callout" style={{ flex: 1, lineHeight: 22 }}>{r}</AppText>
-            </View>
-          ))}
-        </Card>
-      ) : null}
+      <Recommendations items={result.recommendations} />
 
-      <AppText variant="caption" tone="muted">AI-assisted information, not a medical diagnosis. Talk to a clinician about your results.</AppText>
+      <AppText variant="caption" tone="muted">{DISCLAIMER}</AppText>
       <Button title="New analysis" variant="secondary" testID="new-analysis" onPress={onReset} />
     </View>
   );

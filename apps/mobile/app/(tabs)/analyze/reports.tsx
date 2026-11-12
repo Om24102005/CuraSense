@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { analyzeReportFile, analyzeReportText, savePrediction } from '@curasense/shared/api/predictions';
+import { analyzeReportFile, analyzeReportText } from '@curasense/shared/api/predictions';
 import { mapReport, toPrediction, type AnalysisResult, type Refusal } from '@curasense/shared/analysis';
 import { reportFileProblem } from '@curasense/shared/files';
 import { SAMPLE_REPORT } from '@curasense/shared/sampleReport';
+import { usePredictions } from '../../../src/history/PredictionsContext';
 import { AppText } from '../../../src/ui/AppText';
 import { Banner } from '../../../src/ui/Banner';
 import { Button } from '../../../src/ui/Button';
@@ -19,6 +20,7 @@ import { WrongPageNotice } from '../../../src/analyze/WrongPageNotice';
 const MAX_TEXT = 60000;
 
 export default function Reports() {
+  const { add } = usePredictions();
   const [mode, setMode] = useState<'paste' | 'upload'>('paste');
   const [text, setText] = useState('');
   const [file, setFile] = useState<PickedFile | null>(null);
@@ -51,7 +53,7 @@ export default function Reports() {
     const mapped = mapReport(res.data);
     if ('refusal' in mapped) return setOutcome({ refusal: mapped.refusal });
     setOutcome({ result: mapped.result });
-    if (mapped.save) void savePrediction(toPrediction('report', mapped.result));
+    if (mapped.save) void add(toPrediction('report', mapped.result));
   };
 
   if (busy) return <Screen edges={[]}><Loading title="Reading your report" detail={mode === 'upload' ? file?.name : `${text.length.toLocaleString()} characters`} /></Screen>;

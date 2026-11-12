@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, SectionList, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { analyzeImage, savePrediction } from '@curasense/shared/api/predictions';
+import { analyzeImage } from '@curasense/shared/api/predictions';
 import { mapScans, toPrediction, type AnalysisResult } from '@curasense/shared/analysis';
 import { scanFileProblem } from '@curasense/shared/files';
 import { MAX_FILES, SCAN_GROUPS, SCAN_TYPES, modalityOf, regionsOf, studyLabel } from '@curasense/shared/scans';
+import { usePredictions } from '../../../src/history/PredictionsContext';
 import { useTheme } from '../../../src/theme';
 import { AppText } from '../../../src/ui/AppText';
 import { Banner } from '../../../src/ui/Banner';
@@ -77,6 +78,7 @@ function StudyPicker({ visible, value, onSelect, onClose }: { visible: boolean; 
 
 export default function Scans() {
   const t = useTheme();
+  const { add: saveResult } = usePredictions();
   const [study, setStudy] = useState('xray-chest');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [files, setFiles] = useState<PickedFile[]>([]);
@@ -123,7 +125,7 @@ export default function Scans() {
     }
     const mapped = mapScans(done, files.length);
     setResult(mapped.result);
-    if (mapped.save) void savePrediction(toPrediction('image', mapped.result));
+    if (mapped.save) void saveResult(toPrediction('image', mapped.result));
   };
 
   if (busy) return <Screen edges={[]}><Loading title="Reading your scan" detail={files.length > 1 ? `${files.length} files` : files[0]?.name} /></Screen>;

@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { PredictionsProvider } from '../../src/history/PredictionsContext';
 import { useTheme } from '../../src/theme';
 
 type Icon = keyof typeof Ionicons.glyphMap;
@@ -14,6 +15,7 @@ const TABS: { name: string; title: string; icon: Icon; active: Icon }[] = [
 export default function TabsLayout() {
   const t = useTheme();
   return (
+    <PredictionsProvider>
     <Tabs
       screenOptions={{
         headerStyle: { backgroundColor: t.bg },
@@ -31,9 +33,10 @@ export default function TabsLayout() {
         <Tabs.Screen
           key={name}
           name={name}
-          options={{ title, headerShown: name !== 'analyze', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? active : icon} size={size} color={color as string} /> }}
+          options={{ title, headerShown: name !== 'analyze' && name !== 'history', tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? active : icon} size={size} color={color as string} /> }}
         />
       ))}
     </Tabs>
+    </PredictionsProvider>
   );
 }

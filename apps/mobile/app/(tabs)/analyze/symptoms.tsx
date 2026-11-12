@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { Pressable, SectionList, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { analyzeSymptoms, savePrediction } from '@curasense/shared/api/predictions';
+import { analyzeSymptoms } from '@curasense/shared/api/predictions';
 import { mapSymptoms, toPrediction, type AnalysisResult, type Refusal } from '@curasense/shared/analysis';
 import { SYMPTOMS, type Symptom } from '@curasense/shared/symptoms';
+import { usePredictions } from '../../../src/history/PredictionsContext';
 import { useTheme } from '../../../src/theme';
 import { AppText } from '../../../src/ui/AppText';
 import { Banner } from '../../../src/ui/Banner';
@@ -55,6 +56,7 @@ function Chip({ label, onRemove, custom }: { label: string; onRemove: () => void
 
 export default function Symptoms() {
   const t = useTheme();
+  const { add } = usePredictions();
   const [selected, setSelected] = useState<string[]>([]);
   const [custom, setCustom] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState('');
@@ -93,7 +95,7 @@ export default function Symptoms() {
     const mapped = mapSymptoms(res.data);
     if ('refusal' in mapped) return setOutcome({ refusal: mapped.refusal });
     setOutcome({ result: mapped.result });
-    if (mapped.save) void savePrediction(toPrediction('symptom', mapped.result));
+    if (mapped.save) void add(toPrediction('symptom', mapped.result));
   };
 
   if (busy) {
