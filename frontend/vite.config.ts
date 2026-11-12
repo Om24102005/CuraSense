@@ -20,6 +20,8 @@ export default defineConfig(({ mode }) => {
       alias: {
         // Alias @ to the src directory
         '@': path.resolve(__dirname, './src'),
+        // Code the website shares with the phone app (API client, translations, theme tokens)
+        '@curasense/shared': path.resolve(__dirname, '../packages/shared/src'),
       },
     },
     server: {

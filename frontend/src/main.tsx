@@ -6,6 +6,7 @@ import { watchFrames } from "./app/animations/frameRate";
 import { initNative } from "./app/native";
 import { AppSettingsProvider } from "./app/state/AppSettingsContext";
 import { ErrorBoundary } from "./app/components/shared/ErrorBoundary";
+import "./app/services/api/client";   // points the shared API client at this site's API address and token before anything calls it
 
 watchFrames();   // the screen's real refresh rate, and a watchdog for frames the page cannot keep up with
 initNative();    // iPhone / Android app only: system bars, splash screen, back button (does nothing in a browser)

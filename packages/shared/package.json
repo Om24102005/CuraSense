@@ -1,0 +1,8 @@
+{
+  "name": "@curasense/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Code the website and the phone app share: the API client, translations and theme tokens. Platform-neutral: no DOM, no import.meta.env, no localStorage.",
+  "exports": { "./*": "./src/*.ts" }
+}

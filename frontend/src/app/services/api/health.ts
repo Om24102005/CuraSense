@@ -1,5 +1,1 @@
-import { fetchAPI } from './client';
-
-export async function healthCheck() {
-  return fetchAPI('/health', { method: 'GET' });
-}
+export * from '@curasense/shared/api/health';
