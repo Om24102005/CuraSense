@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "CuraSense",
+    "slug": "curasense",
+    "scheme": "curasense",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#05070f",
+    "ios": {
+      "bundleIdentifier": "com.curasense.mobile",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.curasense.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon-foreground.png",
+        "backgroundColor": "#05070f"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "imageWidth": 140,
+          "backgroundColor": "#05070f",
+          "dark": { "backgroundColor": "#05070f" }
+        }
+      ]
+    ]
+  }
+}
