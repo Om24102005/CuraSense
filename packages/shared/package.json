@@ -4,5 +4,10 @@
   "private": true,
   "type": "module",
   "description": "Code the website and the phone app share: the API client, translations and theme tokens. Platform-neutral: no DOM, no import.meta.env, no localStorage.",
-  "exports": { "./*": "./src/*.ts" }
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  }
 }
