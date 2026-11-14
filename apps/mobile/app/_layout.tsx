@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
+import { SettingsProvider, useSettings } from '../src/settings/SettingsContext';
 import { useTheme } from '../src/theme';
 
 // The native splash stays up until the saved session has been read, so a signed-in user never sees the sign-in screen flash.
@@ -11,13 +12,15 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function Routes() {
   const { status } = useAuth();
+  const { ready } = useSettings();
   const t = useTheme();
+  const waiting = status === 'loading' || !ready;
   useEffect(() => {
-    if (status !== 'loading') SplashScreen.hideAsync().catch(() => {});
-  }, [status]);
-  // No navigator until the saved session is known: a link that opens the app on a signed-in screen would otherwise be resolved
-  // against empty guards and lost. The native splash screen covers this short wait.
-  if (status === 'loading') return null;
+    if (!waiting) SplashScreen.hideAsync().catch(() => {});
+  }, [waiting]);
+  // No navigator until the saved session and settings are known: a link that opens the app on a signed-in screen would otherwise be
+  // resolved against empty guards and lost, and the first screen would flash in the wrong contrast. The splash screen covers this short wait.
+  if (waiting) return null;
   return (
     <>
       <StatusBar style={t.name === 'dark' ? 'light' : 'dark'} />
@@ -38,7 +41,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <Routes />
+        <SettingsProvider>
+          <Routes />
+        </SettingsProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

@@ -1,4 +1,5 @@
-import { Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native';
+import { useSettings } from '../settings/SettingsContext';
 import { useTheme } from '../theme';
 
 const variants = {
@@ -10,11 +11,21 @@ const variants = {
 } as const;
 
 type Tone = 'primary' | 'secondary' | 'muted' | 'error' | 'success' | 'accent';
-interface Props extends TextProps { variant?: keyof typeof variants; tone?: Tone }
+interface Props extends TextProps {
+  variant?: keyof typeof variants;
+  tone?: Tone;
+  /** Clinical text (AI answers, lab values): grows 20% when "Large clinical text" is on. */
+  dense?: boolean;
+}
 
 /** Text that follows the phone's text-size setting (capped so layouts survive the largest sizes). */
-export function AppText({ variant = 'body', tone = 'primary', style, ...rest }: Props) {
+export function AppText({ variant = 'body', tone = 'primary', dense, style, ...rest }: Props) {
   const t = useTheme();
+  const { values } = useSettings();
   const color = { primary: t.text, secondary: t.textSecondary, muted: t.textMuted, error: t.error, success: t.success, accent: t.accent }[tone];
-  return <Text maxFontSizeMultiplier={1.5} style={[variants[variant], { color }, style]} {...rest} />;
+  const flat: TextStyle = (StyleSheet.flatten([variants[variant], { color }, style]) as TextStyle | undefined) ?? {};
+  const grown = dense && values.largeText
+    ? { ...flat, fontSize: (flat.fontSize ?? 17) * 1.2, ...(flat.lineHeight ? { lineHeight: flat.lineHeight * 1.2 } : {}) }
+    : flat;
+  return <Text maxFontSizeMultiplier={1.5} style={grown} {...rest} />;
 }

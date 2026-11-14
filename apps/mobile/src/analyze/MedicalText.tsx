@@ -44,7 +44,7 @@ function Row({ marker, children }: { marker: ReactNode; children: ReactNode }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 4 }}>
       {marker}
-      <AppText variant="callout" style={{ flex: 1, lineHeight: 22 }}>{children}</AppText>
+      <AppText dense variant="callout" style={{ flex: 1, lineHeight: 22 }}>{children}</AppText>
     </View>
   );
 }
@@ -70,14 +70,14 @@ function Line({ line, t }: { line: string; t: Palette }) {
   if (keyValue) {
     return (
       <View style={{ paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: t.border }}>
-        <AppText variant="caption" tone="muted">{keyValue[1]}</AppText>
-        <AppText variant="callout" style={{ lineHeight: 22 }}><Inline text={keyValue[2].trim()} bold={bold} /></AppText>
+        <AppText dense variant="caption" tone="muted">{keyValue[1]}</AppText>
+        <AppText dense variant="callout" style={{ lineHeight: 22 }}><Inline text={keyValue[2].trim()} bold={bold} /></AppText>
       </View>
     );
   }
 
   if (/^---+$/.test(s)) return <View style={{ height: 1, backgroundColor: t.border, marginVertical: 6 }} />;
-  return <AppText variant="callout" style={{ lineHeight: 23, marginBottom: 2 }}><Inline text={s} bold={bold} /></AppText>;
+  return <AppText dense variant="callout" style={{ lineHeight: 23, marginBottom: 2 }}><Inline text={s} bold={bold} /></AppText>;
 }
 
 /** The AI service's answer text: titled sections, bullets, numbered steps, label: value rows, with status words coloured. */

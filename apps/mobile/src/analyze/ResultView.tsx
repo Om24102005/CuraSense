@@ -56,7 +56,7 @@ export function ConditionRow({ c, top }: { c: { name: string; probability: numbe
       <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border }}>
         <View style={{ width: `${pct}%`, height: 6, borderRadius: 3, backgroundColor: t.primary }} />
       </View>
-      {c.description ? <AppText variant="callout" tone="secondary">{c.description}</AppText> : null}
+      {c.description ? <AppText dense variant="callout" tone="secondary">{c.description}</AppText> : null}
     </View>
   );
 }
@@ -79,12 +79,12 @@ export function BiomarkerCard({ b }: { b: BiomarkerData }) {
   return (
     <View style={{ gap: 8, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: `${s.color}44`, backgroundColor: t.surface }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <AppText variant="headline" style={{ flex: 1 }}>{b.name}</AppText>
+        <AppText dense variant="headline" style={{ flex: 1 }}>{b.name}</AppText>
         <Chip text={s.label} color={s.color} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-        <AppText variant="title" style={{ color: s.color }}>{Number.isFinite(value) ? (Number.isInteger(value) ? String(value) : value.toFixed(1)) : String(b.value)}</AppText>
-        {b.unit ? <AppText variant="callout" tone="muted">{b.unit}</AppText> : null}
+        <AppText dense variant="title" style={{ color: s.color }}>{Number.isFinite(value) ? (Number.isInteger(value) ? String(value) : value.toFixed(1)) : String(b.value)}</AppText>
+        {b.unit ? <AppText dense variant="callout" tone="muted">{b.unit}</AppText> : null}
       </View>
       {hasRange ? (
         <View style={{ height: 8, borderRadius: 4, backgroundColor: t.border }}>
@@ -94,8 +94,8 @@ export function BiomarkerCard({ b }: { b: BiomarkerData }) {
       ) : null}
       {hasRange ? (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-          <AppText variant="caption" tone="muted">Normal {min} to {max} {b.unit}</AppText>
-          <AppText variant="caption" style={{ color: status === 'normal' ? t.success : s.color, fontWeight: '700' }}>{note}</AppText>
+          <AppText dense variant="caption" tone="muted">Normal {min} to {max} {b.unit}</AppText>
+          <AppText dense variant="caption" style={{ color: status === 'normal' ? t.success : s.color, fontWeight: '700' }}>{note}</AppText>
         </View>
       ) : null}
     </View>
@@ -111,7 +111,7 @@ export function Recommendations({ items }: { items: string[] }) {
       {items.map((r, i) => (
         <View key={i} style={{ flexDirection: 'row', gap: 10, paddingVertical: 3 }}>
           <Ionicons name="checkmark-circle" size={18} color={t.success} style={{ marginTop: 2 }} />
-          <AppText variant="callout" style={{ flex: 1, lineHeight: 22 }}>{r}</AppText>
+          <AppText dense variant="callout" style={{ flex: 1, lineHeight: 22 }}>{r}</AppText>
         </View>
       ))}
     </Card>
