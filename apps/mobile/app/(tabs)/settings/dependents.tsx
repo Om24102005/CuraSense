@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { dependentProblem, newId, type Dependent } from '@curasense/shared/settings';
+import { success } from '../../../src/haptics';
 import { useSettings } from '../../../src/settings/SettingsContext';
 import { AppText } from '../../../src/ui/AppText';
 import { Banner } from '../../../src/ui/Banner';
@@ -26,7 +27,7 @@ export default function Dependents() {
     setError(problem);
     if (problem) return;
     const saved = await update({ dependents: [...values.dependents, { id: newId(), name: name.trim(), dob, sex, allergies: allergies.trim() }] }, 'Family member saved.');
-    if (saved) { setName(''); setDob(''); setSex('prefer_not'); setAllergies(''); }
+    if (saved) { success(); setName(''); setDob(''); setSex('prefer_not'); setAllergies(''); }
   };
   const remove = async (id: string) => {
     setRemoving(null);
@@ -43,9 +44,9 @@ export default function Dependents() {
           <AppText variant="caption" tone="muted">{[d.dob ? `Born ${d.dob}` : '', SEX[d.sex] ?? ''].filter(Boolean).join(' · ')}</AppText>
           {d.allergies ? <AppText variant="callout" tone="secondary">Allergies: {d.allergies}</AppText> : null}
           {removing === d.id ? (
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <Button title="Keep" variant="secondary" style={{ flex: 1 }} onPress={() => setRemoving(null)} />
-              <Button title="Remove" variant="danger" testID="confirm-remove" style={{ flex: 1 }} onPress={() => remove(d.id)} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+              <Button title="Keep" variant="secondary" style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => setRemoving(null)} />
+              <Button title="Remove" variant="danger" testID="confirm-remove" style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => remove(d.id)} />
             </View>
           ) : <Button title="Remove" variant="link" testID={`remove-${d.id}`} accessibilityLabel={`Remove ${d.name}`} style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => setRemoving(d.id)} />}
         </Card>

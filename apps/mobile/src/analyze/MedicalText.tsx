@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../ui/Icon';
 import { parseSections, STATUS_COLORS, STATUS_RE } from '@curasense/shared/medicalText';
 import { useTheme, type Palette } from '../theme';
 import { AppText } from '../ui/AppText';
@@ -60,7 +60,7 @@ function Line({ line, t }: { line: string; t: Palette }) {
   const numbered = s.match(/^(\d+)[.)]\s+(.+)/);
   if (numbered) {
     return (
-      <Row marker={<View style={{ minWidth: 22, height: 22, borderRadius: 11, marginTop: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.primary }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{numbered[1]}</Text></View>}>
+      <Row marker={<View style={{ minWidth: 22, height: 22, borderRadius: 11, marginTop: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.primary }}><Text maxFontSizeMultiplier={1.3} style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{numbered[1]}</Text></View>}>
         <Inline text={numbered[2]} bold={bold} />
       </Row>
     );
@@ -94,7 +94,7 @@ export function MedicalText({ text }: { text: string }) {
           <View key={si} style={{ borderRadius: radius.md, borderWidth: 1, borderColor: `${color}55`, overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: `${color}1a` }}>
               <Ionicons name={icon} size={15} color={color} />
-              <Text accessibilityRole="header" style={{ color, fontSize: 11, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase', flexShrink: 1 }}>{sec.title}</Text>
+              <Text accessibilityRole="header" maxFontSizeMultiplier={2} style={{ color, fontSize: 11, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase', flexShrink: 1 }}>{sec.title}</Text>
             </View>
             {hasContent ? <View style={{ padding: 12 }}>{sec.lines.map((line, li) => <Line key={li} line={line} t={t} />)}</View> : null}
           </View>

@@ -1,12 +1,13 @@
 import { Fragment, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../ui/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { URGENCY_LEVELS } from '@curasense/shared/analysis';
 import type { ConsultMode } from '@curasense/shared/booking';
 import type { Prediction } from '@curasense/shared/history';
 import { STEP_LABELS } from '@curasense/shared/booking';
 import { Chip, ConditionRow, UrgencyBanner } from '../analyze/ResultView';
+import { tick } from '../haptics';
 import { MedicalText } from '../analyze/MedicalText';
 import { useTheme } from '../theme';
 import { AppText } from '../ui/AppText';
@@ -61,7 +62,7 @@ export function StepProgress({ step }: { step: number }) {
               <View style={{ width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c, backgroundColor: done ? t.success : active ? `${t.primary}29` : t.surface }}>
                 {done ? <Ionicons name="checkmark" size={16} color="#fff" /> : <AppText variant="caption" style={{ color: c, fontWeight: '800' }}>{n}</AppText>}
               </View>
-              <AppText variant="caption" style={{ color: c, fontSize: 11, lineHeight: 14, fontWeight: active ? '800' : '600' }} numberOfLines={1}>{label}</AppText>
+              <AppText variant="caption" maxFontSizeMultiplier={1.15} style={{ color: c, fontSize: 11, lineHeight: 14, fontWeight: active ? '800' : '600' }} numberOfLines={1}>{label}</AppText>
             </View>
             {i < STEP_LABELS.length - 1 ? <View style={{ flex: 1, height: 2, marginTop: 14, marginHorizontal: -8, backgroundColor: done ? t.success : t.border }} /> : null}
           </Fragment>
@@ -82,7 +83,7 @@ export function Choice({ selected, disabled, color, onPress, label, testID, chil
       accessibilityState={{ selected, disabled: !!disabled }}
       testID={testID}
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => { tick(); onPress(); }}
       style={({ pressed }) => ({ padding: 14, borderRadius: radius.lg, borderWidth: selected ? 2 : 1, borderColor: selected ? c : t.border, backgroundColor: selected ? `${c}1f` : pressed ? t.surface : t.card, opacity: disabled ? 0.5 : 1 })}
     >
       {children}

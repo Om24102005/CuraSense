@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, RefreshControl, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../src/ui/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { TYPE_COLORS, TYPE_LABELS, formatRelative, summarize, type PredictionType } from '@curasense/shared/history';

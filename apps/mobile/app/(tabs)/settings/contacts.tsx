@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 import { contactProblem, emergencyNumberProblem, newId, telUrl } from '@curasense/shared/settings';
+import { success } from '../../../src/haptics';
 import { useSettings } from '../../../src/settings/SettingsContext';
 import { AppText } from '../../../src/ui/AppText';
 import { Banner } from '../../../src/ui/Banner';
@@ -24,7 +25,7 @@ export default function Contacts() {
     setError(problem);
     if (problem) return;
     const saved = await update({ emergencyContacts: [...values.emergencyContacts, { id: newId(), name: name.trim(), relation: relation.trim(), phone: phone.trim() }] }, 'Emergency contact saved.');
-    if (saved) { setName(''); setRelation(''); setPhone(''); }
+    if (saved) { success(); setName(''); setRelation(''); setPhone(''); }
   };
   const remove = async (id: string) => {
     setRemoving(null);
@@ -54,13 +55,13 @@ export default function Contacts() {
           <AppText variant="headline">{c.name}</AppText>
           <AppText variant="callout" tone="secondary">{[c.relation, c.phone].filter(Boolean).join(' · ')}</AppText>
           {removing === c.id ? (
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <Button title="Keep" variant="secondary" style={{ flex: 1 }} onPress={() => setRemoving(null)} />
-              <Button title="Remove" variant="danger" testID="confirm-remove" style={{ flex: 1 }} onPress={() => remove(c.id)} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+              <Button title="Keep" variant="secondary" style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => setRemoving(null)} />
+              <Button title="Remove" variant="danger" testID="confirm-remove" style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => remove(c.id)} />
             </View>
           ) : (
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <Button title={`Call ${c.name}`} variant="secondary" testID={`call-${c.id}`} style={{ flex: 1 }} onPress={() => call(c.phone)} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+              <Button title={`Call ${c.name}`} variant="secondary" testID={`call-${c.id}`} style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => call(c.phone)} />
               <Button title="Remove" variant="link" testID={`remove-${c.id}`} accessibilityLabel={`Remove ${c.name}`} onPress={() => setRemoving(c.id)} />
             </View>
           )}

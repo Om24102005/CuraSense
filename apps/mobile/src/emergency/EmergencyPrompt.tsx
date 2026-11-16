@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Linking, Modal, Platform, ScrollView, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { URGENCY_LEVELS } from '@curasense/shared/analysis';
@@ -38,9 +38,9 @@ function Sheet({ visible, onClose }: { visible: boolean; onClose: () => void }) 
                 <AppText variant="headline">{c.name}</AppText>
                 <AppText variant="caption" tone="muted">{[c.relation, c.phone].filter(Boolean).join(' · ')}</AppText>
               </View>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Button title="Call" variant="secondary" accessibilityLabel={`Call ${c.name}`} testID={`emergency-call-${c.id}`} style={{ flex: 1 }} onPress={() => open(telUrl(c.phone))} />
-                <Button title="Message" variant="secondary" accessibilityLabel={`Message ${c.name}`} testID={`emergency-message-${c.id}`} style={{ flex: 1 }} onPress={() => open(smsUrl(c.phone, EMERGENCY_NOTE, Platform.OS === 'android' ? 'android' : 'ios'))} />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                <Button title="Call" variant="secondary" accessibilityLabel={`Call ${c.name}`} testID={`emergency-call-${c.id}`} style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => open(telUrl(c.phone))} />
+                <Button title="Message" variant="secondary" accessibilityLabel={`Message ${c.name}`} testID={`emergency-message-${c.id}`} style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => open(smsUrl(c.phone, EMERGENCY_NOTE, Platform.OS === 'android' ? 'android' : 'ios'))} />
               </View>
             </Card>
           )) : (

@@ -25,7 +25,7 @@ export function Button({ title, variant = 'primary', loading = false, disabled, 
       disabled={off}
       style={({ pressed }) => [
         {
-          minHeight: solid ? 52 : MIN_TOUCH, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20,
+          minHeight: solid ? 52 : MIN_TOUCH, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 10,
           backgroundColor: bg, borderWidth: variant === 'secondary' ? 1 : 0, borderColor: t.border,
           opacity: off ? 0.55 : pressed ? 0.82 : 1, transform: [{ scale: pressed && solid ? 0.985 : 1 }],
         },

@@ -1,13 +1,18 @@
+import { useEffect } from 'react';
 import { View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../ui/Icon';
 import { URGENCY_LEVELS, type AnalysisResult, type ScanSection } from '@curasense/shared/analysis';
 import { isEmergency } from '@curasense/shared/emergency';
+import type { PredictionType } from '@curasense/shared/history';
+import { DISCLAIMER } from '@curasense/shared/share';
 import { extractUrgency } from '@curasense/shared/scans';
 import { EmergencyPrompt } from '../emergency/EmergencyPrompt';
+import { success, warning } from '../haptics';
 import { useTheme } from '../theme';
 import { AppText } from '../ui/AppText';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { ShareButton } from '../ui/ShareButton';
 import { radius } from '../ui/tokens';
 import { MedicalText } from './MedicalText';
 import { WrongPageNotice } from './WrongPageNotice';
@@ -120,7 +125,7 @@ export function Recommendations({ items }: { items: string[] }) {
   );
 }
 
-export const DISCLAIMER = 'AI-assisted information, not a medical diagnosis. Talk to a clinician about your results.';
+export { DISCLAIMER };
 
 function ScanSectionCard({ s }: { s: ScanSection }) {
   const urgency = s.refusal ? null : extractUrgency(s.content);
@@ -139,8 +144,9 @@ function ScanSectionCard({ s }: { s: ScanSection }) {
 }
 
 /** A finished analysis: urgency, the written answer, conditions, lab values, scan sections and next steps. */
-export function ResultView({ result, onReset }: { result: AnalysisResult; onReset: () => void }) {
+export function ResultView({ result, onReset, type }: { result: AnalysisResult; onReset: () => void; type: PredictionType }) {
   const hasSections = !!result.scanSections?.length;
+  useEffect(() => { if (isEmergency(result)) warning(); else success(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, when the result appears
   return (
     <View testID="result" style={{ gap: 16 }}>
       <View style={{ gap: 6 }}>
@@ -170,6 +176,7 @@ export function ResultView({ result, onReset }: { result: AnalysisResult; onRese
       <Recommendations items={result.recommendations} />
 
       <AppText variant="caption" tone="muted">{DISCLAIMER}</AppText>
+      <ShareButton result={{ ...result, type }} />
       <Button title="New analysis" variant="secondary" testID="new-analysis" onPress={onReset} />
     </View>
   );

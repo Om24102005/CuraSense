@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, SectionList, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { analyzeSymptoms } from '@curasense/shared/api/predictions';
 import { mapSymptoms, toPrediction, type AnalysisResult, type Refusal } from '@curasense/shared/analysis';
@@ -110,7 +110,7 @@ export default function Symptoms() {
     );
   }
   if (outcome?.result) {
-    return <Screen edges={[]}><ResultView result={outcome.result} onReset={() => { setOutcome(null); setSelected([]); setCustom([]); }} /></Screen>;
+    return <Screen edges={[]}><ResultView type="symptom" result={outcome.result} onReset={() => { setOutcome(null); setSelected([]); setCustom([]); }} /></Screen>;
   }
 
   const header = (
@@ -129,7 +129,7 @@ export default function Symptoms() {
           autoCapitalize="none"
           clearButtonMode="while-editing"
           returnKeyType="search"
-          style={{ flex: 1, color: t.text, fontSize: 17, paddingVertical: 10 }}
+          style={{ flex: 1, minHeight: 44, color: t.text, fontSize: 17, paddingVertical: 10 }}
         />
       </View>
       {count > 0 ? (

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../ui/Icon';
 import { View } from 'react-native';
 import type { Refusal } from '@curasense/shared/analysis';
 import { useTheme } from '../theme';

@@ -65,7 +65,7 @@ export default function Reports() {
       </Screen>
     );
   }
-  if (outcome?.result) return <Screen edges={[]}><ResultView result={outcome.result} onReset={() => { setOutcome(null); setText(''); setFile(null); }} /></Screen>;
+  if (outcome?.result) return <Screen edges={[]}><ResultView type="report" result={outcome.result} onReset={() => { setOutcome(null); setText(''); setFile(null); }} /></Screen>;
 
   return (
     <Screen edges={[]}>
@@ -89,7 +89,7 @@ export default function Reports() {
             placeholder="Paste your lab report here... Include parameter names and values."
             style={{ minHeight: 200, textAlignVertical: 'top' }}
           />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
             <AppText variant="caption" tone="muted">{text.length.toLocaleString()} / {MAX_TEXT.toLocaleString()} characters</AppText>
             <Button title="Load sample report" variant="link" testID="load-sample" onPress={() => setText(SAMPLE_REPORT)} />
           </View>

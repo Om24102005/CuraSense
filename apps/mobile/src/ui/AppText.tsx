@@ -18,7 +18,7 @@ interface Props extends TextProps {
   dense?: boolean;
 }
 
-/** Text that follows the phone's text-size setting (capped so layouts survive the largest sizes). */
+/** Text that follows the phone's text-size setting (up to 200%, so layouts survive the largest sizes). */
 export function AppText({ variant = 'body', tone = 'primary', dense, style, ...rest }: Props) {
   const t = useTheme();
   const { values } = useSettings();
@@ -27,5 +27,5 @@ export function AppText({ variant = 'body', tone = 'primary', dense, style, ...r
   const grown = dense && values.largeText
     ? { ...flat, fontSize: (flat.fontSize ?? 17) * 1.2, ...(flat.lineHeight ? { lineHeight: flat.lineHeight * 1.2 } : {}) }
     : flat;
-  return <Text maxFontSizeMultiplier={1.5} style={grown} {...rest} />;
+  return <Text maxFontSizeMultiplier={2} style={grown} {...rest} />;
 }

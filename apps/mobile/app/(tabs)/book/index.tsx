@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { DOCTORS, TIME_SLOTS, buildDates, canAdvance, fmtDate, getBookedSlots, makeBooking, type ConsultMode, type Doctor, type StoredBooking } from '@curasense/shared/booking';
@@ -8,6 +8,7 @@ import { TYPE_COLORS, TYPE_LABELS, type Prediction } from '@curasense/shared/his
 import { Chip } from '../../../src/analyze/ResultView';
 import { useBookings } from '../../../src/book/BookingsContext';
 import { Choice, DemoNotice, DiagnosisSummary, DoctorAvatar, ModeChip, StepProgress, Stars, useModeColor } from '../../../src/book/parts';
+import { success, tick } from '../../../src/haptics';
 import { usePredictions } from '../../../src/history/PredictionsContext';
 import { TypeBadge, TypeIcon } from '../../../src/history/parts';
 import { useTheme } from '../../../src/theme';
@@ -136,7 +137,7 @@ function StepSchedule({ date, time, onDate, onTime }: { date: string; time: stri
               accessibilityState={{ selected }}
               accessibilityLabel={`${d.day} ${d.num} ${d.mon}`}
               testID={`date-${d.iso}`}
-              onPress={() => onDate(d.iso)}
+              onPress={() => { tick(); onDate(d.iso); }}
               style={{ minWidth: 58, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center', borderRadius: radius.md, borderWidth: selected ? 2 : 1, borderColor: selected ? t.accent : t.border, backgroundColor: selected ? `${t.primary}29` : t.card }}
             >
               <AppText variant="caption" tone="muted" style={{ fontWeight: '700' }}>{d.day}</AppText>
@@ -161,7 +162,7 @@ function StepSchedule({ date, time, onDate, onTime }: { date: string; time: stri
                   accessibilityLabel={taken ? `${slot}, taken` : slot}
                   testID={`slot-${i}`}
                   disabled={taken}
-                  onPress={() => onTime(slot)}
+                  onPress={() => { tick(); onTime(slot); }}
                   style={{ width: '31.5%', minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, borderWidth: selected ? 2 : 1, borderColor: selected ? t.accent : t.border, backgroundColor: selected ? `${t.primary}29` : t.card, opacity: taken ? 0.4 : 1 }}
                 >
                   <AppText variant="callout" style={{ fontWeight: '700', textDecorationLine: taken ? 'line-through' : 'none', color: selected ? t.accent : taken ? t.textMuted : t.text }}>{slot}</AppText>
@@ -272,6 +273,7 @@ export default function Book() {
     const booking = makeBooking({ doctor, mode, date, time }, diagnosis ? { id: diagnosis.id, diagnosis: diagnosis.diagnosis, type: diagnosis.type } : null);
     add(booking);
     setSaved(booking);
+    success();
   };
 
   return (

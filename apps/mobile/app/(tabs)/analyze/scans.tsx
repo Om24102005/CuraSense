@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, SectionList, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { analyzeImage } from '@curasense/shared/api/predictions';
 import { mapScans, toPrediction, type AnalysisResult } from '@curasense/shared/analysis';
@@ -38,7 +38,7 @@ function StudyPicker({ visible, value, onSelect, onClose }: { visible: boolean; 
         </View>
         <View style={{ marginHorizontal: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1.5, borderColor: t.border, backgroundColor: t.surface }}>
           <Ionicons name="search" size={18} color={t.textMuted} />
-          <TextInput testID="study-search" accessibilityLabel="Search scan types" placeholder="Search scan types..." placeholderTextColor={t.textMuted} value={query} onChangeText={setQuery} autoCorrect={false} autoCapitalize="none" clearButtonMode="while-editing" style={{ flex: 1, color: t.text, fontSize: 17, paddingVertical: 10 }} />
+          <TextInput testID="study-search" accessibilityLabel="Search scan types" placeholder="Search scan types..." placeholderTextColor={t.textMuted} value={query} onChangeText={setQuery} autoCorrect={false} autoCapitalize="none" clearButtonMode="while-editing" style={{ flex: 1, minHeight: 44, color: t.text, fontSize: 17, paddingVertical: 10 }} />
         </View>
         <SectionList
           sections={sections}
@@ -129,7 +129,7 @@ export default function Scans() {
   };
 
   if (busy) return <Screen edges={[]}><Loading title="Reading your scan" detail={files.length > 1 ? `${files.length} files` : files[0]?.name} /></Screen>;
-  if (result) return <Screen edges={[]}><ResultView result={result} onReset={() => { setResult(null); setFiles([]); setWarnings([]); }} /></Screen>;
+  if (result) return <Screen edges={[]}><ResultView type="image" result={result} onReset={() => { setResult(null); setFiles([]); setWarnings([]); }} /></Screen>;
 
   return (
     <Screen edges={[]}>

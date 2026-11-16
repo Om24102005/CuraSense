@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { tick } from '../haptics';
 import { useTheme } from '../theme';
 import { AppText } from './AppText';
 import { MIN_TOUCH, radius } from './tokens';
@@ -16,8 +17,8 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             testID={`segment-${o.value}`}
-            onPress={() => onChange(o.value)}
-            style={{ flex: 1, minHeight: MIN_TOUCH - 6, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md - 3, backgroundColor: selected ? t.primary : 'transparent' }}
+            onPress={() => { if (!selected) tick(); onChange(o.value); }}
+            style={{ flex: 1, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md - 3, backgroundColor: selected ? t.primary : 'transparent' }}
           >
             <AppText variant="callout" style={{ fontWeight: '700', color: selected ? t.onPrimary : t.textSecondary }}>{o.label}</AppText>
           </Pressable>

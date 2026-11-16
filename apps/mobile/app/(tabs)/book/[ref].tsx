@@ -88,9 +88,9 @@ export default function BookingDetail() {
         {confirming ? (
           <Card style={{ gap: 10 }}>
             <AppText variant="headline">Cancel this appointment?</AppText>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Button title="Keep" variant="secondary" testID="keep-booking" style={{ flex: 1 }} onPress={() => setConfirming(false)} />
-              <Button title="Yes, cancel" variant="danger" testID="confirm-cancel" style={{ flex: 1 }} onPress={doCancel} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              <Button title="Keep" variant="secondary" testID="keep-booking" style={{ flexGrow: 1, flexBasis: 130 }} onPress={() => setConfirming(false)} />
+              <Button title="Yes, cancel" variant="danger" testID="confirm-cancel" style={{ flexGrow: 1, flexBasis: 130 }} onPress={doCancel} />
             </View>
           </Card>
         ) : <Button title="Cancel appointment" variant="danger" testID="cancel-booking" onPress={() => setConfirming(true)} />}

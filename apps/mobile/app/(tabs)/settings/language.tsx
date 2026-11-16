@@ -1,7 +1,8 @@
 import { Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { useRouter } from 'expo-router';
 import { LANGUAGES } from '@curasense/shared/settings';
+import { tick } from '../../../src/haptics';
 import { NOT_USED } from '../../../src/settings/parts';
 import { useSettings } from '../../../src/settings/SettingsContext';
 import { useTheme } from '../../../src/theme';
@@ -26,7 +27,7 @@ export default function Language() {
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               testID={`language-${l.code}`}
-              onPress={async () => { if (selected || (await update({ language: l.code }, `Language set to ${l.label}.`))) router.back(); }}
+              onPress={async () => { tick(); if (selected || (await update({ language: l.code }, `Language set to ${l.label}.`))) router.back(); }}
               style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', minHeight: MIN_TOUCH + 4, paddingHorizontal: 12, opacity: pressed ? 0.7 : 1 })}
             >
               <AppText style={{ flex: 1 }}>{l.label}</AppText>

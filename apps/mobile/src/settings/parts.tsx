@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { Pressable, Switch, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../ui/Icon';
 import { useTheme } from '../theme';
 import { AppText } from '../ui/AppText';
 import { Banner } from '../ui/Banner';
 import { Card } from '../ui/Card';
 import { Segmented } from '../ui/Segmented';
 import { MIN_TOUCH, radius } from '../ui/tokens';
+import { tick } from '../haptics';
 import { useSettings } from './SettingsContext';
 
 /** Said under every control that is saved to the account but that nothing on the server reads yet. */
@@ -40,7 +41,7 @@ export function SwitchRow({ label, hint, value, onChange, testID }: { label: str
         <AppText variant="headline">{label}</AppText>
         <AppText variant="caption" tone="muted">{hint}</AppText>
       </View>
-      <Switch testID={testID} accessibilityLabel={label} value={value} onValueChange={onChange} trackColor={{ true: t.primary, false: t.border }} thumbColor="#ffffff" ios_backgroundColor={t.border} />
+      <Switch testID={testID} accessibilityLabel={label} value={value} onValueChange={(v) => { tick(); onChange(v); }} trackColor={{ true: t.primary, false: t.border }} thumbColor="#ffffff" ios_backgroundColor={t.border} />
     </View>
   );
 }
@@ -70,7 +71,7 @@ export function SaveToast() {
   return (
     <View style={{ position: 'absolute', left: 16, right: 16, bottom: 12, pointerEvents: 'none' }}>
       <View style={{ borderRadius: radius.md, backgroundColor: t.bg }}>
-        <Banner tone={notice.kind} testID="save-notice">{notice.message}</Banner>
+        <Banner tone={notice.kind} testID="save-notice" quiet>{notice.message}</Banner>
       </View>
     </View>
   );

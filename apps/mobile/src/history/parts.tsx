@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../ui/Icon';
 import { URGENCY_LEVELS } from '@curasense/shared/analysis';
 import { TYPE_COLORS, TYPE_LABELS, formatRelative, type Prediction, type PredictionType } from '@curasense/shared/history';
 import { useTheme } from '../theme';

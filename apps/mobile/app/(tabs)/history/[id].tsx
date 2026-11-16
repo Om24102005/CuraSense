@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { URGENCY_LEVELS } from '@curasense/shared/analysis';
 import { TYPE_COLORS, formatAbsolute } from '@curasense/shared/history';
@@ -9,6 +9,7 @@ import { MedicalText } from '../../../src/analyze/MedicalText';
 import { usePredictions } from '../../../src/history/PredictionsContext';
 import { ConfidenceChip, DetailSection, TypeBadge } from '../../../src/history/parts';
 import { useTheme } from '../../../src/theme';
+import { ShareButton } from '../../../src/ui/ShareButton';
 import { AppText } from '../../../src/ui/AppText';
 import { Button } from '../../../src/ui/Button';
 import { Screen } from '../../../src/ui/Screen';
@@ -123,6 +124,7 @@ export default function HistoryDetail() {
           ) : null}
 
           <AppText variant="caption" tone="muted">{DISCLAIMER}</AppText>
+          <ShareButton result={p} />
         </View>
       </Screen>
     </>

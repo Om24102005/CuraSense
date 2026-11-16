@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { useRouter } from 'expo-router';
 import { fmtDate, type ContactInfo } from '@curasense/shared/booking';
 import { birthDateProblem } from '@curasense/shared/settings';
 import { useBookings } from '../../../src/book/BookingsContext';
+import { success } from '../../../src/haptics';
 import { DemoNotice, DoctorAvatar, ModeChip } from '../../../src/book/parts';
 import { useTheme } from '../../../src/theme';
 import { AppText } from '../../../src/ui/AppText';
@@ -34,11 +35,12 @@ function YourInformation() {
     if (problem) return;
     saveContact({ name: draft.name.trim(), phone: draft.phone.trim(), dob: draft.dob.trim(), notes: draft.notes.trim() });
     setEditing(false);
+    success();
   };
   return (
     <Card style={{ gap: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <AppText variant="headline" accessibilityRole="header" style={{ flex: 1 }}>Your information</AppText>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+        <AppText variant="headline" accessibilityRole="header" style={{ flex: 1, minWidth: 140 }}>Your information</AppText>
         {editing ? (
           <>
             <Button title="Cancel" variant="link" testID="contact-cancel" onPress={() => { setEditing(false); setError(''); }} />

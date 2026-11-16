@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../../src/theme';
 import { AppText } from '../../../src/ui/AppText';

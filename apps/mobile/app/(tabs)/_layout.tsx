@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../src/ui/Icon';
 import { PredictionsProvider } from '../../src/history/PredictionsContext';
 import { useTheme } from '../../src/theme';
 
@@ -25,6 +25,7 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: t.bg },
         tabBarStyle: { backgroundColor: t.card, borderTopColor: t.border },
         tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
+        tabBarAllowFontScaling: false,
         tabBarActiveTintColor: t.accent,
         tabBarInactiveTintColor: t.textMuted,
       }}

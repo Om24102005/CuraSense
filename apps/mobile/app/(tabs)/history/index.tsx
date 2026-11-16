@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../../../src/ui/Icon';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TYPE_LABELS, summarize } from '@curasense/shared/history';

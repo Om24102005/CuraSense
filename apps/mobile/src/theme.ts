@@ -13,7 +13,8 @@ const build = (name: ThemeName) => {
     border: v['--border-color'],
     text: v['--text-primary'],
     textSecondary: v['--text-secondary'],
-    textMuted: v['--text-muted'],
+    // The website's muted text is 4.1 to 4.3:1 on its surfaces; these alphas (0.52 and 0.60 instead of 0.48 and 0.56) reach 4.6:1 or better.
+    textMuted: name === 'dark' ? 'rgba(220,234,244,0.52)' : 'rgba(10,18,48,0.6)',
     accent: v['--accent-cyan'],
     // The brand blue (#2667ff) in both themes, as on the website's buttons.
     primary: name === 'dark' ? v['--accent-violet'] : v['--accent-cyan'],

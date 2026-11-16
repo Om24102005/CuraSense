@@ -4,6 +4,7 @@ import { AccessibilityInfo } from 'react-native';
 import { getUserSettings, updateUserSettings } from '@curasense/shared/api/settings';
 import { DEFAULT_SETTINGS, parseServerSettings, toServerPayload, type SettingsValues } from '@curasense/shared/settings';
 import { useAuth } from '../auth/AuthContext';
+import { failure } from '../haptics';
 
 const KEY = 'curasense_settings';
 
@@ -75,6 +76,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (res?.error) {
       // Put back only what this change touched, so a newer change to something else survives.
       commit({ ...current.current, ...Object.fromEntries(keys.map((k) => [k, before[k]])) });
+      failure();
       say({ kind: 'error', message: `${String(res.error).replace(/[.\s]+$/, '')}. The change was undone.` });
       return false;
     }
