@@ -43,9 +43,14 @@ export default function Settings() {
           onChange={(v) => update({ largeText: v }, v ? 'Large clinical text on.' : 'Large clinical text off.')} />
       </Group>
 
+      <Group title="Emergency">
+        <SwitchRow testID="switch-emergency" label="Emergency prompt" hint="When a result is marked EMERGENCY, show buttons to call emergency services and your contacts. The app never calls or texts for you." value={values.autoAlertsEnabled}
+          onChange={(v) => update({ autoAlertsEnabled: v }, v ? 'Emergency prompt on.' : 'Emergency prompt off.')} />
+        <NavRow testID="contacts-row" label="Emergency contacts" value={people(values.emergencyContacts.length)} onPress={() => router.push('/settings/contacts')} />
+      </Group>
+
       <Group title="People">
         <NavRow testID="dependents-row" label="Family members" value={people(values.dependents.length)} onPress={() => router.push('/settings/dependents')} />
-        <NavRow testID="contacts-row" label="Emergency contacts" value={people(values.emergencyContacts.length)} onPress={() => router.push('/settings/contacts')} />
       </Group>
 
       <Button title="Sign out" variant="danger" testID="sign-out-button" onPress={signOut} />

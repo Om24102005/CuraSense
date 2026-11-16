@@ -45,6 +45,10 @@ http.createServer((req, res) => {
         : req.url.endsWith('/symptoms') ? { status: 'success', analysis: refusal('scans') }
         : { status: 'success', analysis: refusal('scans', 'ct') };
     }
+    if (raw.includes('e2e-emergency')) { // any request mentioning "e2e-emergency" is answered as the top urgency level
+      body = req.url.endsWith('/imaging') ? { ...imaging, vision_analysis: { ...imaging.vision_analysis, analysis: 'E2E imaging analysis: acute finding.\n**Urgency Level:** Critical' } }
+        : { ...body, analysis: { ...body.analysis, urgency: 'emergency', assessment: 'E2E assessment: this looks like an emergency.' } };
+    }
     if (raw.includes('slow-please')) {
       const send = () => { if (!held.delete(send)) return; clearTimeout(timer); res.end(JSON.stringify(body)); };
       const timer = setTimeout(send, 30_000);

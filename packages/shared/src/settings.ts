@@ -39,12 +39,15 @@ export interface SettingsValues {
   outputDepth: OutputDepth;
   dependents: Dependent[];
   emergencyContacts: EmergencyContact[];
+  /** When on, a result marked EMERGENCY shows buttons to call for help. The website's Auto-Alerts field. */
   autoAlertsEnabled: boolean;
+  /** The number the "Call emergency services" button dials. Kept on this phone only: the server has no field for it. */
+  emergencyNumber: string;
 }
 
 export const DEFAULT_SETTINGS: SettingsValues = {
   language: 'en', highContrast: false, largeText: false, measurement: 'metric', explainLevel: 'clinical', outputDepth: 'concise',
-  dependents: [], emergencyContacts: [], autoAlertsEnabled: false,
+  dependents: [], emergencyContacts: [], autoAlertsEnabled: false, emergencyNumber: '112',
 };
 
 /** The stored settings object to the values it holds; anything missing or of the wrong kind is left out, so the caller keeps what it has. */
@@ -113,6 +116,15 @@ export function contactProblem(c: { name: string; phone: string }): string {
   if (digits.length < 5 || digits.length > 15 || /[^\d\s+().-]/.test(c.phone)) return 'Enter a phone number, with the country code if it is abroad.';
   return '';
 }
+
+/** Why an emergency number cannot be saved, or '' when it can: digits only, as dialled (112, 911, 999, 108...). */
+export const emergencyNumberProblem = (n: string) => (/^\d{2,6}$/.test(n.trim()) ? '' : 'Enter the number as digits only, for example 112.');
+
+/** The note the Message button puts in the text, for the person to read and send. It says nothing about their health. */
+export const EMERGENCY_NOTE = 'I need help. Please call me as soon as you can.';
+
+/** A link that opens the Messages app with the note typed in. Apple and Android separate the body differently. */
+export const smsUrl = (phone: string, body: string, os: 'ios' | 'android' | 'web' = 'ios') => `sms:${phone.replace(/[^\d+]/g, '')}${os === 'android' ? '?' : '&'}body=${encodeURIComponent(body)}`;
 
 /** A link that opens the phone dialler for a number typed with spaces, dashes or brackets. */
 export const telUrl = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;

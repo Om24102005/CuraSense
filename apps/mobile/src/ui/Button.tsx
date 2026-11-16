@@ -3,7 +3,7 @@ import { useTheme } from '../theme';
 import { AppText } from './AppText';
 import { MIN_TOUCH, radius } from './tokens';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'link';
+type Variant = 'primary' | 'secondary' | 'danger' | 'emergency' | 'link';
 interface Props extends Omit<PressableProps, 'children' | 'style'> {
   title: string;
   variant?: Variant;
@@ -15,8 +15,8 @@ export function Button({ title, variant = 'primary', loading = false, disabled, 
   const t = useTheme();
   const off = !!disabled || loading;
   const solid = variant !== 'link';
-  const bg = { primary: t.primary, secondary: t.card, danger: t.errorBg, link: 'transparent' }[variant];
-  const fg = { primary: t.onPrimary, secondary: t.text, danger: t.error, link: t.accent }[variant];
+  const bg = { primary: t.primary, secondary: t.card, danger: t.errorBg, emergency: '#dc2626', link: 'transparent' }[variant];
+  const fg = { primary: t.onPrimary, secondary: t.text, danger: t.error, emergency: '#ffffff', link: t.accent }[variant];
   return (
     <Pressable
       accessibilityRole="button"

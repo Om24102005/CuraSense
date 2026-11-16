@@ -1,7 +1,9 @@
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { URGENCY_LEVELS, type AnalysisResult, type ScanSection } from '@curasense/shared/analysis';
+import { isEmergency } from '@curasense/shared/emergency';
 import { extractUrgency } from '@curasense/shared/scans';
+import { EmergencyPrompt } from '../emergency/EmergencyPrompt';
 import { useTheme } from '../theme';
 import { AppText } from '../ui/AppText';
 import { Button } from '../ui/Button';
@@ -147,6 +149,7 @@ export function ResultView({ result, onReset }: { result: AnalysisResult; onRese
       </View>
 
       {result.urgency ? <UrgencyBanner urgency={result.urgency} /> : null}
+      <EmergencyPrompt active={isEmergency(result)} />
 
       {hasSections ? result.scanSections!.map((s) => <ScanSectionCard key={s.num} s={s} />) : <MedicalText text={result.details} />}
 

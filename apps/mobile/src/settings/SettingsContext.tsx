@@ -70,8 +70,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const before = current.current;
     edits.current += 1;
     commit({ ...before, ...patch });
-    const res = await updateUserSettings(toServerPayload(current.current, keys));
-    if (res.error) {
+    const payload = toServerPayload(current.current, keys);
+    const res = Object.keys(payload).length ? await updateUserSettings(payload) : null; // device-only settings have nothing to send
+    if (res?.error) {
       // Put back only what this change touched, so a newer change to something else survives.
       commit({ ...current.current, ...Object.fromEntries(keys.map((k) => [k, before[k]])) });
       say({ kind: 'error', message: `${String(res.error).replace(/[.\s]+$/, '')}. The change was undone.` });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
-import { contactProblem, newId, telUrl } from '@curasense/shared/settings';
+import { contactProblem, emergencyNumberProblem, newId, telUrl } from '@curasense/shared/settings';
 import { useSettings } from '../../../src/settings/SettingsContext';
 import { AppText } from '../../../src/ui/AppText';
 import { Banner } from '../../../src/ui/Banner';
@@ -16,6 +16,8 @@ export default function Contacts() {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [removing, setRemoving] = useState<string | null>(null);
+  const [number, setNumber] = useState(values.emergencyNumber);
+  const [numberError, setNumberError] = useState('');
 
   const add = async () => {
     const problem = contactProblem({ name, phone });
@@ -28,11 +30,24 @@ export default function Contacts() {
     setRemoving(null);
     await update({ emergencyContacts: values.emergencyContacts.filter((c) => c.id !== id) }, 'Contact removed.');
   };
+  const saveNumber = async () => {
+    const problem = emergencyNumberProblem(number);
+    setNumberError(problem);
+    if (!problem) await update({ emergencyNumber: number.trim() }, 'Emergency number saved.');
+  };
   const call = (number: string) => Linking.openURL(telUrl(number)).catch(() => setError('This device cannot place calls.'));
 
   return (
     <Screen edges={[]}>
-      <AppText variant="callout" tone="secondary">People to reach in an emergency. CuraSense does not contact them for you: use Call here, or dial emergency services yourself.</AppText>
+      <AppText variant="callout" tone="secondary">People to reach in an emergency. CuraSense never calls or texts for you: with the Emergency prompt on (in Settings), a result marked EMERGENCY shows Call and Message buttons, and you tap them.</AppText>
+
+      <Card style={{ gap: 12 }}>
+        <AppText variant="headline" accessibilityRole="header">Emergency services number</AppText>
+        <AppText variant="caption" tone="muted">The Call emergency services button dials this. 112 works from mobile phones in most countries; use your local number if you prefer. It is kept on this phone only.</AppText>
+        <TextField label="Number" testID="emergency-number" value={number} onChangeText={setNumber} keyboardType="phone-pad" maxLength={6} autoCorrect={false} />
+        {numberError ? <Banner tone="error" testID="number-error">{numberError}</Banner> : null}
+        <Button title="Save number" variant="secondary" testID="save-number" onPress={saveNumber} />
+      </Card>
 
       {values.emergencyContacts.map((c) => (
         <Card key={c.id} testID={`contact-${c.id}`} style={{ gap: 4 }}>
