@@ -33,7 +33,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           key={name}
           name={name}
-          options={{ title, headerShown: !['analyze', 'history', 'settings'].includes(name), tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? active : icon} size={size} color={color as string} /> }}
+          options={{ title, headerShown: !['analyze', 'history', 'settings', 'book'].includes(name), tabBarIcon: ({ color, size, focused }) => <Ionicons name={focused ? active : icon} size={size} color={color as string} /> }}
         />
       ))}
     </Tabs>

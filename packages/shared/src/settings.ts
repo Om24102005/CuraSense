@@ -93,14 +93,18 @@ export function toServerPayload(v: SettingsValues, keys: (keyof SettingsValues)[
   return p;
 }
 
-/** Why a new dependent cannot be saved, or '' when it can. The server stores whatever it is sent, so the check is here. */
-export function dependentProblem(d: { name: string; dob: string }, today = new Date()): string {
-  if (!d.name.trim()) return 'Enter a name.';
-  if (!d.dob) return '';
-  const when = /^\d{4}-\d{2}-\d{2}$/.test(d.dob) ? new Date(`${d.dob}T00:00:00Z`) : null;
-  if (!when || Number.isNaN(when.getTime()) || when.toISOString().slice(0, 10) !== d.dob) return 'Enter the date of birth as YYYY-MM-DD, for example 2014-03-27.';
+/** Why a birth date cannot be saved, or '' when it can (or is empty). The server stores whatever it is sent, so the check is here. */
+export function birthDateProblem(dob: string, today = new Date()): string {
+  if (!dob) return '';
+  const when = /^\d{4}-\d{2}-\d{2}$/.test(dob) ? new Date(`${dob}T00:00:00Z`) : null;
+  if (!when || Number.isNaN(when.getTime()) || when.toISOString().slice(0, 10) !== dob) return 'Enter the date of birth as YYYY-MM-DD, for example 2014-03-27.';
   if (when > today || when.getUTCFullYear() < 1900) return 'That date of birth is not possible.';
   return '';
+}
+
+/** Why a new dependent cannot be saved, or '' when it can. */
+export function dependentProblem(d: { name: string; dob: string }, today = new Date()): string {
+  return d.name.trim() ? birthDateProblem(d.dob, today) : 'Enter a name.';
 }
 
 export function contactProblem(c: { name: string; phone: string }): string {
