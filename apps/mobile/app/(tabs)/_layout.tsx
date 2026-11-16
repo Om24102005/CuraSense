@@ -1,7 +1,9 @@
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '../../src/ui/Icon';
 import { PredictionsProvider } from '../../src/history/PredictionsContext';
 import { useTheme } from '../../src/theme';
+import { Welcome } from '../../src/welcome/Welcome';
 
 type Icon = keyof typeof Ionicons.glyphMap;
 const TABS: { name: string; title: string; icon: Icon; active: Icon }[] = [
@@ -16,6 +18,7 @@ export default function TabsLayout() {
   const t = useTheme();
   return (
     <PredictionsProvider>
+    <View style={{ flex: 1 }}>
     <Tabs
       screenOptions={{
         headerStyle: { backgroundColor: t.bg },
@@ -38,6 +41,8 @@ export default function TabsLayout() {
         />
       ))}
     </Tabs>
+    <Welcome />
+    </View>
     </PredictionsProvider>
   );
 }

@@ -11,7 +11,7 @@ import { useTheme } from '../src/theme';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function Routes() {
-  const { status } = useAuth();
+  const { status, arrival } = useAuth();
   const { ready } = useSettings();
   const t = useTheme();
   const waiting = status === 'loading' || !ready;
@@ -27,7 +27,9 @@ function Routes() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.bg } }}>
         <Stack.Screen name="index" />
         <Stack.Protected guard={status === 'signedIn'}>
-          <Stack.Screen name="(tabs)" />
+          {/* The welcome is dark whatever the phone's appearance, so its status bar must be light. This is the way that works on iOS here:
+              the app's status bar is controlled per screen (UIViewControllerBasedStatusBarAppearance is on), so <StatusBar> does nothing. */}
+          <Stack.Screen name="(tabs)" options={{ animation: 'none', statusBarStyle: arrival ? 'light' : 'auto' }} />
         </Stack.Protected>
         <Stack.Protected guard={status === 'signedOut'}>
           <Stack.Screen name="(auth)" />

@@ -15,12 +15,14 @@ interface Value {
   ready: boolean;
   /** The result of the last save, shown for a few seconds. */
   notice: Notice | null;
+  /** How the pull from the account went after sign-in: still going, done, or failed (the copy on the phone is used). */
+  sync: 'pending' | 'ok' | 'failed';
   /** Shows the change at once and saves it to the account. If the save fails the change is undone and the notice says why. */
   update: (patch: Partial<SettingsValues>, saved: string) => Promise<boolean>;
 }
 
 // The default lets code that only reads a setting (the theme, text) work without a provider.
-const SettingsContext = createContext<Value>({ values: DEFAULT_SETTINGS, ready: true, notice: null, update: async () => false });
+const SettingsContext = createContext<Value>({ values: DEFAULT_SETTINGS, ready: true, notice: null, sync: 'pending', update: async () => false });
 
 /**
  * The signed-in user's settings. The account on the server is the truth; a copy on the phone lets the app start with the right
@@ -31,6 +33,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [values, setValues] = useState(DEFAULT_SETTINGS);
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [sync, setSync] = useState<'pending' | 'ok' | 'failed'>('pending');
   const current = useRef(DEFAULT_SETTINGS); // the latest values, for code that continues after an await
   const edits = useRef(0); // counts changes, so a slow sync cannot overwrite a newer edit
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -52,6 +55,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (status === 'loading') return;
     let live = true;
     (async () => {
+      setSync('pending');
       if (status === 'signedOut') { commit(DEFAULT_SETTINGS); setReady(true); return; }
       try {
         const raw = await AsyncStorage.getItem(KEY);
@@ -61,6 +65,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setReady(true);
       const seen = edits.current;
       const res = await getUserSettings();
+      if (live) setSync(res.error || !res.data ? 'failed' : 'ok');
       if (live && !res.error && res.data && edits.current === seen) commit({ ...current.current, ...parseServerSettings(res.data.settings) });
     })();
     return () => { live = false; };
@@ -84,7 +89,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return true;
   }, [commit, say]);
 
-  const value = useMemo(() => ({ values, ready, notice, update }), [values, ready, notice, update]);
+  const value = useMemo(() => ({ values, ready, notice, sync, update }), [values, ready, notice, sync, update]);
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
 

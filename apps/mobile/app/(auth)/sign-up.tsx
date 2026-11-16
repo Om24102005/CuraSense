@@ -61,7 +61,7 @@ export default function SignUp() {
     setCodeBad(false);
     const r = await totpVerify(setupToken, digits);
     if (r.error || !r.data?.token) { setBusy(false); setCodeBad(true); setCode(''); return setError(r.error || 'Verification failed.'); }
-    await signIn(r.data.token, r.data.user ?? {});
+    await signIn(r.data.token, r.data.user ?? {}, 'signup');
   };
 
   // The QR code only helps when scanning from another device; on this phone the otpauth link opens the authenticator app directly.
