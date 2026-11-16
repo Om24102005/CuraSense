@@ -10,7 +10,10 @@
     "backgroundColor": "#05070f",
     "ios": {
       "bundleIdentifier": "com.curasense.mobile",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "CuraSense connects to the CuraSense server on your local network while the app is being tested."
+      }
     },
     "android": {
       "package": "com.curasense.mobile",
