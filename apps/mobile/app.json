@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.curasense.mobile",
       "supportsTablet": false,
       "infoPlist": {
+        "CFBundleDisplayName": "CuraSense Beta",
         "NSLocalNetworkUsageDescription": "CuraSense connects to the CuraSense server on your local network while the app is being tested."
       }
     },
