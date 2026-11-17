@@ -13,6 +13,7 @@ import { Segmented } from '../../../src/ui/Segmented';
 import { TextField } from '../../../src/ui/TextField';
 import { AddFiles, FileRow } from '../../../src/analyze/FileParts';
 import { Loading } from '../../../src/analyze/Loading';
+import { PercentBar, ReportLines } from '../../../src/loaders';
 import { pickFiles, pickPhotos, takePhoto, uploadable, type PickedFile } from '../../../src/analyze/pick';
 import { ResultView } from '../../../src/analyze/ResultView';
 import { WrongPageNotice } from '../../../src/analyze/WrongPageNotice';
@@ -56,7 +57,7 @@ export default function Reports() {
     if (mapped.save) void add(toPrediction('report', mapped.result));
   };
 
-  if (busy) return <Screen edges={[]}><Loading title="Reading your report" detail={mode === 'upload' ? file?.name : `${text.length.toLocaleString()} characters`} /></Screen>;
+  if (busy) return <Screen edges={[]}><Loading kind="report" preview={<ReportLines text={mode === 'paste' ? text : undefined} fileName={mode === 'upload' ? file?.name : undefined} />} title="Reading your report" detail={mode === 'upload' ? file?.name : `${text.length.toLocaleString()} characters`} /></Screen>;
   if (outcome?.refusal) {
     return (
       <Screen edges={[]}>
@@ -90,7 +91,10 @@ export default function Reports() {
             style={{ minHeight: 200, textAlignVertical: 'top' }}
           />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-            <AppText variant="caption" tone="muted">{text.length.toLocaleString()} / {MAX_TEXT.toLocaleString()} characters</AppText>
+            <View style={{ flex: 1, minWidth: 140, gap: 6 }}>
+              <AppText variant="caption" tone="muted">{text.length.toLocaleString()} / {MAX_TEXT.toLocaleString()} characters</AppText>
+              <PercentBar value={text.length / MAX_TEXT} color="#ec4899" height={5} label="Characters used" />
+            </View>
             <Button title="Load sample report" variant="link" testID="load-sample" style={{ paddingHorizontal: 0 }} onPress={() => setText(SAMPLE_REPORT)} />
           </View>
         </View>

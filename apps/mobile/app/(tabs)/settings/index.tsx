@@ -53,6 +53,10 @@ export default function Settings() {
         <NavRow testID="dependents-row" label="Family members" value={people(values.dependents.length)} onPress={() => router.push('/settings/dependents')} />
       </Group>
 
+      <Group title="About">
+        <NavRow testID="loaders-row" label="Loading animations" value="20" onPress={() => router.push('/settings/loaders')} />
+      </Group>
+
       <Button title="Sign out" variant="danger" testID="sign-out-button" onPress={signOut} />
     </Screen>
   );

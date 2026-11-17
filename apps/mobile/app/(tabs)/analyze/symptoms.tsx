@@ -14,6 +14,7 @@ import { Screen } from '../../../src/ui/Screen';
 import { TextField } from '../../../src/ui/TextField';
 import { radius } from '../../../src/ui/tokens';
 import { Loading } from '../../../src/analyze/Loading';
+import { SymptomChips } from '../../../src/loaders';
 import { ResultView } from '../../../src/analyze/ResultView';
 import { WrongPageNotice } from '../../../src/analyze/WrongPageNotice';
 
@@ -99,7 +100,7 @@ export default function Symptoms() {
   };
 
   if (busy) {
-    return <Screen edges={[]}><Loading title="Analysing your symptoms" detail={names.slice(0, 4).join(', ') + (names.length > 4 ? ` and ${names.length - 4} more` : '')} /></Screen>;
+    return <Screen edges={[]}><Loading kind="symptoms" preview={<SymptomChips names={names} />} title="Analysing your symptoms" detail={names.slice(0, 4).join(', ') + (names.length > 4 ? ` and ${names.length - 4} more` : '')} /></Screen>;
   }
   if (outcome?.refusal) {
     return (

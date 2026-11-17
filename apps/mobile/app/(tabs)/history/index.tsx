@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TYPE_LABELS, summarize } from '@curasense/shared/history';
 import { usePredictions } from '../../../src/history/PredictionsContext';
+import { LoadStatus, RowsLoading } from '../../../src/loaders';
 import { PredictionRow } from '../../../src/history/parts';
 import { useTheme } from '../../../src/theme';
 import { AppText } from '../../../src/ui/AppText';
@@ -34,6 +35,7 @@ export default function HistoryList() {
 
   const header = (
     <View style={{ gap: 14, paddingBottom: 14 }}>
+      <LoadStatus loading={loading} pulling={pulling} />
       <View style={{ gap: 2 }}>
         <AppText variant="title" accessibilityRole="header">Analysis History</AppText>
         <AppText variant="callout" tone="secondary">View all your previous AI-powered medical analyses.</AppText>
@@ -71,11 +73,13 @@ export default function HistoryList() {
         contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={pulling} tintColor={t.accent} onRefresh={async () => { setPulling(true); await refresh(); setPulling(false); }} />}
         ListEmptyComponent={
+          loading ? <RowsLoading testID="no-history" /> : (
           <View style={{ alignItems: 'center', gap: 10, paddingVertical: 40 }}>
             <Ionicons name="time-outline" size={44} color={t.textMuted} />
-            <AppText tone="muted" testID="no-history">{loading ? 'Loading your analyses…' : onlyLiked ? 'No liked analyses yet' : 'No analysis history yet'}</AppText>
-            {!loading && !items.length ? <Button title="Run your first analysis" variant="secondary" onPress={() => router.push('/analyze')} /> : null}
+            <AppText tone="muted" testID="no-history">{onlyLiked ? 'No liked analyses yet' : 'No analysis history yet'}</AppText>
+            {!items.length ? <Button title="Run your first analysis" variant="secondary" onPress={() => router.push('/analyze')} /> : null}
           </View>
+          )
         }
         renderItem={({ item }) => <PredictionRow p={item} onPress={() => router.push(`/history/${item.id}`)} />}
       />

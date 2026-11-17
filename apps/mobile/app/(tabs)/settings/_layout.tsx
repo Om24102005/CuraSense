@@ -25,6 +25,7 @@ export default function SettingsLayout() {
         <Stack.Screen name="language" options={{ title: 'AI language' }} />
         <Stack.Screen name="dependents" options={{ title: 'Family members' }} />
         <Stack.Screen name="contacts" options={{ title: 'Emergency contacts' }} />
+        <Stack.Screen name="loaders" options={{ title: 'Loading animations' }} />
       </Stack>
       <SaveToast />
     </View>

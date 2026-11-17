@@ -7,6 +7,7 @@ import { TYPE_COLORS, TYPE_LABELS, formatRelative, summarize, type PredictionTyp
 import { useAuth } from '../../src/auth/AuthContext';
 import { usePredictions } from '../../src/history/PredictionsContext';
 import { TypeIcon } from '../../src/history/parts';
+import { LoadStatus, Skeleton, SkeletonGroup } from '../../src/loaders';
 import { useTheme } from '../../src/theme';
 import { AppText } from '../../src/ui/AppText';
 import { Banner } from '../../src/ui/Banner';
@@ -17,7 +18,7 @@ import { radius } from '../../src/ui/tokens';
 
 type Icon = keyof typeof Ionicons.glyphMap;
 
-function StatTile({ label, badge, value, icon, from, to, testID }: { label: string; badge: string; value: string; icon: Icon; from: string; to: string; testID: string }) {
+function StatTile({ label, badge, value, icon, from, to, testID, loading }: { label: string; badge: string; value: string; icon: Icon; from: string; to: string; testID: string; loading?: boolean }) {
   return (
     <LinearGradient colors={[from, to]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, minHeight: 112, padding: 14, borderRadius: radius.lg, justifyContent: 'space-between' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -27,7 +28,7 @@ function StatTile({ label, badge, value, icon, from, to, testID }: { label: stri
         </View>
       </View>
       <View>
-        <AppText testID={testID} style={{ color: '#fff', fontSize: 26, fontWeight: '900' }}>{value}</AppText>
+        {loading ? <Skeleton onColor width={64} height={26} radius={8} style={{ marginBottom: 2 }} /> : <AppText testID={testID} style={{ color: '#fff', fontSize: 26, fontWeight: '900' }}>{value}</AppText>}
         <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.85)' }}>{label}</AppText>
       </View>
     </LinearGradient>
@@ -49,12 +50,15 @@ export default function Home() {
   const s = summarize(items);
   const first = user?.name?.split(' ')[0];
   const recent = items.slice(0, 3);
+  const firstLoad = loading && !items.length; // nothing to show yet, as against refreshing what is already there
 
   return (
     <Screen
       edges={[]}
       refreshControl={<RefreshControl refreshing={pulling} tintColor={t.accent} onRefresh={async () => { setPulling(true); await refresh(); setPulling(false); }} />}
     >
+      <LoadStatus loading={loading} pulling={pulling} />
+
       <View style={{ gap: 4 }}>
         <AppText variant="title" testID="greeting">{first ? `Welcome back, ${first}` : 'Welcome back'}</AppText>
         <AppText variant="callout" tone="secondary">Here is your health analysis overview.</AppText>
@@ -64,12 +68,12 @@ export default function Home() {
 
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <StatTile testID="stat-total" label="Total Analyses" badge="All time" value={String(s.total)} icon="locate-outline" from="#0ea5e9" to="#6366f1" />
-          <StatTile testID="stat-today" label="Today's Analyses" badge="Today" value={String(s.today)} icon="calendar-outline" from="#10b981" to="#059669" />
+          <StatTile testID="stat-total" loading={firstLoad} label="Total Analyses" badge="All time" value={String(s.total)} icon="locate-outline" from="#0ea5e9" to="#6366f1" />
+          <StatTile testID="stat-today" loading={firstLoad} label="Today's Analyses" badge="Today" value={String(s.today)} icon="calendar-outline" from="#10b981" to="#059669" />
         </View>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <StatTile testID="stat-confidence" label="Avg Confidence" badge="Avg" value={`${s.avgConfidence}%`} icon="trending-up-outline" from="#8b5cf6" to="#6d28d9" />
-          <StatTile testID="stat-latest" label="Latest analysis" badge="Latest" value={s.latest ? formatRelative(s.latest) : 'None yet'} icon="time-outline" from="#f59e0b" to="#d97706" />
+          <StatTile testID="stat-confidence" loading={firstLoad} label="Avg Confidence" badge="Avg" value={`${s.avgConfidence}%`} icon="trending-up-outline" from="#8b5cf6" to="#6d28d9" />
+          <StatTile testID="stat-latest" loading={firstLoad} label="Latest analysis" badge="Latest" value={s.latest ? formatRelative(s.latest) : 'None yet'} icon="time-outline" from="#f59e0b" to="#d97706" />
         </View>
       </View>
 
@@ -105,10 +109,17 @@ export default function Home() {
           <AppText variant="caption" tone="muted">Breakdown by category</AppText>
         </View>
         {s.total === 0 ? (
-          <View style={{ alignItems: 'center', gap: 8, paddingVertical: 18 }}>
-            <Ionicons name="alert-circle-outline" size={36} color={t.textMuted} />
-            <AppText variant="callout" tone="muted" testID="no-analyses">{loading ? 'Loading your analyses…' : 'No analyses yet'}</AppText>
-          </View>
+          loading ? (
+            <View style={{ gap: 14 }}>
+              <SkeletonGroup>{[0, 1, 2].map((i) => <Skeleton key={i} height={34} radius={10} />)}</SkeletonGroup>
+              <AppText variant="callout" tone="muted" testID="no-analyses" style={{ textAlign: 'center' }}>Loading your analyses…</AppText>
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center', gap: 8, paddingVertical: 18 }}>
+              <Ionicons name="alert-circle-outline" size={36} color={t.textMuted} />
+              <AppText variant="callout" tone="muted" testID="no-analyses">No analyses yet</AppText>
+            </View>
+          )
         ) : (
           <View style={{ gap: 14 }}>
             {(Object.keys(s.byType) as PredictionType[]).map((type) => (

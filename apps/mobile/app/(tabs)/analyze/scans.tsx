@@ -16,6 +16,7 @@ import { TextField } from '../../../src/ui/TextField';
 import { radius } from '../../../src/ui/tokens';
 import { AddFiles, FileRow } from '../../../src/analyze/FileParts';
 import { Loading } from '../../../src/analyze/Loading';
+import { PercentBar, ScanThumb } from '../../../src/loaders';
 import { pickFiles, pickPhotos, takePhoto, uploadable, type PickedFile } from '../../../src/analyze/pick';
 import { ResultView } from '../../../src/analyze/ResultView';
 
@@ -128,7 +129,7 @@ export default function Scans() {
     if (mapped.save) void saveResult(toPrediction('image', mapped.result));
   };
 
-  if (busy) return <Screen edges={[]}><Loading title="Reading your scan" detail={files.length > 1 ? `${files.length} files` : files[0]?.name} /></Screen>;
+  if (busy) return <Screen edges={[]}><Loading kind="scan" preview={<ScanThumb files={files} />} title="Reading your scan" detail={files.length > 1 ? `${files.length} files` : files[0]?.name} /></Screen>;
   if (result) return <Screen edges={[]}><ResultView type="image" result={result} onReset={() => { setResult(null); setFiles([]); setWarnings([]); }} /></Screen>;
 
   return (
@@ -155,6 +156,7 @@ export default function Scans() {
 
       <View style={{ gap: 10 }}>
         <AppText variant="callout" tone="secondary" testID="files-count">Scan files · {files.length}/{MAX_FILES}</AppText>
+        <PercentBar value={files.length / MAX_FILES} color="#8b5cf6" height={6} label={`${files.length} of ${MAX_FILES} files added`} />
         {files.map((f, i) => <FileRow key={`${f.uri}-${i}`} file={f} onRemove={() => setFiles((p) => p.filter((_, j) => j !== i))} />)}
         <AddFiles disabled={files.length >= MAX_FILES} onPhotos={() => add(() => pickPhotos(MAX_FILES - files.length))} onCamera={() => add(takePhoto)} onFiles={() => add(() => pickFiles(true))} />
       </View>

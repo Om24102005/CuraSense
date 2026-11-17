@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { SpinnerArc, SpokeSpinner } from '../loaders';
 import { useTheme } from '../theme';
 import { AppText } from './AppText';
 import { MIN_TOUCH, radius } from './tokens';
@@ -33,7 +34,9 @@ export function Button({ title, variant = 'primary', loading = false, disabled, 
       ]}
       {...rest}
     >
-      {loading ? <ActivityIndicator color={fg} /> : <AppText variant="headline" style={{ color: fg }}>{title}</AppText>}
+      {loading
+        ? (variant === 'link' ? <SpokeSpinner size={22} color={fg} label={null} /> : <SpinnerArc size={22} color={fg} label={null} />)
+        : <AppText variant="headline" style={{ color: fg }}>{title}</AppText>}
     </Pressable>
   );
 }

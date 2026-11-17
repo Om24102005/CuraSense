@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, ActivityIndicator, Animated, Easing, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type Arrival, useAuth } from '../auth/AuthContext';
 import { success } from '../haptics';
 import { usePredictions } from '../history/PredictionsContext';
+import { BatteryCharge, BouncingDots, EqualizerBars, SquareMorph } from '../loaders';
 import { useSettings } from '../settings/SettingsContext';
 import { Ionicons } from '../ui/Icon';
 import { ECG_X, ECG_Y, ecgSegments } from './ecg';
@@ -83,13 +84,19 @@ function FadeIn({ delay, reduce, children }: { delay: number; reduce: boolean; c
   return <Animated.View style={{ opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }}>{children}</Animated.View>;
 }
 
+/** The small loader of a pending row: equalizer bars for syncing, hopping dots for loading, a morphing shape for preparing. */
+function RowLoader({ id }: { id: string }) {
+  const Mini = id === 'settings' ? EqualizerBars : id === 'history' ? BouncingDots : SquareMorph;
+  return <Mini size={22} color={C.accent} label={null} />;
+}
+
 function Row({ id, status, pending, ok, failed, delay, reduce }: { id: string; status: Real; pending: string; ok: string; failed: string; delay: number; reduce: boolean }) {
   const label = status === 'pending' ? pending : status === 'ok' ? ok : failed;
   return (
     <FadeIn delay={delay} reduce={reduce}>
       <View testID={`welcome-row-${id}`} accessible accessibilityLabel={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 32 }}>
         <View style={{ width: 22, alignItems: 'center' }}>
-          {status === 'pending' ? <ActivityIndicator size="small" color={C.accent} /> : <Ionicons name={status === 'ok' ? 'checkmark-circle' : 'alert-circle'} size={22} color={status === 'ok' ? C.ok : C.warn} />}
+          {status === 'pending' ? <RowLoader id={id} /> : <Ionicons name={status === 'ok' ? 'checkmark-circle' : 'alert-circle'} size={22} color={status === 'ok' ? C.ok : C.warn} />}
         </View>
         <Text maxFontSizeMultiplier={1.6} style={{ color: status === 'pending' ? C.soft : C.text, fontSize: 16 }}>{label}</Text>
       </View>
@@ -153,6 +160,10 @@ function Sequence({ arrival, onDone }: { arrival: NonNullable<Arrival>; onDone: 
               </FadeIn>
               {full ? (
                 <View style={{ alignSelf: 'stretch', gap: 6, paddingTop: 8 }}>
+                  <View testID="welcome-ready" accessible accessibilityLabel={`${[settings, history, dashboard].filter((x) => x !== 'pending').length} of 3 steps done`} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 6 }}>
+                    <Text maxFontSizeMultiplier={1.6} style={{ color: C.soft, fontSize: 12, fontWeight: '800', letterSpacing: 2 }}>GETTING READY</Text>
+                    <BatteryCharge size={38} color={C.accent} level={[settings, history, dashboard].filter((x) => x !== 'pending').length / 3} label={null} />
+                  </View>
                   <Row id="settings" status={settings} pending="Syncing your settings" ok="Settings ready" failed="Using the settings saved on this phone" delay={timing.appear[0]} reduce={reduce} />
                   <Row id="history" status={history} pending="Loading your history" ok="History ready" failed="Could not load your history" delay={timing.appear[1]} reduce={reduce} />
                   <Row id="dashboard" status={dashboard} pending="Preparing your dashboard" ok="Dashboard ready" failed="Dashboard ready" delay={timing.appear[2]} reduce={reduce} />
