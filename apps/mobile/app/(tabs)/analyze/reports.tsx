@@ -91,7 +91,7 @@ export default function Reports() {
           />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
             <AppText variant="caption" tone="muted">{text.length.toLocaleString()} / {MAX_TEXT.toLocaleString()} characters</AppText>
-            <Button title="Load sample report" variant="link" testID="load-sample" onPress={() => setText(SAMPLE_REPORT)} />
+            <Button title="Load sample report" variant="link" testID="load-sample" style={{ paddingHorizontal: 0 }} onPress={() => setText(SAMPLE_REPORT)} />
           </View>
         </View>
       ) : (

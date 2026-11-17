@@ -85,8 +85,8 @@ export function BiomarkerCard({ b }: { b: BiomarkerData }) {
     : value > max ? `${(value - max).toFixed(1)} above the maximum` : `${(min - value).toFixed(1)} below the minimum`;
   return (
     <View style={{ gap: 8, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: `${s.color}44`, backgroundColor: t.surface }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <AppText dense variant="headline" style={{ flex: 1 }}>{b.name}</AppText>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', columnGap: 8, rowGap: 4 }}>
+        <AppText dense variant="headline" style={{ flexShrink: 0, maxWidth: '100%' }}>{b.name}</AppText>
         <Chip text={s.label} color={s.color} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
@@ -100,7 +100,7 @@ export function BiomarkerCard({ b }: { b: BiomarkerData }) {
         </View>
       ) : null}
       {hasRange ? (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: 8, rowGap: 2 }}>
           <AppText dense variant="caption" tone="muted">Normal {min} to {max} {b.unit}</AppText>
           <AppText dense variant="caption" style={{ color: status === 'normal' ? t.success : s.color, fontWeight: '700' }}>{note}</AppText>
         </View>

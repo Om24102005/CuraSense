@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Ionicons } from '../../../src/ui/Icon';
 import { useRouter } from 'expo-router';
-import { fmtDate, type ContactInfo } from '@curasense/shared/booking';
+import { fmtDate, fmtShort, type ContactInfo } from '@curasense/shared/booking';
 import { birthDateProblem } from '@curasense/shared/settings';
 import { useBookings } from '../../../src/book/BookingsContext';
 import { success } from '../../../src/haptics';
@@ -43,10 +43,10 @@ function YourInformation() {
         <AppText variant="headline" accessibilityRole="header" style={{ flex: 1, minWidth: 140 }}>Your information</AppText>
         {editing ? (
           <>
-            <Button title="Cancel" variant="link" testID="contact-cancel" onPress={() => { setEditing(false); setError(''); }} />
-            <Button title="Save" variant="link" testID="contact-save" onPress={save} />
+            <Button title="Cancel" variant="link" testID="contact-cancel" style={{ paddingHorizontal: 8 }} onPress={() => { setEditing(false); setError(''); }} />
+            <Button title="Save" variant="link" testID="contact-save" style={{ paddingHorizontal: 8, marginRight: -8 }} onPress={save} />
           </>
-        ) : <Button title="Edit" variant="link" testID="contact-edit" onPress={() => { setDraft(contact); setEditing(true); }} />}
+        ) : <Button title="Edit" variant="link" testID="contact-edit" style={{ paddingHorizontal: 8, marginRight: -8 }} onPress={() => { setDraft(contact); setEditing(true); }} />}
       </View>
       {editing ? (
         <>
@@ -91,16 +91,15 @@ export default function MyBookings() {
               accessibilityLabel={`${b.doctorName}, ${fmtDate(b.date)} at ${b.time}`}
               testID={`booking-${b.reference}`}
               onPress={() => router.push(`/book/${b.reference}`)}
-              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.lg, borderWidth: 1, borderColor: t.border, backgroundColor: pressed ? t.surface : t.card })}
+              style={({ pressed }) => ({ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.lg, borderWidth: 1, borderColor: t.border, backgroundColor: pressed ? t.surface : t.card })}
             >
               <DoctorAvatar initials={b.doctorInitials} color={b.doctorColor} size={42} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <AppText variant="headline" numberOfLines={1}>{b.doctorName}</AppText>
-                <AppText variant="caption" tone="muted" numberOfLines={1}>{b.doctorSpecialty}</AppText>
-                <AppText variant="caption" tone="secondary">{fmtDate(b.date)}</AppText>
-                <AppText variant="caption" tone="secondary">{b.time}</AppText>
+              <View style={{ flex: 1, minWidth: 150, gap: 2 }}>
+                <AppText variant="headline">{b.doctorName}</AppText>
+                <AppText variant="caption" tone="muted">{b.doctorSpecialty}</AppText>
+                <AppText variant="caption" tone="secondary" numberOfLines={1}>{fmtShort(b.date)} · {b.time}</AppText>
               </View>
-              <View style={{ alignItems: 'flex-end', gap: 6 }}>
+              <View style={{ alignItems: 'flex-end', gap: 6, marginLeft: 'auto' }}>
                 <ModeChip mode={b.mode} />
                 <AppText variant="caption" tone="muted" style={{ fontWeight: '700' }}>DEMO</AppText>
               </View>

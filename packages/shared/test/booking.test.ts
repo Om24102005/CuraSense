@@ -2,7 +2,7 @@
 process.env.TZ = 'Asia/Kolkata';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DOCTORS, TIME_SLOTS, buildDates, getBookedSlots, canAdvance, makeBooking, parseBookings, parseContact, genRef, isoOf, fmtDate } from '../src/booking.ts';
+import { DOCTORS, TIME_SLOTS, buildDates, getBookedSlots, canAdvance, makeBooking, parseBookings, parseContact, genRef, isoOf, fmtDate, fmtShort } from '../src/booking.ts';
 import { birthDateProblem } from '../src/settings.ts';
 
 test('the date strip starts tomorrow by the device calendar, with the number and the date agreeing', () => {
@@ -15,6 +15,7 @@ test('the date strip starts tomorrow by the device calendar, with the number and
   for (const t of tiles) assert.equal(Number(t.iso.slice(8)), Number(t.num));
   assert.equal(isoOf(new Date(2026, 0, 5)), '2026-01-05');
   assert.match(fmtDate('2026-11-18'), /Wednesday, November 18, 2026/);
+  assert.equal(fmtShort('2026-11-18'), 'Wed, Nov 18');
 });
 
 test('the invented free slots are the same every time and always leave some free', () => {

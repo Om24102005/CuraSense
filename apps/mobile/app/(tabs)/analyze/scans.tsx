@@ -34,7 +34,7 @@ function StudyPicker({ visible, value, onSelect, onClose }: { visible: boolean; 
       <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
           <AppText variant="title" accessibilityRole="header">Scan type</AppText>
-          <Button title="Done" variant="link" testID="study-done" onPress={onClose} />
+          <Button title="Done" variant="link" testID="study-done" style={{ paddingHorizontal: 8, marginRight: -8 }} onPress={onClose} />
         </View>
         <View style={{ marginHorizontal: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1.5, borderColor: t.border, backgroundColor: t.surface }}>
           <Ionicons name="search" size={18} color={t.textMuted} />

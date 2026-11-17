@@ -46,14 +46,14 @@ export default function BookingDetail() {
 
         <Card style={{ gap: 12 }}>
           <Fact icon="medkit-outline" label="Doctor">
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
               <DoctorAvatar initials={b.doctorInitials} color={b.doctorColor} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 130 }}>
                 <AppText variant="headline">{b.doctorName}</AppText>
                 <AppText variant="caption" tone="muted">{b.doctorSpecialty}</AppText>
                 {doctor ? <AppText variant="caption" tone="muted">{doctor.location}</AppText> : null}
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
+              <View style={{ alignItems: 'flex-end', marginLeft: 'auto' }}>
                 <AppText variant="headline">₹{b.doctorFee}</AppText>
                 <AppText variant="caption" tone="muted">consultation fee</AppText>
               </View>

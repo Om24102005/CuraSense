@@ -30,7 +30,7 @@ export default function Language() {
               onPress={async () => { tick(); if (selected || (await update({ language: l.code }, `Language set to ${l.label}.`))) router.back(); }}
               style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', minHeight: MIN_TOUCH + 4, paddingHorizontal: 12, opacity: pressed ? 0.7 : 1 })}
             >
-              <AppText style={{ flex: 1 }}>{l.label}</AppText>
+              <AppText style={{ flex: 1, writingDirection: 'ltr', textAlign: 'left' }}>{l.label}</AppText>
               {selected ? <Ionicons name="checkmark" size={20} color={t.accent} /> : null}
             </Pressable>
           );

@@ -23,7 +23,8 @@ const Heading = ({ title, sub }: { title: string; sub: string }) => (
     <AppText variant="callout" tone="secondary">{sub}</AppText>
   </View>
 );
-const Row = ({ children, gap = 10 }: { children: ReactNode; gap?: number }) => <View style={{ flexDirection: 'row', alignItems: 'center', gap }}>{children}</View>;
+// A trailing chip, fee or tick drops below the text instead of squeezing it when the text is large.
+const Row = ({ children, gap = 10 }: { children: ReactNode; gap?: number }) => <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap }}>{children}</View>;
 
 function Tick() {
   return <Ionicons name="checkmark-circle" size={22} color={useTheme().accent} />;
@@ -37,7 +38,7 @@ function StepDiagnosis({ items, value, onChange }: { items: Prediction[]; value:
       <Choice testID="diag-none" selected={value === null} label="No diagnosis attached" onPress={() => onChange(null)}>
         <Row gap={12}>
           <Ionicons name="close-circle-outline" size={28} color={t.textMuted} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 130 }}>
             <AppText variant="headline">No diagnosis attached</AppText>
             <AppText variant="caption" tone="muted">I will describe my symptoms during the consultation</AppText>
           </View>
@@ -51,7 +52,7 @@ function StepDiagnosis({ items, value, onChange }: { items: Prediction[]; value:
             <Choice testID={`diag-${p.id}`} selected={selected} color={TYPE_COLORS[p.type]} label={`${TYPE_LABELS[p.type]}: ${p.diagnosis}`} onPress={() => onChange(p)}>
               <Row gap={12}>
                 <TypeIcon type={p.type} size={38} />
-                <View style={{ flex: 1, gap: 3 }}>
+                <View style={{ flex: 1, minWidth: 130, gap: 3 }}>
                   <TypeBadge type={p.type} />
                   <AppText variant="headline" numberOfLines={2}>{p.diagnosis}</AppText>
                   <AppText variant="caption" tone="muted">{p.timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</AppText>
@@ -77,7 +78,7 @@ function StepDoctor({ value, onChange }: { value: Doctor | null; onChange: (d: D
           <View style={{ gap: 8 }}>
             <Row gap={12}>
               <DoctorAvatar initials={doc.initials} color={doc.color} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 130 }}>
                 <AppText variant="headline">{doc.name}</AppText>
                 <AppText variant="caption" tone="muted">{doc.specialty}</AppText>
               </View>
@@ -185,7 +186,7 @@ function StepReview({ doctor, mode, date, time, diagnosis }: { doctor: Doctor; m
       <Card>
         <Row gap={12}>
           <DoctorAvatar initials={doctor.initials} color={doctor.color} size={42} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 130 }}>
             <AppText variant="headline">{doctor.name}</AppText>
             <AppText variant="caption" tone="muted">{doctor.specialty}</AppText>
             <AppText variant="caption" tone="muted">{doctor.location}</AppText>
@@ -196,7 +197,7 @@ function StepReview({ doctor, mode, date, time, diagnosis }: { doctor: Doctor; m
       <Card>
         <Row gap={12}>
           <Ionicons name={mode === 'online' ? 'videocam-outline' : 'business-outline'} size={24} color={modeColor} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 130 }}>
             <AppText variant="headline">{mode === 'online' ? 'Online consultation' : 'In-clinic visit'}</AppText>
             <AppText variant="caption" tone="muted">{mode === 'online' ? 'Video call' : doctor.location}</AppText>
           </View>
@@ -206,7 +207,7 @@ function StepReview({ doctor, mode, date, time, diagnosis }: { doctor: Doctor; m
       <Card>
         <Row gap={12}>
           <Ionicons name="calendar-outline" size={24} color={t.accent} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 130 }}>
             <AppText variant="headline">{fmtDate(date)}</AppText>
             <AppText variant="caption" tone="muted">{time}</AppText>
           </View>
@@ -217,7 +218,7 @@ function StepReview({ doctor, mode, date, time, diagnosis }: { doctor: Doctor; m
           <Card>
             <Row gap={12}>
               <TypeIcon type={diagnosis.type} size={38} />
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 130 }}>
                 <AppText variant="caption" tone="muted">Attached diagnosis</AppText>
                 <AppText variant="headline">{diagnosis.diagnosis}</AppText>
               </View>

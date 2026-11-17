@@ -60,7 +60,7 @@ export function StepProgress({ step }: { step: number }) {
           <Fragment key={label}>
             <View style={{ width: 62, alignItems: 'center', gap: 4 }}>
               <View style={{ width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c, backgroundColor: done ? t.success : active ? `${t.primary}29` : t.surface }}>
-                {done ? <Ionicons name="checkmark" size={16} color="#fff" /> : <AppText variant="caption" style={{ color: c, fontWeight: '800' }}>{n}</AppText>}
+                {done ? <Ionicons name="checkmark" size={16} color="#fff" /> : <AppText variant="caption" maxFontSizeMultiplier={1.1} style={{ color: c, fontWeight: '800' }}>{n}</AppText>}
               </View>
               <AppText variant="caption" maxFontSizeMultiplier={1.15} style={{ color: c, fontSize: 11, lineHeight: 14, fontWeight: active ? '800' : '600' }} numberOfLines={1}>{label}</AppText>
             </View>
@@ -124,9 +124,9 @@ export function DiagnosisSummary({ p }: { p: Prediction }) {
           {conditions.map((c, i) => <ConditionRow key={i} c={c} top={i === 0} />)}
         </Card>
       ) : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 4 }}>
         <AppText variant="caption" tone="muted" style={{ fontWeight: '700' }}>Overall confidence</AppText>
-        <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: t.border }}>
+        <View style={{ flexGrow: 1, flexBasis: 90, height: 6, borderRadius: 3, backgroundColor: t.border }}>
           <View style={{ width: `${Math.max(0, Math.min(100, p.confidence))}%`, height: 6, borderRadius: 3, backgroundColor: color }} />
         </View>
         <AppText variant="caption" style={{ fontWeight: '800' }}>{p.confidence}%</AppText>

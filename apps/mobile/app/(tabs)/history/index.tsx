@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '../../../src/ui/Icon';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,11 +12,11 @@ import { Banner } from '../../../src/ui/Banner';
 import { Button } from '../../../src/ui/Button';
 import { radius } from '../../../src/ui/tokens';
 
-function MiniStat({ label, value, color, testID }: { label: string; value: string; color: string; testID: string }) {
+function MiniStat({ label, value, color, testID, wide }: { label: string; value: string; color: string; testID: string; wide?: boolean }) {
   return (
-    <View style={{ flex: 1, gap: 2, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: `${color}40`, backgroundColor: `${color}14` }}>
-      <AppText variant="caption" tone="muted">{label}</AppText>
-      <AppText testID={testID} variant="headline" numberOfLines={2} style={{ fontWeight: '800' }}>{value}</AppText>
+    <View style={{ flex: wide ? undefined : 1, gap: 2, padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: `${color}40`, backgroundColor: `${color}14` }}>
+      <AppText testID={testID} variant="title" numberOfLines={1} adjustsFontSizeToFit style={{ fontWeight: '800' }}>{value}</AppText>
+      <AppText variant="caption" tone="muted" numberOfLines={2}>{label}</AppText>
     </View>
   );
 }
@@ -28,6 +28,7 @@ export default function HistoryList() {
   const [onlyLiked, setOnlyLiked] = useState(false);
   const [pulling, setPulling] = useState(false);
   const s = summarize(items);
+  const wide = useWindowDimensions().fontScale > 1.3; // three tiles side by side stop fitting when the text is large
   const likedCount = items.filter((p) => p.liked).length;
   const shown = onlyLiked && likedCount ? items.filter((p) => p.liked) : items;
 
@@ -39,10 +40,10 @@ export default function HistoryList() {
       </View>
       {error ? <Banner tone="error" testID="error">{error}</Banner> : null}
       {items.length > 0 ? (
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <MiniStat testID="hist-total" label="Total" value={String(s.total)} color="#0ea5e9" />
-          <MiniStat testID="hist-confidence" label="Avg confidence" value={`${s.avgConfidence}%`} color="#8b5cf6" />
-          <MiniStat testID="hist-most" label="Most used" value={s.mostUsed ? TYPE_LABELS[s.mostUsed].replace(' Analysis', '') : 'N/A'} color="#10b981" />
+        <View style={{ flexDirection: wide ? 'column' : 'row', gap: 10 }}>
+          <MiniStat wide={wide} testID="hist-total" label="Total" value={String(s.total)} color="#0ea5e9" />
+          <MiniStat wide={wide} testID="hist-confidence" label="Avg confidence" value={`${s.avgConfidence}%`} color="#8b5cf6" />
+          <MiniStat wide={wide} testID="hist-most" label="Most used" value={s.mostUsed ? TYPE_LABELS[s.mostUsed].replace(' Analysis', '') : 'N/A'} color="#10b981" />
         </View>
       ) : null}
       {likedCount > 0 ? (

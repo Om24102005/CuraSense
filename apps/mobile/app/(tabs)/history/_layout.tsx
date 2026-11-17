@@ -11,6 +11,7 @@ export default function HistoryLayout() {
         headerTintColor: t.text,
         headerShadowVisible: false,
         headerTitleStyle: { fontWeight: '700' },
+        headerBackButtonDisplayMode: 'minimal', // a chevron only: a back button that carries the previous title is wide, pushes the title off centre and differs from screen to screen
         contentStyle: { backgroundColor: t.bg },
       }}
     >

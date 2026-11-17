@@ -25,6 +25,7 @@ export default function TabsLayout() {
         headerTintColor: t.text,
         headerShadowVisible: false,
         headerTitleStyle: { fontWeight: '700' },
+        headerTitleAllowFontScaling: false,
         sceneStyle: { backgroundColor: t.bg },
         tabBarStyle: { backgroundColor: t.card, borderTopColor: t.border },
         tabBarLabelStyle: { fontSize: 11, lineHeight: 14, fontWeight: '600' },

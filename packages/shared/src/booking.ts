@@ -51,6 +51,9 @@ export function getBookedSlots(iso: string): Set<string> {
 
 export const genRef = () => `CS-${Date.now().toString(36).toUpperCase().slice(-4)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
+/** "Thu, Nov 19": the date in a list row, where the long form wraps to three lines on a phone. */
+export const fmtShort = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
 export const fmtDate = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
 export interface Draft { doctor: Doctor | null; mode: ConsultMode | null; date: string; time: string }

@@ -20,6 +20,8 @@ function Sheet({ visible, onClose }: { visible: boolean; onClose: () => void }) 
   const [error, setError] = useState('');
   const open = (url: string) => { setError(''); Linking.openURL(url).catch(() => setError('This device cannot do that. Dial the number yourself.')); };
   const contacts = values.emergencyContacts;
+  // Close the sheet first and go to Settings once it has slid away: UIKit will not push a screen while a sheet is still leaving.
+  const toSettings = () => { onClose(); setTimeout(() => router.push('/settings/contacts'), 450); };
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
@@ -46,7 +48,7 @@ function Sheet({ visible, onClose }: { visible: boolean; onClose: () => void }) 
           )) : (
             <Card style={{ gap: 4 }}>
               <AppText testID="emergency-no-contacts">No emergency contacts yet.</AppText>
-              <Button title="Add contacts in Settings" variant="link" testID="emergency-add-contacts" style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={() => { onClose(); router.push('/settings/contacts'); }} />
+              <Button title="Add contacts in Settings" variant="link" testID="emergency-add-contacts" style={{ alignSelf: 'flex-start', paddingHorizontal: 0 }} onPress={toSettings} />
             </Card>
           )}
 

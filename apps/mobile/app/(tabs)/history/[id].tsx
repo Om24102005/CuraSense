@@ -63,7 +63,7 @@ export default function HistoryDetail() {
           </View>
 
           <View style={{ gap: 6 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
               <AppText variant="caption" tone="muted" style={{ letterSpacing: 1.2, fontWeight: '700' }}>OVERALL CONFIDENCE</AppText>
               <ConfidenceChip value={p.confidence} />
             </View>
@@ -115,7 +115,7 @@ export default function HistoryDetail() {
               {p.recommendations.map((r, i) => (
                 <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
                   <View style={{ minWidth: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: t.primary }}>
-                    <AppText variant="caption" style={{ color: '#fff', fontWeight: '800' }}>{i + 1}</AppText>
+                    <AppText variant="caption" maxFontSizeMultiplier={1.2} style={{ color: '#fff', fontWeight: '800' }}>{i + 1}</AppText>
                   </View>
                   <AppText variant="callout" style={{ flex: 1, lineHeight: 22 }}>{r}</AppText>
                 </View>
