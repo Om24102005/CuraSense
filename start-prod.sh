@@ -40,7 +40,7 @@ set -a; . "$ENV_FILE"; set +a
 # The website, built to call the address it is served from (an empty VITE_NODE_BASE_URL), into its own folder so the phone-app build in frontend/dist is untouched.
 if [ "${REBUILD:-}" = 1 ] || [ ! -f "$DIST/index.html" ] || [ -n "$(find "$ROOT/frontend/src" "$ROOT/packages/shared/src" "$ROOT/frontend/index.html" "$ROOT/frontend/vite.config.ts" -newer "$DIST/index.html" -type f -print -quit)" ]; then
   echo "▶ Building the website (about 10 seconds)…"
-  ( cd "$ROOT/frontend" && VITE_NODE_BASE_URL= npx vite build --outDir dist-web --emptyOutDir --logLevel warn )
+  ( cd "$ROOT/frontend" && VITE_NODE_BASE_URL= npx vite build --outDir dist-web --emptyOutDir --logLevel error )
 fi
 
 export NODE_ENV=production PORT="$WEB_PORT" STATIC_DIR="$DIST" PYTHON_AI_URL="http://127.0.0.1:$AI_PORT" AI_HOST=127.0.0.1 AI_PORT

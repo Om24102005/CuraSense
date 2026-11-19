@@ -228,9 +228,6 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
   const successRef = useRef<HTMLDivElement>(null);
   const checkRef   = useRef<HTMLDivElement>(null);
 
-  const userData  = JSON.parse(localStorage.getItem('curasense_user') || '{}');
-  const userEmail = userData.email || '';
-
   const S = "var(--font-display)";
   const I = "var(--font-body)";
 
@@ -381,10 +378,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
     setConfirmedBooking(booking);
     setIsSubmitting(false);
     setShowSuccess(true);
-    setEmailStatus('sending');
-
-    await new Promise(r => setTimeout(r, 1800));
-    setEmailStatus('sent');
+    setEmailStatus('sent');   // saved already; there is no email to wait for
   };
 
   const goToDetails = () => {
@@ -609,7 +603,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', maxWidth:'520px' }}>
         {([
-          { mode:'online' as const, icon:<Video style={{ width:34, height:34 }} />,    title:'Online',   desc:'Video call from anywhere',        sub:'Secure encrypted video platform', color:'#22d3ee' },
+          { mode:'online' as const, icon:<Video style={{ width:34, height:34 }} />,    title:'Online',   desc:'Video call from anywhere',        sub:'Demonstration only', color:'#22d3ee' },
           { mode:'offline' as const, icon:<Building2 style={{ width:34, height:34 }} />, title:'In-Clinic', desc:'Visit the doctor in person', sub: selectedDoctor?.location ?? 'At clinic location', color:'#8b5cf6' },
         ]).map(({ mode, icon, title, desc, sub, color }) => {
           const sel = consultMode === mode;
@@ -745,7 +739,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
           <div style={{ color:mc }}>{consultMode === 'online' ? <Wifi style={{ width:18, height:18 }} /> : <Building2 style={{ width:18, height:18 }} />}</div>
           <div style={{ flex:1 }}>
             <div style={{ fontFamily:S, fontWeight:700, fontSize:'0.8rem', color:T.head }}>{consultMode === 'online' ? 'Online Consultation' : 'In-Clinic Visit'}</div>
-            <div style={{ fontSize:'0.7rem', color:T.muted }}>{consultMode === 'online' ? 'Secure video call' : selectedDoctor.location}</div>
+            <div style={{ fontSize:'0.7rem', color:T.muted }}>{consultMode === 'online' ? 'Video call' : selectedDoctor.location}</div>
           </div>
           <span style={{ padding:'2px 9px', borderRadius:'999px', fontSize:'0.62rem', fontFamily:S, fontWeight:700, background:`${mc}18`, color:mc, border:`1px solid ${mc}30` }}>
             {consultMode.toUpperCase()}
@@ -785,7 +779,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
         <div style={{ padding:'0.8rem 1rem', borderRadius:'13px', background:'rgba(38,103,255,0.06)', border:'1px solid rgba(38,103,255,0.18)', display:'flex', alignItems:'center', gap:'10px', marginBottom:'0.25rem' }}>
           <Mail style={{ width:15, height:15, color:'#22d3ee', flexShrink:0 }} />
           <span style={{ fontSize:'0.77rem', color:T.text }}>
-            Confirmation will be sent to <strong style={{ color:'#22d3ee' }}>{userEmail || 'your email'}</strong>
+            Demonstration only: the booking is saved in this browser. No email is sent and no doctor is contacted.
           </span>
         </div>
       </div>
@@ -810,7 +804,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
           <Check style={{ width:36, height:36, color:'#10b981', strokeWidth:2.5 }} />
         </div>
 
-        <h2 style={{ fontFamily:S, fontWeight:800, fontSize:'1.35rem', color:T.head, marginBottom:'5px' }}>Booking Confirmed!</h2>
+        <h2 style={{ fontFamily:S, fontWeight:800, fontSize:'1.35rem', color:T.head, marginBottom:'5px' }}>Demo booking saved</h2>
         <div style={{ fontFamily:S, fontSize:'0.68rem', letterSpacing:'0.15em', color:'#22d3ee', marginBottom:'1.35rem' }}>
           REF: {confirmedRef}
         </div>
@@ -823,17 +817,14 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
         }}>
           <Mail style={{ width:15, height:15, color: emailStatus === 'sent' ? '#10b981' : '#22d3ee', flexShrink:0 }} />
           <span style={{ fontSize:'0.79rem', color:T.text }}>
-            {emailStatus === 'sending'
-              ? <span>Sending confirmation to <strong>{userEmail}</strong>…</span>
-              : <span>Confirmation sent to <strong style={{ color:'#10b981' }}>{userEmail}</strong> ✓</span>
-            }
+            <span>Saved in this browser <strong style={{ color:'#10b981' }}>✓</strong> No email is sent.</span>
           </span>
         </div>
 
         <p style={{ fontSize:'0.79rem', color:T.muted, marginBottom:'1.75rem', lineHeight:1.65 }}>
           Your appointment with <strong style={{ color:T.text }}>{confirmedBooking?.doctorName}</strong> on{' '}
           <strong style={{ color:T.text }}>{confirmedBooking?.date ? fmtDate(confirmedBooking.date) : ''}</strong> at{' '}
-          <strong style={{ color:T.text }}>{confirmedBooking?.time}</strong> is confirmed.
+          <strong style={{ color:T.text }}>{confirmedBooking?.time}</strong> is a demonstration. No doctor has been contacted.
         </p>
 
         <button
@@ -850,7 +841,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
             transition:'all 0.25s ease',
           }}
         >
-          {emailStatus === 'sending' ? 'Sending email…' : 'View Booking Details →'}
+          {emailStatus === 'sending' ? 'Saving…' : 'View Booking Details →'}
         </button>
       </div>
     </div>
@@ -871,7 +862,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
             <h2 style={{ fontFamily:S, fontWeight:800, fontSize:'1.5rem', color:T.head, marginBottom:'5px' }}>Your Booking</h2>
             <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
               <BadgeCheck style={{ width:14, height:14, color:'#10b981' }} />
-              <span style={{ fontFamily:S, fontSize:'0.65rem', letterSpacing:'0.12em', color:'#10b981' }}>CONFIRMED · {b.reference}</span>
+              <span style={{ fontFamily:S, fontSize:'0.65rem', letterSpacing:'0.12em', color:'#10b981' }}>DEMO · SAVED · {b.reference}</span>
             </div>
           </div>
           <div style={{ display:'flex', gap:'0.6rem', flexWrap:'wrap' }}>
@@ -947,7 +938,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
 
         <div style={{ padding:'0.82rem 1rem', borderRadius:'12px', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', display:'flex', alignItems:'center', gap:'10px', marginBottom:'1rem' }}>
           <Mail style={{ width:15, height:15, color:'#10b981', flexShrink:0 }} />
-          <span style={{ fontSize:'0.77rem', color:T.text }}>Confirmation sent to <strong style={{ color:'#10b981' }}>{userEmail}</strong></span>
+          <span style={{ fontSize:'0.77rem', color:T.text }}>Saved in this browser. No email is sent.</span>
           <BadgeCheck style={{ width:15, height:15, color:'#10b981', marginLeft:'auto', flexShrink:0 }} />
         </div>
 

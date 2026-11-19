@@ -7,6 +7,7 @@ import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
 import { WrongPageNotice } from '../../components/shared/WrongPageNotice';
+import { EmergencyPrompt } from '../../components/shared/EmergencyPrompt';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { SYMPTOMS } from '@curasense/shared/symptoms';
 
@@ -351,6 +352,7 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
               {/* keyframes for the emergency pulse — injected once via a
                   style tag so we don't need a separate stylesheet entry */}
               <style>{`@keyframes sc-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }`}</style>
+              <EmergencyPrompt active={result.urgency === 'emergency'} isDark={isDark} />
 
               {/* ── POTENTIAL CONDITIONS WITH PROBABILITY BARS ──
                   One row per condition: name on the left, probability bar

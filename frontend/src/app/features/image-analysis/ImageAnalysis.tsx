@@ -6,6 +6,8 @@ import { useTheme } from '../../App';
 import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
+import { EmergencyPrompt } from '../../components/shared/EmergencyPrompt';
+import { isEmergency } from '@curasense/shared/emergency';
 import { WrongPageNotice, type Redirect } from '../../components/shared/WrongPageNotice';
 import { SCAN_TYPES, SCAN_GROUPS, modalityOf, regionsOf, studyLabel, extractUrgency, URGENCY_MAP, MAX_FILES, MAX_FILE_MB, MAX_ZIP_MB } from '@curasense/shared/scans';
 
@@ -515,6 +517,8 @@ export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps)
                   </>
                 )}
               </div>
+
+              <EmergencyPrompt active={isEmergency({ scanSections: result.scanSections })} isDark={isDark} />
 
               {/* Per-scan cards */}
               {result.scanSections && result.scanSections.length > 0 && result.scanSections.map((section: ScanSection, i: number) => {

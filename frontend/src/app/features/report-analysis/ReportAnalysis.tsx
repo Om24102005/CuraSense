@@ -6,6 +6,7 @@ import { useTheme } from '../../App';
 import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
+import { EmergencyPrompt } from '../../components/shared/EmergencyPrompt';
 import { WrongPageNotice, type Redirect } from '../../components/shared/WrongPageNotice';
 import { SAMPLE_REPORT } from '@curasense/shared/sampleReport';
 
@@ -461,6 +462,8 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
                 </div>
                 <MedicalAIOutput text={result.details} isDark={isDark} textColor={T.text} mutedColor={T.muted} />
               </div>
+
+              <EmergencyPrompt active={result.urgency === 'emergency'} isDark={isDark} />
 
               {/* Confidence bar (parity with Symptoms tab) */}
               <div>

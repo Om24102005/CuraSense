@@ -27,8 +27,13 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookin
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    const stored = localStorage.getItem('curasense_user');
-    if (stored) setUserData(JSON.parse(stored));
+    // The name is re-read when Settings changes it (same tab: the curasense:user event).
+    const readUser = () => {
+      const stored = localStorage.getItem('curasense_user');
+      if (stored) setUserData(JSON.parse(stored));
+    };
+    readUser();
+    window.addEventListener('curasense:user', readUser);
 
     // Initial avatar load + live updates from Settings (same-tab via
     // CustomEvent, cross-tab via the storage event).
@@ -40,6 +45,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookin
     window.addEventListener('curasense:avatar', onAvatarEvent as any);
     window.addEventListener('storage', onStorage);
     return () => {
+      window.removeEventListener('curasense:user', readUser);
       window.removeEventListener('curasense:avatar', onAvatarEvent as any);
       window.removeEventListener('storage', onStorage);
     };

@@ -24,15 +24,17 @@ test('consultation booking: doctor → mode → slot → confirm', async () => {
   await page.locator('button:enabled', { hasText: /^\d\d:\d\d [AP]M$/ }).first().click();   // the app books some slots per date, so 09:00 AM is disabled on one day in five
   await page.getByRole('button', { name: 'CONTINUE' }).click();
   await page.getByRole('button', { name: 'CONFIRM BOOKING' }).click();
-  await expect(page.getByText('Booking Confirmed!')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Demo booking saved')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/No email is sent/).first()).toBeVisible();   // the page must not claim an email went out
+  await expect(page.getByText(/Confirmation sent/)).toHaveCount(0);
   // Baseline: bookings live in localStorage only (no backend endpoint exists yet).
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('curasense_bookings') || '[]'));
   expect(stored).toHaveLength(1);
 });
 
-test('view booking details shows the confirmed booking', async () => {
+test('view booking details shows the saved demo booking', async () => {
   await page.getByRole('button', { name: /View Booking Details/ }).click();
-  await expect(page.locator('#page-content')).toContainText(/CONFIRMED/);
+  await expect(page.locator('#page-content')).toContainText(/DEMO · SAVED/);
   await expect(page.locator('#page-content')).toContainText('Dr. Sarah Chen');
 });
 
