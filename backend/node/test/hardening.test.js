@@ -35,13 +35,12 @@ test('JSON bodies over 2 MB are refused; a 60,000-character report still reaches
   assert.equal((await analyze('a'.repeat(60_000))).status, 401);
 });
 
-test('sign-in, 2FA-code and reset routes are rate limited per IP, each family with its own bucket', async () => {
+test('sign-in, sign-up, 2FA-code and reset routes are rate limited per IP, each family with its own bucket', async () => {
   // No database here: requireMongo answers 503 after the limiter, which is all these routes need to show.
-  for (const [paths, max] of [[['/login'], 30], [['/login-totp'], 15], [['/forgot-password', '/verify-reset-code', '/reset-password'], 15]]) {
+  for (const [paths, max] of [[['/login'], 30], [['/login-totp'], 15], [['/forgot-password', '/verify-reset-code', '/reset-password'], 15], [['/register'], 60]]) {
     for (let i = 0; i < max; i++) assert.notEqual((await post(paths[i % paths.length])).status, 429, `${paths[0]} call ${i + 1}`);
     const blocked = await post(paths[0]);
     assert.equal(blocked.status, 429, paths[0]);
     assert.ok(Number(blocked.headers.get('retry-after')) > 0, 'Retry-After is set');
   }
-  assert.notEqual((await post('/register')).status, 429, 'sign-up is not limited');
 });

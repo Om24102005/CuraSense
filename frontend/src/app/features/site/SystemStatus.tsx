@@ -9,7 +9,8 @@ export type Overall = 'checking' | 'active' | 'degraded' | 'offline';
 
 const POLL_MS = 15000;
 const TIMEOUT_MS = 5000;
-const NODE_BASE = (import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:5001').replace(/\/$/, '');
+// An empty VITE_NODE_BASE_URL means "this site's own address" (the production build, served by the API itself); only an unset one falls back to localhost.
+const NODE_BASE = (import.meta.env.VITE_NODE_BASE_URL ?? 'http://localhost:5001').replace(/\/$/, '');
 
 /* ── one poller, shared ─────────────────────────────────────────────── */
 let snap: Snapshot | null = null;

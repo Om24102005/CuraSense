@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 let server, base;
 before(async () => {
   process.env.NODE_ENV = 'production';
-  process.env.JWT_SECRET = 'test-jwt-secret';
+  process.env.JWT_SECRET = 'test-jwt-secret-long-enough-for-production-use';   // production refuses anything under 32 characters
   process.env.CORS_ORIGINS = 'https://app.example.test';
   const { default: app } = await import('../app.js');
   server = app.listen(0);

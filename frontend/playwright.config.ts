@@ -11,6 +11,8 @@ export const E2E = {
 const backendEnv = {
   PORT: String(NODE_PORT), MONGODB_URI: E2E.mongo, JWT_SECRET: 'e2e-jwt-secret', GATEWAY_SECRET: 'e2e-gateway-secret',
   PYTHON_AI_URL: `http://localhost:${AI_PORT}`, FAKE_AI_PORT: String(AI_PORT),
+  RESET_CODE_IN_RESPONSE: '1',        // the reset-password test reads the code from the response; a real server never does this
+  REGISTER_LIMIT_PER_HOUR: '10000',   // the tests create many accounts from one address
 };
 
 export default defineConfig({

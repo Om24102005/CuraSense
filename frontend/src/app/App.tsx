@@ -14,13 +14,11 @@ import { Dashboard } from './features/dashboard/Dashboard';
 import { ConsultationBooking } from './features/booking/ConsultationBooking';
 import { Settings } from './features/settings/Settings';
 import { PublicSite } from './features/site/PublicSite';
-import { AdminDashboard } from './features/admin/AdminDashboard';
 import {
   Activity, Brain, FileText, History, LayoutDashboard,
   Settings as SettingsIcon, ShieldAlert, Menu, X, CalendarPlus, LogOut,
 } from 'lucide-react';
 import { ThemeToggleButton } from './components/shared/ThemeToggleButton';
-import { UserProfile } from './components/shared/UserProfile';
 import { getPredictions, savePrediction } from './services/api';
 
 import { syncNativeTheme, useBackHandler } from './native';
@@ -40,6 +38,9 @@ import {
 import AuroraBackdrop from './components/backgrounds/AuroraBackdrop';
 // Per-page medical particle scene; code-split so the first load never pays for three.js.
 const PageScene = lazy(() => import('./scenes/PageScene'));
+// The profile chip and the admin page each draw a small three.js scene; code-split for the same reason.
+const UserProfile = lazy(() => import('./components/shared/UserProfile').then((m) => ({ default: m.UserProfile })));
+const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 import type { SceneKey } from './scenes/generators';
 import LiquidFlow from './components/flow/LiquidFlow';
 import IntroSequence from './components/intro/IntroSequence';
@@ -468,7 +469,7 @@ export default function App() {
                 {/* Right side */}
                 <div className="flex items-center gap-2">
                   <div aria-hidden className="hidden md:block w-px h-5 mx-1 opacity-50" style={{ background: 'var(--border-color)' }} />
-                  <UserProfile predictionsCount={predictions.length} onNavigate={navigateTab} onLogout={handleLogout} onMyBookings={handleMyBookings} />
+                  <Suspense fallback={null}><UserProfile predictionsCount={predictions.length} onNavigate={navigateTab} onLogout={handleLogout} onMyBookings={handleMyBookings} /></Suspense>
                   <ThemeToggleButton />
                   <button
                     aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -599,7 +600,7 @@ export default function App() {
                 </div>
               )}
 
-              {activeTab === 'admin' && <AdminDashboard />}
+              {activeTab === 'admin' && <Suspense fallback={null}><AdminDashboard /></Suspense>}
             </main>
           </div>
         </div>

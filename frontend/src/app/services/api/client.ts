@@ -2,7 +2,7 @@
 import { configureApi } from '@curasense/shared/api/client';
 
 configureApi({
-  baseUrl: import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:5001',
+  baseUrl: import.meta.env.VITE_NODE_BASE_URL ?? 'http://localhost:5001',   // empty = this site's own address (see SystemStatus.tsx)
   getToken: () => localStorage.getItem('curasense_token'),
 });
 

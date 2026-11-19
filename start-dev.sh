@@ -42,7 +42,9 @@ echo "▶ Python AI gateway  → http://localhost:$PY_PORT"
 PY_PID=$!
 
 echo "▶ Node backend       → http://localhost:$NODE_PORT"
-( cd "$ROOT/backend/node" && exec node server.js ) &
+# RESET_CODE_IN_RESPONSE=1: dev only. Without it the password reset is off (no mail service yet); with it the reset code is returned in the response,
+# which lets anyone on your network take over an account, so ./start-prod.sh never sets it.
+( cd "$ROOT/backend/node" && exec env RESET_CODE_IN_RESPONSE=1 node server.js ) &
 NODE_PID=$!
 
 echo "▶ Frontend (Vite)    → http://localhost:$WEB_PORT"

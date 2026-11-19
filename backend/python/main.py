@@ -34,4 +34,6 @@ async def health():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Loopback by default: only the Node server on this machine calls this service. Where they run on different machines
+    # (a hosting platform's private network) set AI_HOST=0.0.0.0, and keep the port closed to the internet.
+    uvicorn.run(app, host=os.getenv("AI_HOST", "127.0.0.1"), port=int(os.getenv("AI_PORT", "8000")))

@@ -67,3 +67,7 @@ coverage/
 test-results/
 playwright-report/
 blob-report/
+
+# Presentation server (start-prod.sh)
+backend/.env.production
+frontend/dist-web/
