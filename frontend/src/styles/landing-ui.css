@@ -33,7 +33,7 @@
   height: 41px; padding: 0 1.2rem; border-radius: 999px; border: 1px solid transparent;
   font-family: var(--font-body); font-size: 0.86rem; font-weight: 600; letter-spacing: 0.01em; line-height: 1; white-space: nowrap;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
-  overflow: hidden;   /* the global press sweep (.cs-elem-transition::after) travels past the box otherwise */
+  overflow: hidden;
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease, background 0.25s ease, border-color 0.25s ease;
 }
 .lp-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
@@ -117,7 +117,6 @@
 .lp-auth input:hover { background: var(--lp-field-hi) !important; }
 .lp-auth input:focus { background: var(--lp-field-hi) !important; border-color: var(--lp-blue) !important; box-shadow: 0 0 0 3px rgba(38, 103, 255, 0.28) !important; }
 
-/* .lp-auth in the selector: on press the global .cs-elem-transition sets position: relative, which would move a bare .lp-close out from under the pointer */
 .lp-auth .lp-close {
   position: absolute; z-index: 20; top: 12px; right: 12px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%;
   border: 1px solid var(--lp-ghost-bd); background: var(--lp-ghost); color: var(--text-secondary); cursor: pointer; overflow: hidden;

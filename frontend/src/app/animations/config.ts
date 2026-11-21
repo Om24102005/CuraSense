@@ -1,16 +1,16 @@
 import type { DeviceTier } from './deviceTier';
 
-/** Base durations (seconds) — the "high tier" numbers, taken verbatim from the original App.tsx effects. */
+/** Base durations (seconds) for the signed-in tools: the clinical range, 160 to 320 ms, with no overshoot. */
 export const durations = {
-  pageTransition: 0.55,
-  scrollRail:     0.25,
-  headerDensify:  0.4,
-  navPill:        0.55,
-  navPillFade:    0.2,
-  drawerOpen:     0.7,
-  drawerClose:    0.45,
-  drawerStagger:  0.5,
-  drawerDelay:    0.18,
+  pageTransition: 0.28,
+  scrollRail:     0.16,
+  headerDensify:  0.24,
+  navPill:        0.3,
+  navPillFade:    0.16,
+  drawerOpen:     0.32,
+  drawerClose:    0.22,
+  drawerStagger:  0.28,
+  drawerDelay:    0.06,
   themeBody:      0.6,
 };
 

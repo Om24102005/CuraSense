@@ -46,6 +46,6 @@ export function useNavPillIndicator(
       opacity: 1,
     });
 
-    Flip.from(state, { duration: moveDuration, ease: easings.out });
+    Flip.from(state, { duration: moveDuration, ease: easings.out, scale: true });   // scale, so the glide is a transform and not a width tween
   }, [activeTab, navListRef, navPillRef, enabled, tier, reducedMotion]);
 }

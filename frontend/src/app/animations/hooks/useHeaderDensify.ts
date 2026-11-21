@@ -4,38 +4,36 @@ import { useDeviceTier } from '../deviceTier';
 import { useReducedMotion } from './useReducedMotion';
 import { getDuration, easings } from '../config';
 
-/** Shrinks header padding + increases blur once the page scrolls past 40px, while enabled. */
+/**
+ * Tightens the header once the page scrolls past 40px, while enabled. The bar slides up and its content slides half as far
+ * back down, so it reads shorter without changing layout: tweening padding or backdrop-filter here redid layout and blur mid-scroll.
+ */
 export function useHeaderDensify(headerRef: RefObject<HTMLElement | null>, enabled: boolean) {
   const tier = useDeviceTier();
   const reducedMotion = useReducedMotion();
-  // backdrop-filter blur is one of the more expensive CSS properties to animate on
-  // low-end mobile GPUs — skip the blur step there, keep the padding tween.
-  const skipBlur = tier === 'low';
 
   useEffect(() => {
     if (!enabled) return;
     const el = headerRef.current;
     if (!el) return;
+    const inner = el.querySelector<HTMLElement>('[data-header-inner]');
+    const targets = inner ? [el, inner] : [el];
 
     const duration = getDuration('headerDensify', tier, reducedMotion);
 
     const trigger = ScrollTrigger.create({
       start: 40,
       end: 99999,
-      onUpdate: (self) => {
-        const condensed = self.scroll() > 40;
-        gsap.to(el, {
-          paddingTop: condensed ? 6 : 0,
-          paddingBottom: condensed ? 6 : 0,
-          ...(skipBlur ? null : {
-            backdropFilter: condensed ? 'blur(28px) saturate(180%)' : 'blur(24px)',
-          }),
-          duration,
-          ease: easings.outSoft,
-        });
+      onToggle: ({ isActive }) => {
+        gsap.to(el, { y: isActive ? -8 : 0, duration, ease: easings.outSoft, overwrite: 'auto' });
+        if (inner) gsap.to(inner, { y: isActive ? 4 : 0, duration, ease: easings.outSoft, overwrite: 'auto' });
       },
     });
 
-    return () => trigger.kill();
-  }, [headerRef, enabled, tier, reducedMotion, skipBlur]);
+    return () => {
+      trigger.kill();
+      gsap.killTweensOf(targets);
+      gsap.set(targets, { clearProps: 'transform' });
+    };
+  }, [headerRef, enabled, tier, reducedMotion]);
 }

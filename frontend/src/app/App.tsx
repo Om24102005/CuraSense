@@ -25,7 +25,6 @@ import { syncNativeTheme, useBackHandler } from './native';
 
 // ── Animations (dedicated module — see ./animations) ──
 import {
-  gsap,
   usePageTransition,
   useScrollProgressRail,
   useHeaderDensify,
@@ -47,7 +46,6 @@ import IntroSequence from './components/intro/IntroSequence';
 import WelcomeSequence, { type WelcomeKind } from './components/intro/WelcomeSequence';
 import { MagneticCard } from './components/backgrounds/MagneticCard';
 import InteractionLayer from './components/backgrounds/InteractionLayer';
-import ElementTransitions from './components/backgrounds/ElementTransitions';
 
 // ── Themes ──
 import { themes, ThemeName } from './themes';
@@ -297,7 +295,6 @@ export default function App() {
         <div style={themeVars}>
           <AuroraBackdrop />
           <InteractionLayer />
-          <ElementTransitions />
           <PublicSite isDark={theme === 'dark'} bootDone={bootDone} onAuthenticate={(user, kind) => setArrival({ name: firstName(user?.name), kind })} />
         </div>
         {introOn && <IntroSequence key="intro" onReveal={() => { sessionStorage.setItem('cs_booted', '1'); setBootDone(true); }} onDone={() => setIntroOn(false)} />}
@@ -311,14 +308,13 @@ export default function App() {
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
       <>
         <div
-          className="min-h-dvh relative overflow-hidden transition-colors duration-500 text-[--text-primary]"
+          className="min-h-dvh relative overflow-hidden text-[--text-primary]"
           style={themeVars}
         >
           <AuroraBackdrop />
           {sceneOn && <Suspense fallback={null}><PageScene scene={activeTab as SceneKey} light={theme === 'light'} /></Suspense>}
           {sceneOn && <LiquidFlow tabKey={activeTab} />}
           <InteractionLayer />
-          <ElementTransitions />
 
           <div className="relative z-10" style={{ background: 'radial-gradient(ellipse 90% 45% at 20% -5%, rgba(135,191,255,0.18) 0%, rgba(38,103,255,0.06) 40%, transparent 65%)' }}>
             {/* ── SCROLL PROGRESS RAIL ── */}
@@ -332,7 +328,7 @@ export default function App() {
             {/* ── Header ── */}
             <header
               ref={headerRef}
-              className={`sticky top-0 ${mobileMenuOpen ? 'z-[56]' : 'z-50'} backdrop-blur-2xl border-b transition-[padding] duration-300`}   /* above the drawer (z-55) while it is open, so its close button stays tappable; z-50 otherwise, level with dialogs and popovers */
+              className={`sticky top-0 ${mobileMenuOpen ? 'z-[56]' : 'z-50'} backdrop-blur-2xl border-b`}   /* above the drawer (z-55) while it is open, so its close button stays tappable; z-50 otherwise, level with dialogs and popovers */
               style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)' }}
             >
               <div
@@ -342,7 +338,7 @@ export default function App() {
               />
 
               {/* the header's own background runs up under the notch / status bar; its content starts below it */}
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between pb-4" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
+              <div data-header-inner className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between pb-4" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
                 {/* index.css paints every class containing "card" (this one is "magnetic-card") as a card, and the wrapper clips the logo glow: both off here */}
                 <MagneticCard className="overflow-visible! bg-transparent! backdrop-blur-none!" intensity={6} perspective={600} onClick={() => navigateTab('dashboard')}>
                   <div
@@ -414,20 +410,18 @@ export default function App() {
                           key={id}
                           data-nav-id={id}
                           onClick={() => navigateTab(id)}
-                          onMouseEnter={e => gsap.to(e.currentTarget, { y: -2, duration: 0.2, ease: 'power2.out' })}
-                          onMouseLeave={e => gsap.to(e.currentTarget, { y: 0,  duration: 0.2, ease: 'power2.out' })}
-                          className="relative z-[1] flex items-center gap-1.5 px-3.5 py-2 rounded-[14px]"
+                          className="relative z-[1] flex items-center gap-1.5 px-3.5 py-2 rounded-[14px] hover:[transform:translateY(-1px)]"
                         >
-                          <Icon style={{ width: 14, height: 14, flexShrink: 0, color: isActive ? accent : 'rgba(255,255,255,0.35)', filter: isActive ? `drop-shadow(0 0 5px ${accent}bb)` : 'none', transition: 'color 0.25s, filter 0.25s' }} />
-                          <span style={{ fontSize: '0.8rem', fontWeight: isActive ? 600 : 400, color: isActive ? '#fff' : 'rgba(255,255,255,0.42)', textShadow: isActive ? `0 0 14px ${accent}99` : 'none', letterSpacing: isActive ? '0.015em' : '0', transition: 'all 0.25s ease' }}>
+                          <Icon style={{ width: 14, height: 14, flexShrink: 0, color: isActive ? accent : 'rgba(255,255,255,0.35)', filter: isActive ? `drop-shadow(0 0 5px ${accent}bb)` : 'none', transition: 'color 0.2s ease' }} />
+                          <span style={{ fontSize: '0.8rem', fontWeight: 500, color: isActive ? '#fff' : 'rgba(255,255,255,0.42)', textShadow: isActive ? `0 0 14px ${accent}99` : 'none', letterSpacing: '0.01em', transition: 'color 0.2s ease' }}>
                             {label}
                           </span>
                           <span aria-hidden style={{
-                            position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
-                            width: isActive ? '20px' : '0px', height: '2px', borderRadius: '999px',
+                            position: 'absolute', bottom: 4, left: '50%', transform: `translateX(-50%) scaleX(${isActive ? 1 : 0})`,
+                            width: '20px', height: '2px', borderRadius: '999px',
                             background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-                            boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
-                            transition: 'width 0.3s ease, box-shadow 0.3s ease',
+                            boxShadow: `0 0 8px ${accent}`,
+                            transition: 'transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1)',
                           }} />
                         </button>
                       );
@@ -441,9 +435,7 @@ export default function App() {
                         key={id}
                         data-nav-id={id}
                         onClick={() => navigateTab(id)}
-                        onMouseEnter={e => gsap.to(e.currentTarget, { y: -2, scale: 1.03, duration: 0.2, ease: 'power2.out' })}
-                        onMouseLeave={e => gsap.to(e.currentTarget, { y: 0,  scale: 1,    duration: 0.2, ease: 'power2.out' })}
-                        className="relative flex items-center gap-1.5 px-4 py-2"
+                        className="relative flex items-center gap-1.5 px-4 py-2 hover:[transform:translateY(-1px)]"
                         style={{
                           borderRadius: '14px',
                           background: 'linear-gradient(135deg, #0d9488 0%, #2563eb 55%, #06b6d4 100%)',
@@ -452,10 +444,9 @@ export default function App() {
                             ? '0 0 32px -4px rgba(135,191,255,0.95), 0 0 18px -4px rgba(38,103,255,0.65), inset 0 1px 0 rgba(255,255,255,0.25)'
                             : '0 0 22px -6px rgba(135,191,255,0.65), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
                           color: '#fff', fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em',
-                          cursor: 'pointer', transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+                          cursor: 'pointer', transition: 'transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease',
                         }}
                       >
-                        <span aria-hidden className="animate-ping absolute inset-0 pointer-events-none" style={{ borderRadius: '14px', background: 'rgba(135,191,255,0.18)', animationDuration: '2.8s' }} />
                         <span aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: '14px' }}>
                           <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 50%, transparent 65%)' }} />
                         </span>
@@ -489,8 +480,7 @@ export default function App() {
               data-drawer
               className="fixed inset-0 z-[55] flex-col items-center justify-center gap-2 px-6 hidden"
               style={{
-                background: 'radial-gradient(120% 120% at 95% 5%, color-mix(in srgb, var(--accent-violet) 35%, transparent), color-mix(in srgb, var(--accent-cyan) 18%, transparent) 40%, var(--header-bg) 75%)',
-                backdropFilter: 'blur(32px) saturate(180%)',
+                background: 'radial-gradient(120% 120% at 95% 5%, color-mix(in srgb, var(--accent-violet) 35%, transparent), color-mix(in srgb, var(--accent-cyan) 18%, transparent) 40%, var(--header-bg) 75%), var(--bg-base)',   /* opaque: a full-screen backdrop blur under a clip-path reveal is the costliest frame on a phone */
                 paddingTop: 'calc(5.5rem + env(safe-area-inset-top))',   /* the header (5.5rem tall) now stays visible above the drawer */
                 paddingBottom: 'env(safe-area-inset-bottom)',
               }}

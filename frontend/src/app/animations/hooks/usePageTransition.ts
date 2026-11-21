@@ -22,7 +22,7 @@ export function usePageTransition(enabled: boolean, activeTab: string) {
     const duration = getDuration('pageTransition', tier, reducedMotion);
     const tween = gsap.fromTo(
       main,
-      { opacity: 0, y: reducedMotion ? 0 : 24 },
+      { opacity: 0, y: reducedMotion ? 0 : 8 },
       { opacity: 1, y: 0, duration, ease: easings.out, clearProps: 'transform,opacity' }
     );
 
