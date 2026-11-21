@@ -57,7 +57,7 @@ export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps)
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.ia-card', { y: 32, opacity: 0 }, { y: 0, opacity: 1, duration: 0.75, stagger: 0.12, ease: 'expo.out' });
+      gsap.fromTo('.ia-card', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity' });
     }, ref);
     return () => ctx.revert();
   }, []);
@@ -490,6 +490,7 @@ export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps)
 
           {result && (
             <div
+              data-result
               style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
             >
               {/* Overall header card */}

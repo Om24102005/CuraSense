@@ -43,15 +43,12 @@ export default function LiquidFlow({ tabKey }: { tabKey: string }) {
     let timer = 0;
 
     const flowIn = (el: HTMLElement, i: number) => {
-      if (reduced) return;
-      const r = el.getBoundingClientRect();
-      // Already on screen at load: no scrub, avoids a flash of the hidden state.
-      const vh = innerHeight;
-      const tw = gsap.fromTo(el,
-        { y: 56, opacity: 0, scale: 0.975 },
-        { y: 0, opacity: 1, scale: 1, ease: 'none', immediateRender: r.top > vh * 0.92,
-          scrollTrigger: { trigger: el, start: `top ${97 - (i % 3) * 2}%`, end: 'top 70%', scrub: 0.9, invalidateOnRefresh: true } });
-      tweens.push(tw);
+      // A medical result is never held back by scroll position, and what is already on screen has no reason to flash.
+      if (reduced || el.closest('[data-result]') || el.getBoundingClientRect().top < innerHeight) return;
+      tweens.push(gsap.fromTo(el,
+        { y: 10, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.28, delay: (i % 3) * 0.03, ease: 'power2.out', clearProps: 'transform,opacity',
+          scrollTrigger: { trigger: el, start: 'top 96%', once: true } }));
     };
 
     const scan = () => {

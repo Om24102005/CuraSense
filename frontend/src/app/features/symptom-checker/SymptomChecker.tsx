@@ -1,5 +1,5 @@
 import { analyzeSymptoms } from '../../services/api';
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, CircleAlert, CircleCheck, X, Plus } from 'lucide-react';
 import type { Prediction } from '../../App';
 import { useTheme } from '../../App';
@@ -11,9 +11,6 @@ import { EmergencyPrompt } from '../../components/shared/EmergencyPrompt';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { SYMPTOMS } from '@curasense/shared/symptoms';
 
-// The particle burst is code-split so the first load never pays for it; the page asks for it while the person types, so it is ready when the answer arrives.
-const loadBurst = () => import('../../components/shared/SuccessBurst');
-const SuccessBurst = lazy(loadBurst);
 
 interface SymptomCheckerProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
@@ -24,7 +21,6 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
   const ref = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  useEffect(() => { void loadBurst(); }, []);
   // AutoAnimate: zero-config FLIP animation for the chip list as symptoms are
   // added/removed — no manual enter/exit choreography needed for this one.
   const [chipListRef] = useAutoAnimate<HTMLDivElement>({ duration: 220 });
@@ -35,13 +31,12 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
   const [searchQuery, setSearchQuery] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [burstActive, setBurstActive] = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo('.sc-card',
-        { y: 32, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.75, stagger: 0.12, ease: 'expo.out' }
+        { y: 8, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity' }
       );
     }, ref);
     return () => ctx.revert();
@@ -148,15 +143,13 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
 
       setResult(mappedResult);
       onPrediction({ type: 'symptom', ...mappedResult });
-      setBurstActive(true);
-      setTimeout(() => setBurstActive(false), 1400);
 
     } catch (error) {
       console.error(error);
       setResult({
         diagnosis: 'Connection Error',
         confidence: 0,
-        details: 'Could not connect to AI Core. Ensure Python backend is running on port 8000.',
+        details: 'The analysis service could not be reached. Please try again in a moment.',
         urgency: 'low',
         conditions: [],
         recommendations: [],
@@ -300,9 +293,8 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
           )}
 
           {result && !result.refusal && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div data-result style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ position: 'relative', overflow: 'hidden', padding: '1.25rem', borderRadius: '14px', background: T.resBg, border: `1px solid ${T.resBdr}` }}>
-                <Suspense fallback={null}><SuccessBurst active={burstActive} /></Suspense>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>
                   <span style={{ padding: '3px 12px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, background: result.confidence >= 80 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 80 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 80 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}`, whiteSpace: 'nowrap' }}>{result.confidence}% confidence</span>

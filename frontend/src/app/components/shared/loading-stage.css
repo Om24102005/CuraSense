@@ -84,6 +84,7 @@
 
 @media (max-width: 640px) {
   .loading-stage { --B: clamp(170px, 30vh, 260px); }
+  .ls-lens { -webkit-mask-image: none; mask-image: none; }   /* a soft mask on a moving layer is re-rastered on every frame on a phone */
   .ls-row { grid-template-columns: 1fr 56px 80px 12px; gap: 10px; }
   .ls-text { font-size: 0.7rem; }
 }

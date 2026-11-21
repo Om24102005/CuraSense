@@ -16,7 +16,7 @@
    for the whole wait.
    ═══════════════════════════════════════════════════════ */
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { gsap, useReducedMotion } from '../../animations';
 import { useTheme } from '../../App';
@@ -63,6 +63,18 @@ export function LoadingScreen({ message = 'ANALYZING SYMPTOMS...', variant = 'sy
 
   useEffect(() => { setMounted(true); }, []);
 
+  // The stage is opaque, so ending it would cut to the result. A plain panel of the same colour takes its place in the same commit
+  // and dissolves; it never takes input, so the result can be read and used from its first frame.
+  const stageOn = useRef(false);
+  stageOn.current = !!Stage;
+  useLayoutEffect(() => () => {
+    if (!stageOn.current || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const cover = document.createElement('div');
+    cover.className = 'ls-exit';
+    document.body.appendChild(cover);
+    gsap.to(cover, { opacity: 0, duration: 0.28, ease: 'power1.out', onComplete: () => cover.remove() });
+  }, []);
+
   useEffect(() => {
     if (!canStage) return;
     let live = true;
@@ -79,7 +91,7 @@ export function LoadingScreen({ message = 'ANALYZING SYMPTOMS...', variant = 'sy
       gsap.fromTo(containerRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
       gsap.fromTo(panelRef.current,
         { opacity: 0, scale: 0.94 },
-        { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(1.4)', delay: 0.05 }
+        { opacity: 1, scale: 1, duration: 0.3, ease: 'expo.out', delay: 0.04 }
       );
     }, containerRef);
     return () => ctx.revert();
@@ -91,8 +103,8 @@ export function LoadingScreen({ message = 'ANALYZING SYMPTOMS...', variant = 'sy
     <div
       ref={containerRef}
       className="fixed inset-0 z-[99999] flex items-center justify-center"
-      // The lens page is opaque, so the page behind it is neither seen nor blurred (the blur costs GPU every frame).
-      style={{ ...accentVar, opacity: 0, background: Stage ? '#03050b' : isDark ? 'rgba(0,0,0,0.78)' : 'rgba(245,245,247,0.85)', backdropFilter: Stage ? 'none' : 'blur(8px)', WebkitBackdropFilter: Stage ? 'none' : 'blur(8px)', transition: 'background 0.6s ease' }}
+      // No backdrop blur: it costs GPU on every frame, and the lens page that follows is opaque anyway.
+      style={{ ...accentVar, opacity: 0, background: Stage ? '#03050b' : isDark ? 'rgba(0,0,0,0.86)' : 'rgba(245,245,247,0.92)', transition: 'background 0.4s ease' }}
     >
       {/* the compact panel fades out when the stage takes over (its own element, because GSAP owns the panel's opacity) */}
       <div style={{ opacity: Stage ? 0 : 1, transition: 'opacity 0.5s ease' }} aria-hidden={Stage ? true : undefined}>

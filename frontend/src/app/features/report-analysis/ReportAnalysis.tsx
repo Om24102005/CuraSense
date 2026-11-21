@@ -62,7 +62,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.ra-card', { y: 32, opacity: 0 }, { y: 0, opacity: 1, duration: 0.75, stagger: 0.12, ease: 'expo.out' });
+      gsap.fromTo('.ra-card', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity' });
     }, ref);
     return () => ctx.revert();
   }, []);
@@ -160,7 +160,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
       setResult({
         diagnosis: 'Processing Error',
         confidence: 0,
-        details: 'AI analyst offline. Ensure the Python backend is running on port 8000 and that an AI key (DEEPSEEK_API_KEY, MISTRAL_API_KEY or GROQ_API_KEY) is set in backend/.env.',
+        details: 'The analysis service could not be reached. Please try again in a moment.',
         urgency: 'low',
         recommendations: [],
         biomarkers: [],
@@ -454,7 +454,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
           )}
 
           {result && !result.refusal && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div data-result style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ padding: '1.25rem', borderRadius: '14px', background: T.resBg, border: `1px solid ${T.resBdr}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>

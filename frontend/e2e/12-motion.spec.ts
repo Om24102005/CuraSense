@@ -108,3 +108,18 @@ test('moving between sign-in and sign-up slides the step in and leaves it clean,
   expect(await height()).toBe(first);
   expect(errorsOf(page).filter(noise)).toEqual([]);
 });
+
+test('a result below the fold is fully visible without scrolling, and the hand-off cover clears', async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await open(page, request, 'motion-result');
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await page.locator('[data-drawer-item]', { hasText: 'Analyze' }).first().click();
+  await page.getByRole('tab', { name: 'Reports' }).click();
+  await page.getByPlaceholder(/Paste your lab report here/).fill('Hemoglobin 13.2 g/dL (12-16)');
+  await page.getByRole('button', { name: 'Analyze Report' }).click();
+  await expect(page.getByText(/E2E lab assessment/)).toBeAttached({ timeout: 20_000 });
+  await expect(page.locator('.ls-exit')).toHaveCount(0);
+  await expect.poll(() => page.locator('[data-result], [data-result] *').evaluateAll((els) => els.every((e) => getComputedStyle(e).opacity !== '0'))).toBe(true);
+  await expect.poll(() => page.locator('[data-result] > *').evaluateAll((els) => els.length > 0 && els.every((e) => getComputedStyle(e).opacity === '1'))).toBe(true);
+  expect(errorsOf(page).filter(noise)).toEqual([]);
+});
