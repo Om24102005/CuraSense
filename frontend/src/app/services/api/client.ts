@@ -4,6 +4,12 @@ import { configureApi } from '@curasense/shared/api/client';
 configureApi({
   baseUrl: import.meta.env.VITE_NODE_BASE_URL ?? 'http://localhost:5001',   // empty = this site's own address (see SystemStatus.tsx)
   getToken: () => localStorage.getItem('curasense_token'),
+  onUnauthorized: () => {
+    if (!localStorage.getItem('curasense_token')) return;
+    localStorage.removeItem('curasense_token');
+    localStorage.removeItem('curasense_user');
+    location.reload();
+  },
 });
 
 export * from '@curasense/shared/api/client';

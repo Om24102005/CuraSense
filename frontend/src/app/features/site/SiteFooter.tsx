@@ -17,7 +17,7 @@ export function SiteFooter({ navigate, onOpenAuth }: { navigate: (to: RouteId, h
 
         <nav className="sf-col" aria-label="Site">
           <h2>Explore</h2>
-          {(['platform', 'approach', 'access'] as RouteId[]).map((id) => <Link key={id} to={id} navigate={navigate}>{ROUTES[id].label}</Link>)}
+          {(['platform', 'approach', 'access', 'privacy'] as RouteId[]).map((id) => <Link key={id} to={id} navigate={navigate}>{ROUTES[id].label}</Link>)}
         </nav>
 
         <div className="sf-col">

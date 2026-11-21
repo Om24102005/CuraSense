@@ -7,6 +7,8 @@ export interface ApiConfig {
   baseUrl: string;
   /** The signed-in user's token, or null. */
   getToken: () => string | null | Promise<string | null>;
+  /** The server no longer accepts this session (signed out elsewhere, password changed, account deleted). */
+  onUnauthorized?: () => void;
 }
 
 let config: ApiConfig = { baseUrl: 'http://localhost:5001', getToken: () => null };
@@ -37,6 +39,7 @@ export async function fetchAPI<T>(
       } as HeadersInit,
     });
 
+    if (response.status === 401) config.onUnauthorized?.();
     if (!response.ok) {
       const error = await response.json();
       return { error: error.error || `HTTP ${response.status}` };
@@ -53,6 +56,7 @@ export async function fetchAPI<T>(
 export async function postForm<T>(endpoint: string, body: FormData): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(`${config.baseUrl}${endpoint}`, { method: 'POST', headers: (await getAuthHeaders()) as HeadersInit, body });
+    if (response.status === 401) config.onUnauthorized?.();
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       return { error: error.error || `HTTP ${response.status}` };

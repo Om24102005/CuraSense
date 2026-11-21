@@ -9,6 +9,10 @@ const userSchema = new mongoose.Schema({
   resetCodeExpiry: { type: Date,   default: null },
   totpSecret:      { type: String, default: null },
   totpEnabled:     { type: Boolean, default: false },
+  resetAttempts:   { type: Number, default: 0 },
+  tokenVersion:    { type: Number, default: 0 },      // raised to end every session at once
+  consentAt:       { type: Date,   default: null },   // when the person agreed to how their health data is processed
+  consentVersion:  { type: String, default: null },
   createdAt:       { type: Date,   default: Date.now },
 
   // ── User Settings (non-destructive: added alongside existing fields) ──

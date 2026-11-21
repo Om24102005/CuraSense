@@ -36,7 +36,7 @@ export async function syncAppleHealth(req, res) {
     res.json({ success: true, wearableData: user.wearableData });
   } catch (error) {
     console.error('[POST /api/wearables/apple-health/sync] failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 }
 
@@ -51,6 +51,6 @@ export async function getWearableStatus(req, res) {
     res.json({ wearableData: user.wearableData ?? null });
   } catch (error) {
     console.error('[GET /api/wearables/apple-health/status] failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 }

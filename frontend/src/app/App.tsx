@@ -14,6 +14,7 @@ import { Dashboard } from './features/dashboard/Dashboard';
 import { ConsultationBooking } from './features/booking/ConsultationBooking';
 import { Settings } from './features/settings/Settings';
 import { PublicSite } from './features/site/PublicSite';
+import { ConsentGate } from './features/legal/ConsentGate';
 import {
   Activity, Brain, FileText, History, LayoutDashboard,
   Settings as SettingsIcon, ShieldAlert, Menu, X, CalendarPlus, LogOut,
@@ -532,6 +533,7 @@ export default function App() {
                       {t('page.analyze.subtitle')}
                     </p>
                   </div>
+                  <ConsentGate>
                   <Tabs value={analyzeTab} onValueChange={setAnalyzeTab} className="space-y-6">
                     <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid rounded-2xl p-1 glass">
                       {[
@@ -549,6 +551,7 @@ export default function App() {
                     <TabsContent value="image"><ImageAnalysis onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
                     <TabsContent value="report"><ReportAnalysis onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
                   </Tabs>
+                  </ConsentGate>
                 </div>
               )}
 

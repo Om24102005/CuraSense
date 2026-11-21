@@ -2,7 +2,7 @@
    Real <a href> links, so middle-click and "open in new tab" work; plain clicks are handled in-page. */
 import { useCallback, useEffect, useState, type AnchorHTMLAttributes, type MouseEvent } from 'react';
 
-export type RouteId = 'home' | 'platform' | 'approach' | 'access';
+export type RouteId = 'home' | 'platform' | 'approach' | 'access' | 'privacy';
 
 export const ROUTES: Record<RouteId, { path: string; label: string; title: string; description: string }> = {
   home: {
@@ -24,6 +24,11 @@ export const ROUTES: Record<RouteId, { path: string; label: string; title: strin
     path: '/access', label: 'Access',
     title: 'Access — CuraSense',
     description: 'How accounts work: sign-up, authenticator-app two-factor sign-in, account types, sessions, password recovery and live system status.',
+  },
+  privacy: {
+    path: '/privacy', label: 'Privacy',
+    title: 'Privacy notice — CuraSense',
+    description: 'What CuraSense stores, who processes it, and how you can remove it.',
   },
 };
 

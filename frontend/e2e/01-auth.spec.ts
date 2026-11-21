@@ -57,7 +57,7 @@ test('password reset: request → code → new password → login works', async 
   const code = (await page.getByText('YOUR RESET CODE').locator('xpath=following-sibling::div[1]').innerText()).trim();
   await fillCode(page, code);   // the sixth digit checks it; the password step follows
   const next = 'E2e-NewPassw0rd!';
-  await page.getByPlaceholder('New Password (min 6)').fill(next);
+  await page.getByPlaceholder('New Password (min 8)').fill(next);
   await page.getByPlaceholder('Confirm Password').fill(next);
   await page.getByRole('button', { name: /Reset Password/ }).click();
   await expect(page.getByText('Password updated. Sign in with your new password.')).toBeVisible();

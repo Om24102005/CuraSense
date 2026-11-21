@@ -17,7 +17,7 @@ import {
   type Dependent,
   type EmergencyContact,
 } from '../../state/AppSettingsContext';
-import { getWearableStatus, syncAppleHealth, updateProfile, changePassword, type WearableData } from '../../services/api';
+import { getWearableStatus, syncAppleHealth, updateProfile, changePassword, deleteAccount, type WearableData } from '../../services/api';
 import gsap from 'gsap';
 import { useTransition, animated } from '@react-spring/web';
 
@@ -241,6 +241,11 @@ export function Settings() {
 
   // ── Identity / Security local state (unchanged) ──────────────────────────
   const [showPassword, setShowPassword] = useState(false);
+  const { clearAll: clearLocalSettings } = useAppSettings();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePw, setDeletePw] = useState('');
+  const [deleteCode, setDeleteCode] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [isSavingPw, setIsSavingPw] = useState(false);
@@ -480,9 +485,24 @@ export function Settings() {
     const res = await changePassword(currentPw, newPw);
     setIsSavingPw(false);
     if (res.error) return showToast(res.error, 'error');
+    if (res.data?.token) localStorage.setItem('curasense_token', res.data.token);   // the change ended every older session, this one included
     setCurrentPw('');
     setNewPw('');
-    showToast('Password updated. Use it the next time you sign in.', 'success');
+    showToast('Password updated. Other devices have been signed out.', 'success');
+  };
+
+  // ── Account deletion: the server checks the password and the authenticator code ──
+  const handleDeleteAccount = async () => {
+    if (!deletePw) return showToast('Enter your password to confirm.', 'error');
+    setIsDeleting(true);
+    const res = await deleteAccount(deletePw, deleteCode.trim());
+    setIsDeleting(false);
+    if (res.error) return showToast(res.error, 'error');
+    clearLocalSettings();
+    // Health data must not outlive the account on this device.
+    Object.keys(localStorage).filter((k) => k.startsWith('curasense_')).forEach((k) => localStorage.removeItem(k));
+    sessionStorage.clear();
+    location.assign('/');
   };
 
   // ── Theme tokens ──────────────────────────────────────────────────────────
@@ -712,6 +732,40 @@ export function Settings() {
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <SaveBtn onClick={handleChangePassword} loading={isSavingPw} label="Update password" disabled={!currentPw || !newPw} />
         </div>
+      </div>
+
+      {/* ── Delete account ───────────────────────────────────────────────── */}
+      <div className="set-card" style={glass}>
+        <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head }}>Delete account</h3>
+        <p style={{ fontSize: '0.82rem', color: T.sub, margin: '2px 0 1rem' }}>
+          Permanently removes your account and saved analyses from CuraSense. This cannot be undone.
+        </p>
+        {!deleteOpen ? (
+          <button type="button" onClick={() => setDeleteOpen(true)} style={{ padding: '0.6rem 1.1rem', borderRadius: '12px', border: `1px solid ${T.errTxt}`, background: T.errBg, color: T.errTxt, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+            Delete my account
+          </button>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1rem' }}>
+              <div>
+                <label htmlFor="settings-delete-password" style={labelStyle}>Password to confirm</label>
+                <input id="settings-delete-password" type="password" value={deletePw} onChange={(e) => setDeletePw(e.target.value)} autoComplete="current-password" style={inputStyle} />
+              </div>
+              <div>
+                <label htmlFor="settings-delete-code" style={labelStyle}>Authenticator code</label>
+                <input id="settings-delete-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={deleteCode} onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, ''))} style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button type="button" disabled={isDeleting} onClick={() => { setDeleteOpen(false); setDeletePw(''); setDeleteCode(''); }} style={{ padding: '0.6rem 1.1rem', borderRadius: '12px', border: `1px solid ${T.divider}`, background: 'transparent', color: T.text, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+                Keep my account
+              </button>
+              <button type="button" disabled={isDeleting || !deletePw} onClick={() => void handleDeleteAccount()} style={{ padding: '0.6rem 1.1rem', borderRadius: '12px', border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                {isDeleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── AI Inference Preferences ──────────────────────────────────────── */}

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import path from 'path'
+import { createHash } from 'crypto'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
@@ -14,7 +15,16 @@ export default defineConfig(({ mode }) => {
       // Tailwind is not being actively used – do not remove them
       react(),
       tailwindcss(),
-      { name: 'csp-api-origin', transformIndexHtml: (html: string) => html.replace('__API_ORIGIN__', apiOrigin) },
+      {
+        name: 'csp-api-origin',
+        transformIndexHtml: (html: string, ctx: { server?: unknown }) => {
+          const out = html.replace('__API_ORIGIN__', apiOrigin);
+          if (ctx.server) return out;   // the dev server injects its own inline scripts and needs the loose policy
+          // A build allows only its own files and the one inline theme script, by hash: an injected script cannot run.
+          const hashes = [...out.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+          return out.replace("script-src 'self' 'unsafe-inline' 'unsafe-eval' https:", `script-src 'self' 'wasm-unsafe-eval' ${hashes.join(' ')}`);
+        },
+      },
     ],
     resolve: {
       alias: {

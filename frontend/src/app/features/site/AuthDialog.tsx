@@ -198,10 +198,10 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
       if (authMode === 'forgot') {
         /* Three steps: email -> /forgot-password -> 'code'; code -> /verify-reset-code -> 'password'; password -> /reset-password -> back to sign-in. */
         if (resetStage === 'idle') {
-          const response = await withLoading('Sending your code', 'Looking up your account', () => forgotPassword(formData.email));
+          const response = await withLoading('Sending your code', 'One moment', () => forgotPassword(formData.email));
           if (response.error) return fail(response.error);
           const data = response.data as any;
-          await celebrate('Code sent', 'Enter it on the next screen');
+          await celebrate('Check your email', 'Enter the code on the next screen');
           setResetEmail(String(data?.email || formData.email));
           setResetMaskedEmail(String(data?.maskedEmail || ''));
           setResetCode(typeof data?.code === 'string' ? data.code : null);
@@ -217,7 +217,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
           return nextStep();
         }
         if (resetStage === 'password') {
-          if (newPassword.length < 6) return fail('Password must be at least 6 characters.');
+          if (newPassword.length < 8) return fail('Password must be at least 8 characters.');
           if (newPassword !== confirmPassword) return fail('Passwords do not match.');
           const r = await withLoading('Updating your password', 'Almost there', () => resetPassword(resetEmail, typedCode.trim(), newPassword));
           if (r.error) return fail(r.error);
@@ -256,6 +256,18 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
         await celebrate('Password verified', 'One more step: your authenticator code');
         setTotpServerToken(r.data.totpToken);
         setTotpFlow('login');
+        setTotpCode('');
+        return nextStep();
+      }
+
+      // No authenticator yet (a sign-up left unfinished, or a new admin): the password opens the setup step, never the account.
+      if (r.data?.requiresTotpSetup && r.data.setupToken) {
+        const qr = await totpSetup(r.data.setupToken);
+        if (qr.error || !qr.data?.qrDataUrl) return fail(qr.error || 'Failed to generate authenticator QR.');
+        await celebrate('Password verified', 'Next: link your authenticator app');
+        setTotpServerToken(r.data.setupToken);
+        setTotpQR({ qrDataUrl: qr.data.qrDataUrl, manualSecret: qr.data.manualSecret, account: qr.data.account });
+        setTotpFlow('setup');
         setTotpCode('');
         return nextStep();
       }
@@ -470,7 +482,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
               <h3 style={{ fontFamily: I, fontSize: '1.6rem', fontWeight: 700, color: T.cardTitle, marginBottom: '1rem' }}>Reset your password</h3>
               <p style={{ fontSize: '0.9rem', color: T.secText, marginBottom: '2rem', lineHeight: 1.6 }}>
                 {resetStage === 'idle'     && "Enter your registered email and we'll send a 6-digit code."}
-                {resetStage === 'code'     && `Code sent to ${resetMaskedEmail || 'your inbox'}. Check your email and type it below.`}
+                {resetStage === 'code'     && `If ${resetMaskedEmail || 'that address'} has an account, a code is on its way. It works for 15 minutes.`}
                 {resetStage === 'password' && "Code verified. Choose a new password — or skip to keep the old one."}
               </p>
 
@@ -499,9 +511,8 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
               {/* ── STAGE 2 — CODE (no skip here) ── */}
               {resetStage === 'code' && (
                 <>
-                  {/* Single code-display card — shown to the user
-                      since there's no email infrastructure. */}
-                  <div style={{
+                  {/* Only a development server returns the code; a live one emails it. */}
+                  {resetCode && <div style={{
                     padding: '1.1rem',
                     borderRadius: '14px',
                     background: 'rgba(16,185,129,0.08)',
@@ -524,9 +535,9 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
                       {resetCode}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: T.secText, marginTop: '6px', opacity: 0.7 }}>
-                      {resetMaskedEmail ? `${resetMaskedEmail} · ` : ''}valid for 30 minutes
+                      {resetMaskedEmail ? `${resetMaskedEmail} · ` : ''}valid for 15 minutes
                     </div>
-                  </div>
+                  </div>}
 
                   <div className="mb-6">
                     <CodeBoxes
@@ -557,7 +568,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
                         autoFocus
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="New Password (min 6)"
+                        placeholder="New Password (min 8)"
                         required
                         style={inpStyle}
                       />

@@ -64,6 +64,18 @@ export async function signUp(page: Page, user: TestUser, openForm?: () => Promis
 
   await fillCode(page, totp(secret));
   await waitForApp(page);
+  // These tests are about what comes after the consent step (13-launch covers the step itself).
+  await page.evaluate(async (api) => {
+    await fetch(`${api}/api/user/consent`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('curasense_token')}` }, body: JSON.stringify({ accepted: true }) });
+  }, E2E.api);
+  // A sign-up that came from a tool on the landing page is already on Analyze, showing the step from before the consent was saved.
+  await expect(page.locator('.consent-wait')).toHaveCount(0);
+  const gate = page.locator('[data-consent]');
+  if (await gate.count()) {
+    await gate.getByRole('checkbox').check();
+    await gate.getByRole('button', { name: 'Agree and continue' }).click();
+    await expect(gate).toHaveCount(0);
+  }
   return { ...user, secret };
 }
 
@@ -88,6 +100,7 @@ export async function apiSession(request: APIRequestContext, tag = 'api') {
   const setup = await (await request.post(`${E2E.api}/totp-setup`, { headers: bearer })).json();
   const done = await (await request.post(`${E2E.api}/totp-verify`, { headers: bearer, data: { code: totp(setup.manualSecret) } })).json();
   expect(done.token, 'the API gave a session').toBeTruthy();
+  await request.post(`${E2E.api}/api/user/consent`, { headers: { Authorization: `Bearer ${done.token}` }, data: { accepted: true } });
   return { token: done.token as string, user: done.user };
 }
 

@@ -1,7 +1,7 @@
 import { fetchAPI } from './client';
 
 export async function login(credentials: any) {
-  return fetchAPI<{ token?: string; user?: any; requiresTotp?: boolean; totpToken?: string }>('/login', {
+  return fetchAPI<{ token?: string; user?: any; requiresTotp?: boolean; totpToken?: string; requiresTotpSetup?: boolean; setupToken?: string }>('/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
   });

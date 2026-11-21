@@ -17,10 +17,12 @@ const loaders = {
   platform: () => import('./pages/PlatformPage'),
   approach: () => import('./pages/ApproachPage'),
   access: () => import('./pages/AccessPage'),
+  privacy: () => import('./pages/PrivacyPage'),
 };
 const PlatformPage = lazy(loaders.platform);
 const ApproachPage = lazy(loaders.approach);
 const AccessPage = lazy(loaders.access);
+const PrivacyPage = lazy(loaders.privacy);
 const prefetch = (id: RouteId) => { if (id !== 'home') void loaders[id](); };
 
 interface PublicSiteProps {
@@ -105,7 +107,7 @@ export function PublicSite({ isDark, bootDone, onAuthenticate }: PublicSiteProps
         <CellNarrator />
       ) : (
         <>
-          <Suspense fallback={null}><PageBackdrop key={shown} variant={shown} light={!isDark} /></Suspense>
+          <Suspense fallback={null}><PageBackdrop key={shown} variant={shown === 'privacy' ? 'access' : shown} light={!isDark} /></Suspense>
           <div className="bd-scrim" aria-hidden />
         </>
       )}
@@ -119,6 +121,7 @@ export function PublicSite({ isDark, bootDone, onAuthenticate }: PublicSiteProps
             {shown === 'platform' && <PlatformPage navigate={navigate} onOpenAuth={openAuth} />}
             {shown === 'approach' && <ApproachPage navigate={navigate} onOpenAuth={openAuth} />}
             {shown === 'access' && <AccessPage navigate={navigate} onOpenAuth={openAuth} />}
+            {shown === 'privacy' && <PrivacyPage />}
           </Suspense>
         </div>
       </main>

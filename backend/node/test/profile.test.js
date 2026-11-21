@@ -71,7 +71,7 @@ test('the password changes only with the right current password, and the new one
   assert.equal((await send('POST', '/login', null, { email: 'pw@example.test', password })).status, 400, 'the old password no longer signs in');
   const login = await send('POST', '/login', null, { email: 'pw@example.test', password: 'brand-new-pass' });
   assert.equal(login.status, 200);
-  assert.ok((await login.json()).token);
+  assert.ok((await login.json()).setupToken, 'this account has no authenticator yet, so the password opens the setup step');
 });
 
 test('guessing the current password through the change route is limited per user', async (t) => {

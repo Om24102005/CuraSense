@@ -11,10 +11,12 @@ const router = Router();
 const signInLimit = userRateLimit({ windowMs: 15 * 60_000, max: 30, name: 'sign-in' });
 const codeLimit   = userRateLimit({ windowMs: 15 * 60_000, max: 15, name: 'verification code' });
 const signUpLimit = userRateLimit({ windowMs: 60 * 60_000, max: Number(process.env.REGISTER_LIMIT_PER_HOUR) || 60, name: 'sign-up' });
+// Every new account verifies one code, so this follows the sign-up limit; guessing is stopped per account in the controller.
+const setupCodeLimit = userRateLimit({ windowMs: 15 * 60_000, max: Number(process.env.REGISTER_LIMIT_PER_HOUR) || 60, name: 'verification code' });
 
 router.post('/register', signUpLimit, requireMongo, register);
 router.post('/totp-setup', requireMongo, totpSetup);
-router.post('/totp-verify', requireMongo, totpVerify);
+router.post('/totp-verify', setupCodeLimit, requireMongo, totpVerify);
 router.post('/login', signInLimit, requireMongo, login);
 router.post('/login-totp', codeLimit, requireMongo, loginTotp);
 
