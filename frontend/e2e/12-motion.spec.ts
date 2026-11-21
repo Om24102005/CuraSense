@@ -62,3 +62,31 @@ test('closing and at once reopening the phone menu leaves it open', async ({ pag
   await expect(drawer).toBeVisible();
   await expect(page.locator('[data-drawer-item]').first()).toBeVisible();
 });
+
+test('a link wipes the veil over the swap and clears it; back swaps at once', async ({ page }) => {
+  trackErrors(page);
+  await page.addInitScript(() => sessionStorage.setItem('cs_booted', '1'));
+  await page.goto('/');
+  const veil = page.locator('[data-route-veil]');
+  await expect(veil).toBeHidden();
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Platform' }).click();
+  await expect(page).toHaveURL(/\/platform$/);
+  await expect(page.locator('#public-root')).toHaveAttribute('data-route', 'platform');
+  await expect(page.locator('h1.pg-title')).toBeVisible();
+  await expect(page.locator('h1.pg-title .ml-mask').first()).toBeVisible();   // the headline really is behind a mask
+  await expect(veil).toBeHidden();
+  await page.goBack();
+  await expect(page.locator('#public-root')).toHaveAttribute('data-route', 'home');
+  await expect(veil).toBeHidden();
+  expect(errorsOf(page).filter(noise)).toEqual([]);
+});
+
+test('the intro iris opens onto the page and leaves nothing covering it', async ({ page }) => {
+  await page.goto('/');
+  const intro = page.locator('[data-intro]');
+  await expect(intro).toBeVisible();
+  await page.getByRole('button', { name: 'Skip' }).click({ timeout: 3000 });
+  await expect(intro).toHaveCount(0, { timeout: 4000 });
+  await expect(page.locator('.hero-text').first()).toBeInViewport();
+  await expect.poll(() => page.locator('.hero-text').first().evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m42)).toBeCloseTo(0, 0);
+});

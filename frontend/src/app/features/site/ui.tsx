@@ -2,6 +2,7 @@
    a sticky in-page index, call-to-action band. Styles: styles/site.css (.pg-*, .rv). */
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
+import { useMaskedLines } from '../../animations';
 import type { AuthIntent, AuthMode } from './AuthDialog';
 import type { RouteId } from './router';
 import { overallOf, STATE_TEXT, SYSTEMS, useSystemHealth, type Probe } from './SystemStatus';
@@ -27,12 +28,14 @@ export function Reveal({ children, delay = 0, className = '', as: Tag = 'div', .
 }
 
 export function PageHero({ eyebrow, title, lede, actions, aside }: { eyebrow: string; title: ReactNode; lede: string; actions?: ReactNode; aside?: ReactNode }) {
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useMaskedLines(titleRef);
   return (
     <header className="pg-hero">
       <div className="pg-hero-in">
         <div className="pg-hero-copy">
           <p className="pg-eyebrow"><i aria-hidden />{eyebrow}</p>
-          <h1 className="pg-title">{title}</h1>
+          <h1 className="pg-title" ref={titleRef}>{title}</h1>
           <p className="pg-lede">{lede}</p>
           {actions && <div className="pg-actions">{actions}</div>}
         </div>

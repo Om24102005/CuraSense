@@ -4,9 +4,9 @@
    Om", a three-row checklist whose ticks wait for the data that is really loading, then the iris opens onto the
    dashboard. A saved-session reload (kind 'resume') gets a short version, about 1.2 s. Behind the greeting an animated background
    (welcomeFx: cells, heartbeat lines, orbits that lock in as the rows complete). Styles: styles/intro.css (.wl-*). */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Activity, Check } from 'lucide-react';
-import { gsap, useDeviceTier, useReducedMotion } from '../../animations';
+import { gsap, setIris, tweenIris, useDeviceTier, useReducedMotion } from '../../animations';
 import { mountWelcomeFx } from './welcomeFx';
 
 export type WelcomeKind = 'login' | 'signup' | 'resume';
@@ -40,10 +40,13 @@ export default function WelcomeSequence({ name, kind, ready, onCovered, onSettle
   const [rows, setRows] = useState<Record<Row, RowState>>({ session: 'wait', history: 'wait', tools: 'wait' });
   const hello = (kind === 'signup' ? 'Welcome to CuraSense' : 'Welcome back') + (name ? `, ${name}` : '');
 
+  // A sign-in starts fully open and closes over the dialog; a saved session and reduced motion start fully covered.
+  useLayoutEffect(() => { if (root.current) setIris(root.current, kind === 'resume' || reduced ? 0 : 100); }, []);
+
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    let alive = true;
+    let alive = true, iris: gsap.core.Tween | undefined;
     const q = (s: string) => el.querySelectorAll<Element>(s);
     const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
     const until = (ok: () => boolean, maxMs: number) => new Promise<void>((r) => {
@@ -59,14 +62,14 @@ export default function WelcomeSequence({ name, kind, ready, onCovered, onSettle
     const open = async (d: number) => {
       gsap.to(q('.wl-center'), { scale: 1.06, opacity: 0, duration: 0.35, ease: 'power2.in' });
       gsap.delayedCall(d * 0.15 + d * 0.3, () => { if (alive) live.current.onReveal(); });
-      await gsap.to(el, { '--r': '100%', duration: d, delay: d * 0.15, ease: 'power2.inOut' });
+      iris = tweenIris(el, 0, 100, { duration: d, delay: d * 0.15, ease: 'power2.inOut' });
+      await iris;
       if (alive) live.current.onDone();
     };
 
     (async () => {
       // Reduced motion: the same screens, still and short. Nothing draws, spins or flies.
       if (reduced) {
-        el.style.setProperty('--r', '-1%');
         gsap.set(q('.wl-mark, .wl-hello .ch, .wl-sub, .wl-bar, .wl-list li, .wl-verified'), { opacity: 1 });
         if (kind !== 'resume') {
           await frames(1);   // not inside the effect's own tick: the page swap is a flushSync, which React refuses during a lifecycle
@@ -84,7 +87,6 @@ export default function WelcomeSequence({ name, kind, ready, onCovered, onSettle
 
       if (kind === 'resume') {
         // saved session: opaque from the first frame, a mark, a greeting, a bar that fills as the data arrives
-        el.style.setProperty('--r', '-1%');
         gsap.fromTo(q('.wl-mark'), { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.6)' });
         gsap.fromTo(q('.wl-hello .ch'), { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.018, ease: 'expo.out', delay: 0.15 });
         gsap.to(q('.wl-bar'), { opacity: 1, duration: 0.3, delay: 0.25 });
@@ -101,7 +103,8 @@ export default function WelcomeSequence({ name, kind, ready, onCovered, onSettle
       }
 
       // 1. close over whatever is behind (the dialog), then let the app swap the page underneath
-      await gsap.to(el, { '--r': '-1%', duration: 0.42, ease: 'power2.inOut' });
+      iris = tweenIris(el, 100, 0, { duration: 0.42, ease: 'power2.inOut' });
+      await iris;
       if (!alive) return;
       // The swap is one long synchronous commit (the dashboard mounts). It happens now, while the screen is covered and nothing
       // moves, and the animations start two frames after it, on a calm main thread, so none of their first frames is lost.
@@ -143,6 +146,7 @@ export default function WelcomeSequence({ name, kind, ready, onCovered, onSettle
       alive = false;
       stopFx?.();
       clearTimeout(safety);
+      iris?.kill();
       gsap.killTweensOf(el);
       gsap.killTweensOf(q('*'));
     };

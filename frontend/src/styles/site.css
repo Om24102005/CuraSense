@@ -43,7 +43,14 @@
 .cell-host[data-off] { visibility: hidden; }   /* the paused cell stays mounted behind the other pages */
 .site-main { position: relative; z-index: 1; flex: 1; outline: none; }   /* explicit: the backdrop canvas (z-index 0) must never paint over the page */
 .page-fallback { min-height: 70vh; }
-.page-enter { animation: page-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.page-enter { animation: page-swap 0.24s ease both; }   /* opacity only: a held transform would become the containing block of everything fixed inside */
+@keyframes page-swap { from { opacity: 0; } to { opacity: 1; } }
+/* the wipe between pages: a solid panel moved with a transform, tall enough to cover the screen behind iOS's collapsing bars */
+.rt-veil { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: 57; pointer-events: none; background: #05070f; border-top: 1px solid var(--ar-line); }
+:root[data-theme="light"] .rt-veil { background: #eef3fb; }
+/* room inside each mask for descenders and for the tight tracking's overhang */
+.ml-mask { padding: 0 0.05em 0.14em; margin: 0 -0.05em -0.14em; }
+.hp-mask { overflow: hidden; padding: 0 0.05em 0.14em; margin: 0 -0.05em -0.14em; }
 @keyframes page-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 /* a veil over the shader on inner pages: bright enough at the top to show it off, calm enough lower down to read on */
 .bd-scrim { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(180deg, rgba(3, 6, 16, 0) 0%, rgba(3, 6, 16, 0.32) 45%, rgba(3, 6, 16, 0.6) 100%); }
@@ -53,8 +60,8 @@
 /* Reveal on scroll. An animation (not a transition) so its delay never lingers on later hover transitions; `backwards` holds
    the hidden state during the delay and then hands control back to the element's own styles. */
 .rv { opacity: 0; }
-.rv.is-in { opacity: 1; animation: rv-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-@keyframes rv-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+.rv.is-in { opacity: 1; animation: rv-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+@keyframes rv-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 
 /* ── navigation ──────────────────────────────────────────────────── */
 /* z-index 56 keeps the header above .sn-drawer (55): the burger that closes the drawer lives in this header and must stay tappable */

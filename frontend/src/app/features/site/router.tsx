@@ -31,11 +31,12 @@ const BY_PATH = new Map(Object.entries(ROUTES).map(([id, r]) => [r.path, id as R
 export const routeFromPath = (p: string): RouteId => BY_PATH.get(p.replace(/(.)\/+$/, '$1')) ?? 'home';
 
 /** Current route plus navigate(). `hash` scrolls to an element id once the page has swapped in. */
-export function useRoute(): [RouteId, (to: RouteId, hash?: string) => void] {
-  const [route, setRoute] = useState<RouteId>(() => routeFromPath(location.pathname));
+export function useRoute(): [RouteId, (to: RouteId, hash?: string) => void, boolean] {
+  // pop: the change came from the browser's back or forward, which has its own gesture and scroll restore
+  const [{ route, pop }, setNav] = useState(() => ({ route: routeFromPath(location.pathname), pop: false }));
 
   useEffect(() => {
-    const onPop = () => setRoute(routeFromPath(location.pathname));
+    const onPop = () => setNav({ route: routeFromPath(location.pathname), pop: true });
     addEventListener('popstate', onPop);
     return () => removeEventListener('popstate', onPop);
   }, []);
@@ -53,12 +54,11 @@ export function useRoute(): [RouteId, (to: RouteId, hash?: string) => void] {
       return;
     }
     history.pushState({}, '', url);
-    setRoute(to);
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    if (hash) setTimeout(scrollToTarget, 350);   // after the new page has mounted
+    setNav({ route: to, pop: false });   // PublicSite scrolls to the top while the veil covers the swap
+    if (hash) setTimeout(scrollToTarget, 520);   // after the veil has covered and the new page has mounted
   }, []);
 
-  return [route, navigate];
+  return [route, navigate, pop];
 }
 
 /** <a href> that navigates in-page on a plain left click. */
