@@ -1,4 +1,4 @@
-export { gsap, ScrollTrigger } from './engine/gsapEngine';
+export { gsap, ScrollTrigger, Flip, SplitText } from './engine/gsapEngine';
 export { animate, createTimeline, stagger } from './engine/animeEngine';
 export { getDeviceTier, useDeviceTier, type DeviceTier } from './deviceTier';
 export { useReducedMotion } from './hooks/useReducedMotion';
@@ -9,4 +9,7 @@ export { useScrollProgressRail } from './hooks/useScrollProgressRail';
 export { useHeaderDensify } from './hooks/useHeaderDensify';
 export { useNavPillIndicator } from './hooks/useNavPillIndicator';
 export { useMobileDrawerAnimation } from './hooks/useMobileDrawerAnimation';
-export { playThemeBodyTransition } from './presets/themeTransition';
+export { useMaskedLines } from './hooks/useMaskedLines';
+export { setIris, tweenIris } from './iris';
+export { playThemeBodyTransition, swapThemeWithReveal } from './presets/themeTransition';
+export { watchFrames, refreshRate, frameBudgetMs } from './frameRate';

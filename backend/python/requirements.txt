@@ -4,4 +4,11 @@ requests
 python-multipart
 python-dotenv
 pydantic
-pypdf
+pymupdf
+pydicom
+numpy
+pillow
+pylibjpeg
+pylibjpeg-libjpeg
+pylibjpeg-openjpeg
+pillow-heif

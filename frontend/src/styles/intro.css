@@ -1,0 +1,122 @@
+/* ═══════════════════════════════════════════════════════
+   AUTH + ARRIVAL ANIMATIONS (one visual family: the heartbeat)
+   1. .ad-fx / .fx-*   small step animation inside the auth dialog (loading, then a success tick)
+   2. .in-*            big animation 1: first visit, before the landing page
+   3. .wl-*            big animation 2: after login / sign-up, before the dashboard
+   Everything animates transform, opacity and stroke-dashoffset only. Both big ones open and close with an iris:
+   a clip path with a round hole, set from animations/iris.ts (0 = fully covered, 100 = fully open).
+   ═══════════════════════════════════════════════════════ */
+
+/* The big animations mount outside the themed wrapper in App, so --accent-* (set inline on that wrapper) is not defined for them. */
+:root { --ar-a: #2667ff; --ar-b: #87bfff; --ar-line: #22d3ee; }
+:root[data-theme="light"] { --ar-a: #0a2472; --ar-b: #2667ff; --ar-line: #2667ff; }
+
+/* ── 1. small step animation ─────────────────────────────────────── */
+.ad-col { position: relative; min-height: 0; display: grid; }
+.ad-fx { --fx-c: var(--lp-up); position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; background: var(--pg-solid); animation: fx-fade 0.3s ease both; }
+@keyframes fx-fade { from { opacity: 0; } to { opacity: 1; } }
+/* the next step is already underneath and rising in: the overlay dissolves instead of being cut away */
+.ad-fx[data-leaving] { animation: fx-leave 0.24s ease forwards; pointer-events: none; }
+@keyframes fx-leave { from { opacity: 1; } to { opacity: 0; } }
+.fx-seal { position: relative; width: 116px; height: 116px; display: grid; place-items: center; margin-bottom: 1.1rem; }
+.fx-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.fx-track { fill: none; stroke: var(--pg-line-hi); stroke-width: 3; opacity: 0.55; }
+.fx-arc { fill: none; stroke: url(#fx-grad); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 0.3 0.7; transition: stroke-dasharray 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), stroke 0.3s ease; }
+.ad-fx[data-phase="loading"] .fx-ring { animation: fx-spin 1.15s linear infinite; }
+@keyframes fx-spin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+.ad-fx[data-phase="success"] .fx-arc { stroke: var(--fx-c); stroke-dasharray: 1 0; }
+.fx-core { position: relative; display: grid; place-items: center; width: 70px; height: 70px; border-radius: 22px; color: #fff; background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan)); box-shadow: 0 14px 34px -10px var(--accent-violet), inset 0 1px 0 rgba(255, 255, 255, 0.35); animation: fx-beat 1.15s ease-in-out infinite; }
+@keyframes fx-beat { 0%, 100% { transform: scale(1); } 18% { transform: scale(1.09); } 34% { transform: scale(1); } 50% { transform: scale(1.05); } 66% { transform: scale(1); } }
+.ad-fx[data-phase="success"] .fx-core { animation: fx-out 0.3s ease both; }
+@keyframes fx-out { to { opacity: 0; transform: scale(0.6); } }
+.fx-check { position: absolute; width: 58px; height: 58px; opacity: 0; }
+.fx-check path { fill: none; stroke: var(--fx-c); stroke-width: 4.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.ad-fx[data-phase="success"] .fx-check { opacity: 1; }
+.ad-fx[data-phase="success"] .fx-check path { animation: fx-draw 0.32s 0.16s cubic-bezier(0.3, 0.7, 0.3, 1) forwards; }
+@keyframes fx-draw { to { stroke-dashoffset: 0; } }
+.fx-ripple { position: absolute; inset: 8px; border-radius: 50%; border: 2px solid var(--fx-c); opacity: 0; }
+.ad-fx[data-phase="success"] .fx-ripple { animation: fx-ripple 0.5s 0.16s ease-out forwards; }
+@keyframes fx-ripple { from { opacity: 0.65; transform: scale(0.8); } to { opacity: 0; transform: scale(1.7); } }
+.fx-sparks { position: absolute; inset: 0; pointer-events: none; }
+.fx-sparks i { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--fx-c); opacity: 0; }
+.ad-fx[data-phase="success"] .fx-sparks i { animation: fx-spark 0.46s 0.18s ease-out forwards; }
+@keyframes fx-spark { from { opacity: 1; transform: rotate(var(--a)) translateX(46px) scale(1); } to { opacity: 0; transform: rotate(var(--a)) translateX(80px) scale(0.3); } }
+.fx-ecg { width: 150px; height: 26px; margin: 0 0 0.9rem; overflow: visible; transition: opacity 0.25s ease; }
+.fx-ecg path { fill: none; stroke: var(--accent-cyan); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: fx-ecg 1.6s ease-in-out infinite; }
+@keyframes fx-ecg { 0% { stroke-dashoffset: 1; opacity: 1; } 70% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+.ad-fx[data-phase="success"] .fx-ecg { opacity: 0; }
+.fx-title { display: block; font: 700 1.25rem/1.25 var(--font-display); letter-spacing: -0.02em; color: var(--text-primary); animation: fx-rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.ad-fx[data-phase="success"] .fx-title { color: var(--fx-c); }
+.fx-sub { display: block; margin-top: 0.4rem; font: 500 0.88rem/1.4 var(--font-body); color: var(--text-secondary); animation: fx-rise 0.4s 0.06s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes fx-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ── shared iris + brand pieces for the two big animations ───────── */
+.in-root, .wl-root {
+  position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden; color: var(--text-primary); background: #05070f;   /* the iOS launch screen's navy: no colour jump at the handoff */
+}
+:root[data-theme="light"] .in-root, :root[data-theme="light"] .wl-root { background: #eef3fb; }
+.in-bg, .wl-bg { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(60% 55% at 50% 48%, rgba(38, 103, 255, 0.24), transparent 70%), radial-gradient(38% 38% at 72% 28%, rgba(236, 72, 153, 0.1), transparent 70%); }
+:root[data-theme="light"] .in-bg, :root[data-theme="light"] .wl-bg { background: radial-gradient(60% 55% at 50% 48%, rgba(38, 103, 255, 0.16), transparent 70%), radial-gradient(38% 38% at 72% 28%, rgba(236, 72, 153, 0.07), transparent 70%); }
+.in-mark, .wl-mark { display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--ar-a), var(--ar-b)); box-shadow: 0 28px 70px -18px var(--ar-a), inset 0 1px 0 rgba(255, 255, 255, 0.38); }
+
+/* ── 2. big animation 1: first visit ─────────────────────────────── */
+.in-root { z-index: 99998; }
+.in-stage { position: relative; width: min(94vw, 1100px); height: 360px; display: grid; place-items: center; transform: translateY(-3.6rem); }
+.in-ecg { position: absolute; left: 0; top: 50%; width: 100%; height: 200px; margin-top: -100px; overflow: visible; }
+.in-ecg path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.in-ecg-glow { stroke: var(--ar-line); stroke-width: 9; opacity: 0.12; }
+.in-ecg-line { stroke: url(#in-grad); stroke-width: 3.2; }
+.in-mark { position: absolute; width: 96px; height: 96px; border-radius: 28px; opacity: 0; }
+.in-ring { position: absolute; width: 96px; height: 96px; border-radius: 50%; border: 2px solid var(--ar-line); opacity: 0; pointer-events: none; }
+.in-word { position: absolute; top: calc(50% + 74px); display: flex; overflow: hidden; padding: 0 0.05em 0.14em; font: 700 clamp(2.1rem, 5.2vw, 3.5rem)/1 var(--font-display); letter-spacing: -0.035em; color: var(--text-primary); }
+.in-word span { display: inline-block; opacity: 0; }
+.in-tag { position: absolute; top: calc(50% + 148px); margin: 0; font: 500 clamp(0.9rem, 1.6vw, 1.1rem)/1.3 var(--font-body); letter-spacing: 0.02em; color: var(--text-secondary); opacity: 0; }
+.in-root .in-skip { position: absolute; right: 1.5rem; bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)); padding: 0.6rem 1.1rem; border-radius: 999px; border: 1px solid var(--lp-ghost-bd); background: var(--lp-ghost); color: var(--text-secondary); font: 600 0.8rem/1 var(--font-body); letter-spacing: 0.04em; cursor: pointer; opacity: 0; transition: color 0.2s ease, background 0.2s ease; }
+.in-root .in-skip:hover { color: var(--text-primary); background: var(--lp-ghost-hi); }
+.in-root .in-skip:focus-visible { outline: none; box-shadow: 0 0 0 2px #05070f, 0 0 0 4px #87bfff; }
+
+/* ── 3. big animation 2: after login / sign-up ───────────────────── */
+/* the animated background: three canvases (cells, heartbeat lines, orbits) between the flat glow and the greeting */
+.wl-fx { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.wl-fx[data-on] { animation: wl-fx-in 0.9s ease forwards; }
+.wl-fx canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+@keyframes wl-fx-in { to { opacity: 1; } }
+/* A glow that breathes on the compositor, so the covered screen is alive even while the main thread builds the page behind it. */
+.wl-bg::after { content: ""; position: absolute; inset: -8%; background: radial-gradient(42% 40% at 50% 46%, rgba(38, 103, 255, 0.2), transparent 72%); animation: wl-breathe 3.4s ease-in-out infinite; }
+@keyframes wl-breathe { 50% { transform: scale(1.1); opacity: 0.65; } }
+.wl-root { z-index: 99999; }
+.wl-center { position: relative; display: flex; flex-direction: column; align-items: center; padding: 1.5rem; text-align: center; }
+.wl-seal { position: relative; width: 132px; height: 132px; display: grid; place-items: center; margin-bottom: 1.5rem; }
+.wl-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.wl-track { fill: none; stroke: rgba(135, 191, 255, 0.2); stroke-width: 3; }
+.wl-arc { fill: none; stroke: url(#wl-grad); stroke-width: 3.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.wl-mark { width: 86px; height: 86px; border-radius: 25px; opacity: 0; }
+.wl-check { position: absolute; width: 60px; height: 60px; }
+.wl-check path { fill: none; stroke: #fff; stroke-width: 4.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.wl-ripple { position: absolute; inset: 6px; border-radius: 50%; border: 2px solid var(--lp-up); opacity: 0; }
+.wl-sparks { position: absolute; inset: 0; pointer-events: none; }
+.wl-sparks i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: var(--lp-up); opacity: 0; }
+.wl-verified { margin: 0; font: 700 0.72rem/1 var(--font-display); letter-spacing: 0.26em; text-transform: uppercase; color: var(--lp-up); opacity: 0; }
+.wl-hello { margin: 1rem 0 0; font: 700 clamp(2rem, 5.6vw, 3.6rem)/1.06 var(--font-display); letter-spacing: -0.04em; color: var(--text-primary); }
+.wl-hello .ch { display: inline-block; opacity: 0; }
+.wl-sub { margin: 0.9rem 0 0; font: 500 1rem/1.4 var(--font-body); color: var(--text-secondary); opacity: 0; }
+.wl-list { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; gap: 0.75rem; min-width: 15.5rem; text-align: left; }
+.wl-list li { display: flex; align-items: center; gap: 0.85rem; font: 600 0.92rem/1 var(--font-body); color: var(--text-muted); opacity: 0; transition: color 0.3s ease; }
+.wl-list li[data-s="done"] { color: var(--text-primary); }
+.wl-dot { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; border: 2px solid rgba(135, 191, 255, 0.3); color: #fff; transition: background 0.3s ease, border-color 0.3s ease; }
+.wl-dot svg { opacity: 0; transform: scale(0.4); transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.wl-list li[data-s="active"] .wl-dot { border-color: transparent; border-top-color: var(--ar-line); animation: wl-spin 0.8s linear infinite; }
+.wl-list li[data-s="done"] .wl-dot { background: var(--lp-up); border-color: var(--lp-up); }
+.wl-list li[data-s="done"] .wl-dot svg { opacity: 1; transform: none; }
+@keyframes wl-spin { to { transform: rotate(360deg); } }
+.wl-bar { width: min(78vw, 22rem); height: 3px; margin-top: 2rem; border-radius: 3px; overflow: hidden; background: rgba(135, 191, 255, 0.18); opacity: 0; }
+.wl-bar i { display: block; height: 100%; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, var(--ar-a), var(--ar-b)); }
+
+/* reduced motion: no ring, no sparks, no sweeps; the screens are static and short (the scripts also shorten themselves) */
+@media (prefers-reduced-motion: reduce) {
+  .ad-fx, .fx-core, .ad-fx[data-phase="loading"] .fx-ring, .fx-ecg path, .fx-title, .fx-sub, .wl-list li[data-s="active"] .wl-dot, .hp-scroll svg, .wl-bg::after { animation: none; }
+  .fx-arc { transition: none; }
+  .ad-fx[data-phase="success"] .fx-core { opacity: 0; }
+  .ad-fx[data-phase="success"] .fx-check path { animation: none; stroke-dashoffset: 0; }
+  .fx-ripple, .fx-sparks i, .wl-ripple, .wl-sparks i { display: none; }
+}

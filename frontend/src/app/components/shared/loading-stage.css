@@ -1,0 +1,97 @@
+/* The analysis loading page (LoadingStage.tsx): full screen and always dark, so it reads the same in both themes.
+   --B is the orb's box, --R the radius of the lens that travels with it; both follow the screen height. */
+.loading-stage {
+  --B: clamp(200px, 36vh, 350px);
+  --R: calc(var(--B) * 0.8);
+  position: absolute; inset: 0; overflow: hidden; color: #dceaf4;
+  font-family: -apple-system, BlinkMacSystemFont, var(--font-body, system-ui), sans-serif;
+  background: radial-gradient(75% 65% at 50% 46%, rgba(var(--ls-rgb), 0.14), transparent 72%), #03050b;
+  animation: ls-in 0.8s ease both;
+}
+.ls-dust {
+  position: absolute; inset: 0; opacity: 0.65;
+  background-image:
+    radial-gradient(1px 1px at 7% 13%, #fff 50%, transparent), radial-gradient(1px 1px at 19% 71%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 31% 28%, #cfe6ff 50%, transparent), radial-gradient(1px 1px at 43% 88%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 52% 9%, #fff 50%, transparent), radial-gradient(1.5px 1.5px at 66% 64%, #cfe6ff 50%, transparent),
+    radial-gradient(1px 1px at 74% 21%, #fff 50%, transparent), radial-gradient(1px 1px at 86% 79%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 93% 38%, #cfe6ff 50%, transparent), radial-gradient(1px 1px at 12% 47%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 58% 52%, #fff 50%, transparent), radial-gradient(1px 1px at 81% 5%, #fff 50%, transparent);
+}
+.ls-tag {
+  position: absolute; left: 3vw; top: calc(3.4vh + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 0.7rem;
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(220, 234, 244, 0.55);
+}
+.ls-tag::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: rgb(var(--ls-rgb)); box-shadow: 0 0 12px rgb(var(--ls-rgb)); }
+
+/* The reading field: the dim copy fills the page; the sharp copy sits in the lens. Both are centred on the same point. */
+.ls-field { position: absolute; left: 50%; top: 50%; width: min(1060px, 94vw); height: min(600px, 64vh); transform: translate(-50%, -53%); border-radius: 24px; overflow: hidden; }
+
+/* The lens travels with the orb: sx and sy sweep it across the page, ux and uy undo that sweep for the sharp copy inside, so the
+   copy stays where the dim one is. Same durations and easing, opposite directions. */
+.ls-sx, .ls-sy, .ls-ux, .ls-uy { position: absolute; width: 0; height: 0; will-change: translate; }
+.ls-sx { left: 50%; top: 50%; animation: ls-x 14s ease-in-out infinite alternate; }
+.ls-sy { left: 0; top: 0; animation: ls-y 9s ease-in-out infinite alternate; }
+.ls-ux { left: var(--R); top: var(--R); animation: ls-ux 14s ease-in-out infinite alternate; }
+.ls-uy { left: 0; top: 0; animation: ls-uy 9s ease-in-out infinite alternate; }
+.ls-lens {
+  position: absolute; left: calc(var(--R) * -1); top: calc(var(--R) * -1); width: calc(var(--R) * 2); height: calc(var(--R) * 2);
+  border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 1px rgba(var(--ls-rgb), 0.3), 0 0 70px rgba(var(--ls-rgb), 0.18);
+  -webkit-mask-image: radial-gradient(circle, #000 62%, transparent 100%); mask-image: radial-gradient(circle, #000 62%, transparent 100%);
+}
+.ls-orb { position: absolute; left: calc(var(--B) / -2); top: calc(var(--B) / -2); width: var(--B); height: var(--B); }
+.ls-ring {
+  position: absolute; left: calc(var(--B) / -2); top: calc(var(--B) / -2); width: var(--B); height: var(--B); border-radius: 50%;
+  border: 1px solid rgba(var(--ls-rgb), 0.6); opacity: 0; pointer-events: none; animation: ls-ring 4.2s cubic-bezier(0.22, 0.6, 0.3, 1) infinite;
+}
+.ls-ring.r2 { animation-delay: 1.4s; }
+.ls-ring.r3 { animation-delay: 2.8s; }
+
+.ls-caption { position: absolute; left: 0; right: 0; bottom: calc(6vh + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 0 1rem; text-align: center; pointer-events: none; }
+.ls-message { font-size: 0.9rem; font-weight: 600; letter-spacing: 0.16em; color: rgba(220, 234, 244, 0.95); text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8); }
+.ls-meta { font-size: 0.76rem; letter-spacing: 0.03em; color: rgba(220, 234, 244, 0.58); font-variant-numeric: tabular-nums; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8); }
+
+/* what the lens reads */
+.ls-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 24px; user-select: none; }
+.ls-dim .ls-img { filter: blur(5px) brightness(0.34) saturate(0.7); transform: scale(1.04); }
+.ls-bright .ls-img { filter: contrast(1.05); }
+.ls-dots { position: absolute; inset: 0; background-image: radial-gradient(circle, currentColor 1.3px, transparent 1.9px); background-size: 28px 28px; }
+.ls-dim .ls-dots { color: rgba(255, 255, 255, 0.11); }
+.ls-bright .ls-dots { color: rgba(var(--ls-rgb), 0.9); filter: drop-shadow(0 0 6px rgba(var(--ls-rgb), 0.8)); }
+
+.ls-text { position: absolute; inset: 7% 9%; display: grid; place-items: center; overflow: hidden; font: 500 0.95rem/1.9 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }
+.ls-lines { text-align: left; }
+.ls-dim .ls-text { color: rgba(255, 255, 255, 0.26); }
+.ls-bright .ls-text { color: rgba(255, 255, 255, 0.96); }
+.ls-bright .ls-text b { color: rgb(var(--ls-rgb)); font-weight: 600; text-shadow: 0 0 14px rgba(var(--ls-rgb), 0.9); }
+
+.ls-sheet { position: absolute; inset: 5% 12%; display: flex; flex-direction: column; justify-content: space-around; }
+.ls-row { display: grid; grid-template-columns: 1fr 86px 128px 14px; gap: 18px; align-items: center; }
+.ls-row i { display: block; height: 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); }
+.ls-row b { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); }
+.ls-bright .ls-row i { background: rgba(255, 255, 255, 0.6); }
+.ls-bright .ls-row b { background: rgb(var(--ls-rgb)); box-shadow: 0 0 12px rgba(var(--ls-rgb), 0.9); }
+.ls-bright .ls-row.flag b { background: #fb7185; box-shadow: 0 0 12px rgba(251, 113, 133, 0.9); }
+
+.ls-words { position: absolute; inset: 6% 5%; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 1.2vh 2.4vw; }
+.ls-word { font-size: clamp(2rem, 6vw, 4.4rem); font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; line-height: 1.05; }
+.ls-words.many .ls-word { font-size: clamp(1.4rem, 3.6vw, 2.6rem); }
+.ls-dim .ls-word { color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.22); }
+.ls-bright .ls-word { color: #fff; text-shadow: 0 0 28px rgba(var(--ls-rgb), 0.95), 0 0 6px rgba(var(--ls-rgb), 0.6); }
+
+/* the engine's own "needs WebGL" caption: the clock and the message already show that work is going on */
+.loading-stage .pob-status { display: none; }
+
+@media (max-width: 640px) {
+  .loading-stage { --B: clamp(170px, 30vh, 260px); }
+  .ls-lens { -webkit-mask-image: none; mask-image: none; }   /* a soft mask on a moving layer is re-rastered on every frame on a phone */
+  .ls-row { grid-template-columns: 1fr 56px 80px 12px; gap: 10px; }
+  .ls-text { font-size: 0.7rem; }
+}
+
+@keyframes ls-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ls-x { from { translate: -22vw 0; } to { translate: 22vw 0; } }
+@keyframes ls-y { from { translate: 0 -13vh; } to { translate: 0 11vh; } }
+@keyframes ls-ux { from { translate: 22vw 0; } to { translate: -22vw 0; } }
+@keyframes ls-uy { from { translate: 0 13vh; } to { translate: 0 -11vh; } }
+@keyframes ls-ring { 0% { transform: scale(0.55); opacity: 0; } 12% { opacity: 0.6; } 100% { transform: scale(2.5); opacity: 0; } }

@@ -7,7 +7,7 @@ export async function getSettings(req, res) {
     res.json({ settings: user.settings ?? null });
   } catch (error) {
     console.error('[GET /api/user/settings] failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 }
 
@@ -57,6 +57,6 @@ export async function updateSettings(req, res) {
     res.json({ settings: user.settings });
   } catch (error) {
     console.error('[PATCH /api/user/settings] failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 }

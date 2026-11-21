@@ -18,7 +18,8 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@curasense/shared/*": ["../packages/shared/src/*"]
     }
   },
   "include": ["src"]

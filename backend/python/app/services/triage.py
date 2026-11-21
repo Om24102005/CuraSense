@@ -1,5 +1,5 @@
 import json
-from . import chat as chat_service
+from . import chat as chat_service, routing
 
 
 # ── Symptom triage ────────────────────────────────────────────────────────
@@ -32,7 +32,9 @@ def analyze_symptoms_with_mistral(symptoms_text: str, wearable_context: str | No
         'loss of consciousness). "high" if same-day care recommended. "medium" if see-doctor-soon. '
         '"low" if self-care is fine. '
         "When wearable biometric data is present in the user message, treat it as ground-truth "
-        "objective clinical measurements and incorporate them into your assessment and confidence scoring."
+        "objective clinical measurements and incorporate them into your assessment and confidence scoring. "
+        "If the text is clearly NOT a description of symptoms (for example lab test values or a description of a scan), "
+        'return ONLY {"not_symptoms": true, "belongs_on": "reports" | "scans" | "none"} instead.'
     )
 
     # Prepend wearable biometric baseline before the symptom text so the
@@ -43,7 +45,12 @@ def analyze_symptoms_with_mistral(symptoms_text: str, wearable_context: str | No
         else f"Symptoms: {symptoms_text}"
     )
 
-    raw = chat_service.chat(system, user_msg, max_tokens=600)
+    # deepseek-v4-pro is a reasoning model — it spends tokens on internal
+    # reasoning_content before emitting the actual `content` field. A tight
+    # budget here risks hitting max_tokens mid-reasoning and returning
+    # empty content, which (with no other provider configured) falls
+    # straight through to the offline rule-based fallback below.
+    raw = chat_service.chat(system, user_msg, max_tokens=1200)
     if not raw:
         return _local_triage_fallback(symptoms_text)
 
@@ -62,6 +69,11 @@ def analyze_symptoms_with_mistral(symptoms_text: str, wearable_context: str | No
             "conditions": [],
             "recommendations": [],
         }
+
+    if parsed.get("not_symptoms"):
+        page = parsed.get("belongs_on") if parsed.get("belongs_on") in ("reports", "scans") else None
+        where = {"reports": " Open the **Reports** page for lab results.", "scans": " Open the **Scans** page for scans."}.get(page, "")
+        return routing.refuse("This does not describe symptoms, so it was not analysed." + where, page)
 
     conditions = []
     for c in (parsed.get("conditions") or []):

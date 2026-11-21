@@ -2,7 +2,8 @@
    CuraSense — GOD-LEVEL App Shell  (UI/UX v2 — premium pass)
    ═══════════════════════════════════════════════════════ */
 
-import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback, useRef, lazy, Suspense } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation, useAppSettings } from './state/AppSettingsContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { SymptomChecker } from './features/symptom-checker/SymptomChecker';
@@ -12,15 +13,16 @@ import { PredictionHistory } from './features/history/PredictionHistory';
 import { Dashboard } from './features/dashboard/Dashboard';
 import { ConsultationBooking } from './features/booking/ConsultationBooking';
 import { Settings } from './features/settings/Settings';
-import { WelcomeScreen } from './features/auth/WelcomeScreen';
-import { AdminDashboard } from './features/admin/AdminDashboard';
+import { PublicSite } from './features/site/PublicSite';
+import { ConsentGate } from './features/legal/ConsentGate';
 import {
   Activity, Brain, FileText, History, LayoutDashboard,
-  Settings as SettingsIcon, ShieldAlert, Menu, X, CalendarPlus,
+  Settings as SettingsIcon, ShieldAlert, Menu, X, CalendarPlus, LogOut,
 } from 'lucide-react';
 import { ThemeToggleButton } from './components/shared/ThemeToggleButton';
-import { UserProfile } from './components/shared/UserProfile';
 import { getPredictions, savePrediction } from './services/api';
+
+import { syncNativeTheme, useBackHandler } from './native';
 
 // ── Animations (dedicated module — see ./animations) ──
 import {
@@ -29,29 +31,40 @@ import {
   useHeaderDensify,
   useNavPillIndicator,
   useMobileDrawerAnimation,
-  playThemeBodyTransition,
+  swapThemeWithReveal,
 } from './animations';
 
 // ── Background effects ──
-import ParticleField from './components/backgrounds/ParticleField';
-import CustomCursor from './components/backgrounds/CustomCursor';
-import SmoothScroll from './components/backgrounds/SmoothScroll';
-import CinematicSequence from './components/backgrounds/CinematicSequence';
-import SystemBootSequence from './components/backgrounds/SystemBootSequence';
+import AuroraBackdrop from './components/backgrounds/AuroraBackdrop';
+// Per-page medical particle scene; code-split so the first load never pays for three.js.
+const PageScene = lazy(() => import('./scenes/PageScene'));
+// The profile chip and the admin page each draw a small three.js scene; code-split for the same reason.
+const UserProfile = lazy(() => import('./components/shared/UserProfile').then((m) => ({ default: m.UserProfile })));
+const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
+import type { SceneKey } from './scenes/generators';
+import LiquidFlow from './components/flow/LiquidFlow';
+import IntroSequence from './components/intro/IntroSequence';
+import WelcomeSequence, { type WelcomeKind } from './components/intro/WelcomeSequence';
 import { MagneticCard } from './components/backgrounds/MagneticCard';
-import NeuralPulseField from './components/backgrounds/NeuralPulseField';
 import InteractionLayer from './components/backgrounds/InteractionLayer';
-import ElementTransitions from './components/backgrounds/ElementTransitions';
 
 // ── Themes ──
 import { themes, ThemeName } from './themes';
+
+/* ── Arrival animations ── */
+const firstName = (full?: string) => (full ?? '').trim().split(/\s+/)[0] ?? '';
+const storedFirstName = () => { try { return firstName(JSON.parse(localStorage.getItem('curasense_user') || '{}').name); } catch { return ''; } };
+/** The first-visit intro plays once per browser session, on the home page only, never under reduced motion or for a signed-in user. */
+const introWanted = () =>
+  !localStorage.getItem('curasense_token') && sessionStorage.getItem('cs_booted') !== '1' &&
+  (location.pathname === '/' || location.pathname === '') && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ── Context ── */
 export type Theme = ThemeName;
 export const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (t: Theme) => void;
-  toggleTheme: () => void;
+  toggleTheme: (originX?: number, originY?: number) => void;
 }>({ theme: 'dark', setTheme: () => {}, toggleTheme: () => {} });
 export const useTheme = () => useContext(ThemeContext);
 
@@ -70,9 +83,6 @@ export interface Prediction {
   biomarkers?: { name: string; value: number; unit?: string; status?: string; normal_min?: number; normal_max?: number }[];
   scanSections?: { title: string; findings: string[] }[];
 }
-
-/* ── Theme order for cycling ── */
-const themeOrder: ThemeName[] = ['dark', 'light', 'cyberpunk', 'medical', 'aurora'];
 
 /* ── Prediction localStorage cache (keyed by userId so multi-user devices stay isolated) ── */
 const predCacheKey = (userId: string) => `curasense_pred_${userId}`;
@@ -107,9 +117,23 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [theme, setThemeState] = useState<ThemeName>('dark');
-  const [cinematicDone, setCinematicDone] = useState(false);
-  const [bootDone, setBootDone] = useState(false);
+  const [analyzeTab, setAnalyzeTab] = useState('symptoms');   // which analysis tool the Analyze page shows
+  // The no-flash bootstrap script in index.html already picked dark/light
+  // (saved choice, else system preference) and stamped it on <html> before
+  // this ever runs — just read it back so there's no post-mount correction.
+  const [theme, setThemeState] = useState<ThemeName>(() => {
+    const attr = typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : null;
+    return attr === 'light' ? 'light' : 'dark';
+  });
+  const [cinematicDone, setCinematicDone] = useState(false);   // the arrival animation has started to open: the shell may animate and mount its scene
+  const [sceneOn, setSceneOn] = useState(false);   // the page's 3D scene and flow layer mount behind the arrival animation, in its calm moment, not as it opens
+  const [introOn, setIntroOn] = useState(introWanted);
+  // After login / sign-up the arrival animation covers the screen first and only then is the page swapped underneath it;
+  // a saved session that reloads gets the short version of the same animation.
+  const [arrival, setArrival] = useState<{ name: string; kind: WelcomeKind } | null>(() => (localStorage.getItem('curasense_token') ? { name: storedFirstName(), kind: 'resume' } : null));
+  const [historyReady, setHistoryReady] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [bootDone, setBootDone] = useState(() => !introWanted());   // gates the cell's own intro, which starts as the iris opens
   const [bookingKey, setBookingKey] = useState(0);
   const [bookingInitialView, setBookingInitialView] = useState<'new' | 'my-bookings'>('new');
 
@@ -122,21 +146,40 @@ export default function App() {
   const setTheme = useCallback((t: ThemeName) => {
     setThemeState(t);
     localStorage.setItem('curasense_theme', t);
-    playThemeBodyTransition();
+    const root = document.documentElement;
+    root.setAttribute('data-theme', t);
+    root.style.colorScheme = t;
+    Object.entries(themes[t].vars).forEach(([k, v]) => root.style.setProperty(k, v));
+    syncNativeTheme(t);
   }, []);
 
-  const toggleTheme = useCallback(() => {
-    const idx = themeOrder.indexOf(theme);
-    setTheme(themeOrder[(idx + 1) % themeOrder.length]);
+  const toggleTheme = useCallback((originX?: number, originY?: number) => {
+    const next: ThemeName = theme === 'dark' ? 'light' : 'dark';
+    const x = originX ?? window.innerWidth / 2;
+    const y = originY ?? window.innerHeight / 2;
+    swapThemeWithReveal(x, y, () => setTheme(next));
   }, [theme, setTheme]);
+
+  // usePageTransition fades the new tab in; no View Transition here (see its comment).
+  const navigateTab = useCallback((tab: string) => setActiveTab(tab), []);
+
+  // Android back button: close the open menu first, then go back to the dashboard, and only from there leave the app.
+  useBackHandler(mobileMenuOpen, () => setMobileMenuOpen(false));
+  useBackHandler(isAuthenticated && activeTab !== 'dashboard', () => setActiveTab('dashboard'));
 
   const currentTheme = themes[theme];
   const themeVars = currentTheme.vars as React.CSSProperties;
 
+  // A visitor who picked a tool on the landing page ("Read a scan") lands on it right after signing in.
   useEffect(() => {
-    const saved = localStorage.getItem('curasense_theme') as ThemeName | null;
-    if (saved && themes[saved]) setThemeState(saved);
-  }, []);
+    if (!isAuthenticated) return;
+    const intent = sessionStorage.getItem('curasense_intent');
+    if (intent === 'symptoms' || intent === 'image' || intent === 'report') {
+      sessionStorage.removeItem('curasense_intent');
+      setAnalyzeTab(intent);
+      setActiveTab('analyze');
+    }
+  }, [isAuthenticated]);
 
   // ── On authentication: sync settings from DB then load predictions ─────────
   useEffect(() => {
@@ -146,7 +189,7 @@ export default function App() {
 
       // Fetch user settings from MongoDB — overwrites localStorage L1 cache.
       // Non-blocking: predictions load in parallel.
-      syncFromDB();
+      syncFromDB().finally(() => setSettingsReady(true));
 
       getPredictions().then(res => {
         if (res.data?.predictions) {
@@ -168,7 +211,7 @@ export default function App() {
           setPredictions(merged);
           savePredCache(uid, merged);
         }
-      });
+      }).finally(() => setHistoryReady(true));
     }
   }, [isAuthenticated, syncFromDB]);
 
@@ -214,7 +257,7 @@ export default function App() {
   const handleMyBookings = useCallback(() => {
     setBookingInitialView('my-bookings');
     setBookingKey((k: number) => k + 1);
-    setActiveTab('booking');
+    navigateTab('booking');
   }, []);
 
   const navItems = [
@@ -235,20 +278,28 @@ export default function App() {
   };
 
   /* ── Unauthenticated ── */
+  // One arrival animation, mounted beside whichever tree is showing (keyed, so it survives the swap between them).
+  const arrivalOverlay = arrival && (
+    <WelcomeSequence
+      key="arrival"
+      name={arrival.name} kind={arrival.kind} ready={{ history: historyReady, settings: settingsReady }}
+      onCovered={() => flushSync(() => setIsAuthenticated(true))}   // one synchronous commit, now, while the screen is covered and still
+      onSettle={() => setSceneOn(true)}
+      onReveal={() => { setSceneOn(true); setCinematicDone(true); }}
+      onDone={() => setArrival(null)}
+    />
+  );
+
   if (!isAuthenticated) {
     return (
       <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-        {!bootDone && <SystemBootSequence onComplete={() => setBootDone(true)} />}
         <div style={themeVars}>
-          <NeuralPulseField colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet']]} />
-          <ParticleField count={typeof window !== 'undefined' && window.innerWidth < 768 ? 14 : 26} />
-          <CustomCursor />
+          <AuroraBackdrop />
           <InteractionLayer />
-          <ElementTransitions />
-          <div className="relative z-10 min-h-dvh">
-            <WelcomeScreen onAuthenticate={() => setIsAuthenticated(true)} />
-          </div>
+          <PublicSite isDark={theme === 'dark'} bootDone={bootDone} onAuthenticate={(user, kind) => setArrival({ name: firstName(user?.name), kind })} />
         </div>
+        {introOn && <IntroSequence key="intro" onReveal={() => { sessionStorage.setItem('cs_booted', '1'); setBootDone(true); }} onDone={() => setIntroOn(false)} />}
+        {arrivalOverlay}
       </ThemeContext.Provider>
     );
   }
@@ -256,20 +307,17 @@ export default function App() {
   /* ── Authenticated ── */
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-      {!cinematicDone && <CinematicSequence onComplete={() => setCinematicDone(true)} />}
-
-      <SmoothScroll>
+      <>
         <div
-          className="min-h-dvh relative overflow-hidden transition-colors duration-500 text-[--text-primary]"
+          className="min-h-dvh relative overflow-hidden text-[--text-primary]"
           style={themeVars}
         >
-          <ParticleField count={typeof window !== 'undefined' && window.innerWidth < 768 ? 0 : 60} />
-          <NeuralPulseField colors={[currentTheme.vars['--accent-cyan'], currentTheme.vars['--accent-violet']]} />
-          <CustomCursor />
+          <AuroraBackdrop />
+          {sceneOn && <Suspense fallback={null}><PageScene scene={activeTab as SceneKey} light={theme === 'light'} /></Suspense>}
+          {sceneOn && <LiquidFlow tabKey={activeTab} />}
           <InteractionLayer />
-          <ElementTransitions />
 
-          <div className="relative z-10" style={{ background: 'radial-gradient(ellipse 90% 45% at 20% -5%, rgba(139,92,246,0.18) 0%, rgba(34,211,238,0.06) 40%, transparent 65%)' }}>
+          <div className="relative z-10" style={{ background: 'radial-gradient(ellipse 90% 45% at 20% -5%, rgba(135,191,255,0.18) 0%, rgba(38,103,255,0.06) 40%, transparent 65%)' }}>
             {/* ── SCROLL PROGRESS RAIL ── */}
             <div
               aria-hidden
@@ -281,8 +329,8 @@ export default function App() {
             {/* ── Header ── */}
             <header
               ref={headerRef}
-              className="sticky top-0 z-50 backdrop-blur-2xl border-b transition-[padding] duration-300"
-              style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)', top: 'env(safe-area-inset-top)' }}
+              className={`sticky top-0 ${mobileMenuOpen ? 'z-[56]' : 'z-50'} backdrop-blur-2xl border-b`}   /* above the drawer (z-55) while it is open, so its close button stays tappable; z-50 otherwise, level with dialogs and popovers */
+              style={{ background: 'var(--header-bg)', borderColor: 'var(--border-color)' }}
             >
               <div
                 aria-hidden
@@ -290,14 +338,16 @@ export default function App() {
                 style={{ background: 'linear-gradient(90deg, transparent 0%, var(--accent-cyan) 30%, var(--accent-violet) 70%, transparent 100%)' }}
               />
 
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
-                <MagneticCard intensity={6} perspective={600} onClick={() => setActiveTab('dashboard')}>
+              {/* the header's own background runs up under the notch / status bar; its content starts below it */}
+              <div data-header-inner className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between pb-4" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
+                {/* index.css paints every class containing "card" (this one is "magnetic-card") as a card, and the wrapper clips the logo glow: both off here */}
+                <MagneticCard className="overflow-visible! bg-transparent! backdrop-blur-none!" intensity={6} perspective={600} onClick={() => navigateTab('dashboard')}>
                   <div
                     role="button"
                     aria-label="Go to Dashboard"
                     tabIndex={0}
                     onKeyDown={(e: { key: string; preventDefault: () => void }) => {
-                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('dashboard'); }
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateTab('dashboard'); }
                     }}
                     className="flex items-center gap-3 cursor-pointer group select-none"
                   >
@@ -317,7 +367,7 @@ export default function App() {
                     <div>
                       <h1
                         className="text-xl font-bold tracking-[0.18em] leading-none bg-clip-text text-transparent"
-                        style={{ fontFamily: "'Michroma', sans-serif", backgroundImage: 'linear-gradient(120deg, var(--text-primary) 0%, var(--accent-violet) 50%, var(--accent-cyan) 100%)' }}
+                        style={{ fontFamily: "var(--font-display)", backgroundImage: 'linear-gradient(120deg, var(--text-primary) 0%, var(--accent-violet) 50%, var(--accent-cyan) 100%)' }}
                       >
                         CuraSense
                       </h1>
@@ -347,34 +397,32 @@ export default function App() {
                       className="absolute top-0 left-0 pointer-events-none opacity-0"
                       style={{
                         borderRadius: '14px',
-                        background: 'linear-gradient(135deg, rgba(139,92,246,0.5) 0%, rgba(34,211,238,0.22) 55%, rgba(139,92,246,0.18) 100%)',
-                        border: '1px solid rgba(139,92,246,0.58)',
-                        boxShadow: '0 0 30px -4px rgba(139,92,246,0.8),0 0 14px -4px rgba(34,211,238,0.5),inset 0 1px 0 rgba(255,255,255,0.22),inset 0 0 24px rgba(139,92,246,0.08)',
+                        background: 'linear-gradient(135deg, rgba(135,191,255,0.5) 0%, rgba(38,103,255,0.22) 55%, rgba(135,191,255,0.18) 100%)',
+                        border: '1px solid rgba(135,191,255,0.58)',
+                        boxShadow: '0 0 30px -4px rgba(135,191,255,0.8),0 0 14px -4px rgba(38,103,255,0.5),inset 0 1px 0 rgba(255,255,255,0.22),inset 0 0 24px rgba(135,191,255,0.08)',
                       }}
                     />
 
                     {navItems.filter(n => !n.cta).map(({ id, label, icon: Icon }) => {
                       const isActive = activeTab === id;
-                      const accent   = NAV_ACCENTS[id] ?? '#8b5cf6';
+                      const accent   = NAV_ACCENTS[id] ?? '#2dd4bf';
                       return (
                         <button
                           key={id}
                           data-nav-id={id}
-                          onClick={() => setActiveTab(id)}
-                          onMouseEnter={e => gsap.to(e.currentTarget, { y: -2, duration: 0.2, ease: 'power2.out' })}
-                          onMouseLeave={e => gsap.to(e.currentTarget, { y: 0,  duration: 0.2, ease: 'power2.out' })}
-                          className="relative z-[1] flex items-center gap-1.5 px-3.5 py-2 rounded-[14px]"
+                          onClick={() => navigateTab(id)}
+                          className="relative z-[1] flex items-center gap-1.5 px-3.5 py-2 rounded-[14px] hover:[transform:translateY(-1px)]"
                         >
-                          <Icon style={{ width: 14, height: 14, flexShrink: 0, color: isActive ? accent : 'rgba(255,255,255,0.35)', filter: isActive ? `drop-shadow(0 0 5px ${accent}bb)` : 'none', transition: 'color 0.25s, filter 0.25s' }} />
-                          <span style={{ fontSize: '0.8rem', fontWeight: isActive ? 600 : 400, color: isActive ? '#fff' : 'rgba(255,255,255,0.42)', textShadow: isActive ? `0 0 14px ${accent}99` : 'none', letterSpacing: isActive ? '0.015em' : '0', transition: 'all 0.25s ease' }}>
+                          <Icon style={{ width: 14, height: 14, flexShrink: 0, color: isActive ? accent : 'rgba(255,255,255,0.35)', filter: isActive ? `drop-shadow(0 0 5px ${accent}bb)` : 'none', transition: 'color 0.2s ease' }} />
+                          <span style={{ fontSize: '0.8rem', fontWeight: 500, color: isActive ? '#fff' : 'rgba(255,255,255,0.42)', textShadow: isActive ? `0 0 14px ${accent}99` : 'none', letterSpacing: '0.01em', transition: 'color 0.2s ease' }}>
                             {label}
                           </span>
                           <span aria-hidden style={{
-                            position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
-                            width: isActive ? '20px' : '0px', height: '2px', borderRadius: '999px',
+                            position: 'absolute', bottom: 4, left: '50%', transform: `translateX(-50%) scaleX(${isActive ? 1 : 0})`,
+                            width: '20px', height: '2px', borderRadius: '999px',
                             background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-                            boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
-                            transition: 'width 0.3s ease, box-shadow 0.3s ease',
+                            boxShadow: `0 0 8px ${accent}`,
+                            transition: 'transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1)',
                           }} />
                         </button>
                       );
@@ -387,22 +435,19 @@ export default function App() {
                       <button
                         key={id}
                         data-nav-id={id}
-                        onClick={() => setActiveTab(id)}
-                        onMouseEnter={e => gsap.to(e.currentTarget, { y: -2, scale: 1.03, duration: 0.2, ease: 'power2.out' })}
-                        onMouseLeave={e => gsap.to(e.currentTarget, { y: 0,  scale: 1,    duration: 0.2, ease: 'power2.out' })}
-                        className="relative flex items-center gap-1.5 px-4 py-2"
+                        onClick={() => navigateTab(id)}
+                        className="relative flex items-center gap-1.5 px-4 py-2 hover:[transform:translateY(-1px)]"
                         style={{
                           borderRadius: '14px',
-                          background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 55%, #06b6d4 100%)',
-                          border: isActive ? '1px solid rgba(34,211,238,0.65)' : '1px solid rgba(139,92,246,0.55)',
+                          background: 'linear-gradient(135deg, #0d9488 0%, #2563eb 55%, #06b6d4 100%)',
+                          border: isActive ? '1px solid rgba(38,103,255,0.65)' : '1px solid rgba(135,191,255,0.55)',
                           boxShadow: isActive
-                            ? '0 0 32px -4px rgba(139,92,246,0.95), 0 0 18px -4px rgba(34,211,238,0.65), inset 0 1px 0 rgba(255,255,255,0.25)'
-                            : '0 0 22px -6px rgba(139,92,246,0.65), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
+                            ? '0 0 32px -4px rgba(135,191,255,0.95), 0 0 18px -4px rgba(38,103,255,0.65), inset 0 1px 0 rgba(255,255,255,0.25)'
+                            : '0 0 22px -6px rgba(135,191,255,0.65), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
                           color: '#fff', fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em',
-                          cursor: 'pointer', transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+                          cursor: 'pointer', transition: 'transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease',
                         }}
                       >
-                        <span aria-hidden className="animate-ping absolute inset-0 pointer-events-none" style={{ borderRadius: '14px', background: 'rgba(139,92,246,0.18)', animationDuration: '2.8s' }} />
                         <span aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden" style={{ borderRadius: '14px' }}>
                           <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 50%, transparent 65%)' }} />
                         </span>
@@ -416,7 +461,7 @@ export default function App() {
                 {/* Right side */}
                 <div className="flex items-center gap-2">
                   <div aria-hidden className="hidden md:block w-px h-5 mx-1 opacity-50" style={{ background: 'var(--border-color)' }} />
-                  <UserProfile predictionsCount={predictions.length} onNavigate={setActiveTab} onLogout={handleLogout} onMyBookings={handleMyBookings} />
+                  <Suspense fallback={null}><UserProfile predictionsCount={predictions.length} onNavigate={navigateTab} onLogout={handleLogout} onMyBookings={handleMyBookings} /></Suspense>
                   <ThemeToggleButton />
                   <button
                     aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -433,11 +478,11 @@ export default function App() {
             {/* ── MOBILE DRAWER ── */}
             <div
               ref={mobileDrawerRef}
+              data-drawer
               className="fixed inset-0 z-[55] flex-col items-center justify-center gap-2 px-6 hidden"
               style={{
-                background: 'radial-gradient(120% 120% at 95% 5%, color-mix(in srgb, var(--accent-violet) 35%, transparent), color-mix(in srgb, var(--accent-cyan) 18%, transparent) 40%, var(--header-bg) 75%)',
-                backdropFilter: 'blur(32px) saturate(180%)',
-                paddingTop: 'env(safe-area-inset-top)',
+                background: 'radial-gradient(120% 120% at 95% 5%, color-mix(in srgb, var(--accent-violet) 35%, transparent), color-mix(in srgb, var(--accent-cyan) 18%, transparent) 40%, var(--header-bg) 75%), var(--bg-base)',   /* opaque: a full-screen backdrop blur under a clip-path reveal is the costliest frame on a phone */
+                paddingTop: 'calc(5.5rem + env(safe-area-inset-top))',   /* the header (5.5rem tall) now stays visible above the drawer */
                 paddingBottom: 'env(safe-area-inset-bottom)',
               }}
             >
@@ -445,7 +490,7 @@ export default function App() {
                 <button
                   key={id}
                   data-drawer-item
-                  onClick={() => { setActiveTab(id); setMobileMenuOpen(false); }}
+                  onClick={() => { navigateTab(id); setMobileMenuOpen(false); }}
                   className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-2xl text-lg font-medium border"
                   style={{
                     borderColor: 'var(--border-color)',
@@ -457,28 +502,39 @@ export default function App() {
                   <span className="tracking-wide">{label}</span>
                 </button>
               ))}
+              {/* the profile menu is desktop-only, so on a phone this is where you sign out */}
+              <button
+                data-drawer-item
+                onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                className="w-full max-w-xs flex items-center gap-4 px-6 py-4 rounded-2xl text-lg font-medium border mt-2"
+                style={{ borderColor: 'var(--border-color)', color: 'var(--error)', background: 'transparent' }}
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="tracking-wide">Sign out</span>
+              </button>
               <p data-drawer-item className="mt-6 text-[10px] uppercase tracking-[0.3em]" style={{ color: 'var(--text-muted)' }}>
                 CuraSense — {t('app.tagline')}
               </p>
             </div>
 
             {/* ── Main Content ── */}
-            <main id="page-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main id="page-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
               {activeTab === 'dashboard' && (
-                <Dashboard predictions={predictions} onNavigate={setActiveTab} />
+                <Dashboard predictions={predictions} onNavigate={navigateTab} />
               )}
 
               {activeTab === 'analyze' && (
                 <div>
-                  <div className="mb-8" data-reveal>
-                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "'Michroma', sans-serif" }}>
+                  <div className="mb-8 w-full sm:w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
+                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.analyze.title')}
                     </h2>
                     <p className="text-base leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)' }}>
                       {t('page.analyze.subtitle')}
                     </p>
                   </div>
-                  <Tabs defaultValue="symptoms" className="space-y-6">
+                  <ConsentGate>
+                  <Tabs value={analyzeTab} onValueChange={setAnalyzeTab} className="space-y-6">
                     <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid rounded-2xl p-1 glass">
                       {[
                         { value: 'symptoms', label: t('page.analyze.symptoms'), icon: Activity },
@@ -487,21 +543,22 @@ export default function App() {
                       ].map(({ value, label, icon: Icon }) => (
                         <TabsTrigger key={value} value={value} className="gap-2 text-[--text-secondary] data-[state=active]:text-white">
                           <Icon className="w-4 h-4" />{' '}
-                          <span className="hidden sm:inline">{label}</span>
+                          <span>{label}</span>
                         </TabsTrigger>
                       ))}
                     </TabsList>
-                    <TabsContent value="symptoms"><SymptomChecker onPrediction={addPrediction} /></TabsContent>
-                    <TabsContent value="image"><ImageAnalysis onPrediction={addPrediction} /></TabsContent>
-                    <TabsContent value="report"><ReportAnalysis onPrediction={addPrediction} /></TabsContent>
+                    <TabsContent value="symptoms"><SymptomChecker onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
+                    <TabsContent value="image"><ImageAnalysis onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
+                    <TabsContent value="report"><ReportAnalysis onPrediction={addPrediction} onSwitchTab={setAnalyzeTab} /></TabsContent>
                   </Tabs>
+                  </ConsentGate>
                 </div>
               )}
 
               {activeTab === 'history' && (
                 <div>
-                  <div className="mb-8" data-reveal>
-                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "'Michroma', sans-serif" }}>
+                  <div className="mb-8 w-full sm:w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
+                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.history.title')}
                     </h2>
                     <p className="text-base leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)' }}>
@@ -516,14 +573,14 @@ export default function App() {
 
               {activeTab === 'booking' && (
                 <div key={bookingKey}>
-                  <ConsultationBooking predictions={predictions} onNavigate={setActiveTab} initialView={bookingInitialView} />
+                  <ConsultationBooking predictions={predictions} onNavigate={navigateTab} initialView={bookingInitialView} />
                 </div>
               )}
 
               {activeTab === 'settings' && (
                 <div>
-                  <div className="mb-8" data-reveal>
-                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "'Michroma', sans-serif" }}>
+                  <div className="mb-8 w-full sm:w-fit px-7 py-5 rounded-2xl" data-lg="plate" data-reveal>
+                    <h2 className="text-3xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
                       {t('page.settings.title')}
                     </h2>
                     <p className="text-base leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)' }}>
@@ -536,11 +593,12 @@ export default function App() {
                 </div>
               )}
 
-              {activeTab === 'admin' && <AdminDashboard />}
+              {activeTab === 'admin' && <Suspense fallback={null}><AdminDashboard /></Suspense>}
             </main>
           </div>
         </div>
-      </SmoothScroll>
+      </>
+      {arrivalOverlay}
     </ThemeContext.Provider>
   );
 }

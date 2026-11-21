@@ -28,7 +28,7 @@ export function useMobileDrawerAnimation(drawerRef: RefObject<HTMLElement | null
       gsap.set(drawer, { display: 'flex' });
       gsap.fromTo(drawer,
         { opacity: 0, clipPath: reducedMotion ? 'circle(150% at 95% 5%)' : 'circle(0% at 95% 5%)' },
-        { opacity: 1, clipPath: 'circle(150% at 95% 5%)', duration: openDuration, ease: 'expo.out' }
+        { opacity: 1, clipPath: 'circle(150% at 95% 5%)', duration: openDuration, ease: 'expo.out', overwrite: true }
       );
 
       const items = drawer.querySelectorAll('[data-drawer-item]');
@@ -36,7 +36,7 @@ export function useMobileDrawerAnimation(drawerRef: RefObject<HTMLElement | null
         y: reducedMotion ? [0, 0] : [28, 0],
         opacity: [0, 1],
         duration: getDuration('drawerStagger', tier, reducedMotion) * 1000,
-        delay: stagger(getStagger(60, tier, reducedMotion), { start: getDuration('drawerDelay', tier, reducedMotion) * 1000 }),
+        delay: stagger(getStagger(30, tier, reducedMotion), { start: getDuration('drawerDelay', tier, reducedMotion) * 1000 }),
         ease: animeEasings.out,
       });
     } else {
@@ -45,6 +45,7 @@ export function useMobileDrawerAnimation(drawerRef: RefObject<HTMLElement | null
         clipPath: 'circle(0% at 95% 5%)',
         duration: closeDuration,
         ease: 'power3.in',
+        overwrite: true,   // a quick reopen must cancel this close, or its onComplete hides the open drawer
         onComplete: () => gsap.set(drawer, { display: 'none' }),
       });
     }

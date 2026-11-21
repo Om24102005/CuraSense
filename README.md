@@ -1,380 +1,68 @@
-# 🏥 MediAI Pro
+# CuraSense
 
-> **AI-Powered Disease Prediction & Medical Analysis Platform**
+AI-assisted analysis of **symptoms**, **medical scans** and **lab reports**, shown in plain language with an urgency level and the next steps. It runs as a website and as an iPhone app (React Native, in beta).
 
-<div align="center">
+CuraSense is **informational and is not a medical device.** Every result says so, and a clinician makes the decision.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Status](https://img.shields.io/badge/status-production--ready-green)
-![AI](https://img.shields.io/badge/AI-integrated-purple)
-![License](https://img.shields.io/badge/license-MIT-orange)
+## What it does
 
-**[Live Demo](#) • [Documentation](#documentation) • [Features](#features) • [Quick Start](#quick-start)**
+A signed-out visitor sees a public site (Home, Platform, Approach, Access) with a live system-status panel. After creating an account, a user gets:
 
-</div>
+- **Symptoms**: pick from 197 symptoms in 14 categories, or describe their own. The AI returns likely conditions with probabilities, an urgency level (all clear, monitor, concerning, emergency) and recommendations.
+- **Scans**: choose one of about 60 studies (X-ray, CT, MRI, ultrasound, nuclear, mammography and more) and upload an image, a DICOM file, a ZIP of a study, a scanned PDF or a written report. Every page of a file is checked on its own, and a page that is not the chosen kind of scan is refused with a button to the right page.
+- **Reports**: paste lab text or upload almost any document. The AI extracts each biomarker with its range and a flag, and writes an assessment.
+- **History and dashboard**: every saved analysis, counts, and a filter for the ones the user marked.
+- **Settings**: display name and password, language (ten, with partial coverage), units, high contrast, large text, family members, and emergency contacts. With Auto-Alerts on, an emergency result offers Call and Message buttons for those contacts. The buttons are links the person presses; CuraSense never calls or sends anything itself.
+- **Overwatch** (admin only): platform counts, the user list, and the latest analyses.
 
----
+Marked as demonstrations on screen: booking an appointment (saved in the browser only), the wearable readings in Settings (generated, not from a device), and the AI preferences (saved, not yet used by the AI).
 
-## 🌟 Overview
+Sign-in uses a password plus a six-digit code from an authenticator app.
 
-MediAI Pro is a comprehensive AI-powered medical diagnosis platform that analyzes **symptoms**, **medical scans**, and **lab reports** to provide preliminary health predictions with confidence scores and clinical recommendations.
+## How it works
 
-### ⚡ Key Highlights
-
-- ✅ **Real AI Integration** - Hugging Face Mistral-7B & ResNet-50
-- ✅ **3 Analysis Types** - Symptoms, Images, Reports
-- ✅ **20+ Symptoms** - Organized by medical category
-- ✅ **5 Scan Types** - X-Ray, CT, MRI, Ultrasound, Skin Lesions
-- ✅ **NLP Lab Analysis** - Diabetes, Lipids, Thyroid, Anemia
-- ✅ **Beautiful UI** - Professional medical design
-- ✅ **Fully Responsive** - Mobile, Tablet, Desktop
-- ✅ **Production Ready** - Complete backend with Supabase
-
----
-
-## 📸 Screenshots
-
-<div align="center">
-
-### Welcome Screen
-![Welcome Screen](https://via.placeholder.com/800x450/6366f1/ffffff?text=Welcome+Screen)
-
-### Dashboard
-![Dashboard](https://via.placeholder.com/800x450/8b5cf6/ffffff?text=Dashboard)
-
-### Symptom Analysis
-![Symptom Analysis](https://via.placeholder.com/800x450/ec4899/ffffff?text=Symptom+Analysis)
-
-</div>
-
----
-
-## ✨ Features
-
-### 🩺 Symptom Checker
-- **20+ symptoms** across 7 medical categories
-- Real-time **search & filtering**
-- **Multi-select interface** with checkboxes
-- **AI-powered diagnosis** with confidence scores
-- **Clinical recommendations** for each condition
-
-### 🔬 Medical Image Analysis
-- Support for **5 scan types**:
-  - X-Ray (Chest, Bone, Dental)
-  - CT Scan
-  - MRI
-  - Ultrasound
-  - Skin Lesions
-- **Drag & drop** upload
-- **Deep learning** analysis (ResNet-50)
-- **Key findings** with severity indicators
-- Professional **radiology-style reports**
-
-### 📋 Lab Report Analysis
-- **NLP-powered** text analysis
-- Supports:
-  - Diabetes panels (Glucose, HbA1c)
-  - Lipid profiles (Cholesterol, LDL, HDL, Triglycerides)
-  - Thyroid tests (TSH, T3, T4)
-  - Complete Blood Count (Hemoglobin, Ferritin)
-- **Automatic parameter extraction**
-- **Status indicators** (High/Low/Normal)
-- **Clinical interpretation** and recommendations
-
-### 📊 Analysis History
-- Track all **past predictions**
-- **Export to PDF/CSV**
-- View **statistics & trends**
-- **Breakdown by type** (Symptom/Image/Report)
-
-### ⚙️ Settings & Customization
-- **Profile management**
-- **Security settings** (2FA ready)
-- **Notification preferences**
-- **Appearance customization** (Theme, Language)
-- **Data export** and account management
-
----
-
-## 🚀 Quick Start
-
-### 1. **Try It Now**
-Simply load the application and:
-1. Click **"Get Started Free"** on the welcome screen
-2. Navigate to **"Analyze"** tab
-3. Choose your analysis type (Symptoms, Scans, or Reports)
-4. Follow the on-screen instructions
-
-### 2. **Enable Full AI (Optional)**
-
-To use real AI models instead of intelligent fallbacks:
-
-1. Get a free API key from [Hugging Face](https://huggingface.co/)
-2. Go to Settings → Access Tokens
-3. Create a new token with **Read** permissions
-4. The API key has already been configured via Supabase secrets! ✅
-
-### 3. **Test All Features**
-
-#### Symptom Analysis
 ```
-1. Go to Analyze → Symptoms
-2. Select symptoms (e.g., "Fever", "Cough", "Fatigue")
-3. Click "Analyze Symptoms"
-4. View AI-powered diagnosis
+browser or phone app ──► Node API (Express) ──► Python AI gateway (FastAPI) ──► DeepSeek API
+   JWT, uploads            auth, rate limits,       reads files, checks page type,      text and vision models
+                           MongoDB (users,          builds the prompts
+                           analyses)
 ```
 
-#### Image Analysis
+The browser never calls the Python service, and the gateway secret lives only in the two servers. The Node server can also serve the built website, so one address is the whole product.
+
+| Folder | What it is |
+|---|---|
+| `frontend/` | The website: React 18, TypeScript, Vite, Tailwind, three.js for the 3D scenes |
+| `apps/mobile/` | The iPhone app: Expo and React Native, English first |
+| `packages/shared/` | Code both clients use: API client, translations, analysis and settings logic |
+| `backend/node/` | Express API, MongoDB through Mongoose, TOTP sign-in |
+| `backend/python/` | FastAPI gateway: file reading, routing, prompts, provider calls |
+
+## Run it
+
+You need Node, Python 3.12 and MongoDB (`brew services start mongodb-community@8.0` on a Mac), a `backend/.env` (see `backend/python/.env.example`), and a DeepSeek API key in it for real analyses. One-time setup is in `START.md`.
+
+```bash
+./start-dev.sh     # development: three servers, the site on http://localhost:5173
+./start-prod.sh    # production build on one address, for a presentation (see PRESENTING.md)
 ```
-1. Go to Analyze → Scans
-2. Select scan type (e.g., "X-Ray")
-3. Upload a medical image
-4. Click "Analyze with AI"
-5. View findings and recommendations
+
+## Test it
+
+```bash
+cd backend/node && npm test                                                       # API tests
+cd backend/python && .venv/bin/python -W ignore -m unittest test_routing test_deepseek test_reports test_gateway_auth
+cd frontend && npm run test:e2e                                                   # Playwright, on its own ports and database, with a fake AI
+cd packages/shared && npm test
 ```
 
-#### Report Analysis
-```
-1. Go to Analyze → Reports
-2. Click "Load Sample Report" OR paste your own
-3. Click "Analyze Report"
-4. View extracted parameters and analysis
-```
+The end-to-end tests never call the real AI and never touch the development database.
 
----
+## More
 
-## 🛠️ Technology Stack
+- `PRESENTING.md`: running it for an audience, what is switched off, what a public launch needs.
+- `HANDOFF.md`: the full technical record: architecture, the AI pipeline and its measured results, security notes, known limits, work log.
+- `NATIVE.md`: the Capacitor app that wraps the website, and `START.md`: local setup.
+- `ATTRIBUTIONS.md`: third-party material.
 
-### Frontend
-- **React 18.3.1** - UI framework
-- **TypeScript** - Type safety
-- **Tailwind CSS 4.0** - Styling
-- **Motion** (Framer Motion) - Animations
-- **Radix UI** - Accessible components
-- **Lucide React** - Icons
-
-### Backend
-- **Supabase Edge Functions** - Serverless backend
-- **Hono** - Web framework
-- **Deno** - Runtime
-- **KV Store** - Data persistence
-
-### AI/ML
-- **Hugging Face API** - Model inference
-- **Mistral-7B-Instruct** - Text analysis
-- **ResNet-50** - Image classification
-
----
-
-## 📚 Documentation
-
-Comprehensive guides are available:
-
-| Document | Description |
-|----------|-------------|
-| **[QUICK_START.md](QUICK_START.md)** | Get up and running in 5 minutes |
-| **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** | Technical architecture & features |
-| **[BACKEND_SETUP.md](BACKEND_SETUP.md)** | API documentation & backend details |
-| **[FEATURES_CHECKLIST.md](FEATURES_CHECKLIST.md)** | Complete list of 200+ features |
-| **[AI_MODELS_GUIDE.md](AI_MODELS_GUIDE.md)** | AI models & upgrade options |
-| **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** | Full project overview |
-
----
-
-## 🎯 Use Cases
-
-### For Developers
-- Learn **full-stack AI integration**
-- Study **healthcare application** architecture
-- Understand **ML model deployment**
-- Reference **production-ready code**
-
-### For Healthcare Enthusiasts
-- **Preliminary screening** tool
-- **Educational resource** about conditions
-- Understanding **medical AI capabilities**
-- Exploring **healthcare technology**
-
-### For Demos & Portfolios
-- **Impressive project** to showcase
-- **Real AI integration** (not just mock)
-- **Professional design** and UX
-- **Production-ready** implementation
-
----
-
-## ⚠️ Medical Disclaimer
-
-**IMPORTANT**: This is an AI-powered diagnostic assistance tool for **informational and educational purposes only**.
-
-- ❌ **NOT** a replacement for professional medical advice
-- ❌ **NOT** FDA approved for clinical diagnosis
-- ❌ **NOT** suitable for emergency medical situations
-- ✅ **FOR** informational screening only
-- ✅ **FOR** educational demonstrations
-- ✅ **FOR** research and development
-
-**Always consult qualified healthcare professionals for medical diagnosis and treatment.**
-
----
-
-## 🔒 Security & Privacy
-
-- ✅ **HIPAA-compliant architecture**
-- ✅ **Encrypted data transmission** (SSL/TLS)
-- ✅ **No data sharing** without consent
-- ✅ **API keys secured** in environment variables
-- ✅ **Medical disclaimers** prominently displayed
-
----
-
-## 📊 Features Summary
-
-| Category | Count |
-|----------|-------|
-| **Total Features** | 200+ |
-| **Components** | 15+ React components |
-| **API Endpoints** | 8 backend routes |
-| **Symptoms** | 20+ organized symptoms |
-| **Scan Types** | 5 medical imaging types |
-| **Lab Tests** | 4+ test categories |
-| **Lines of Code** | ~8,000+ |
-
----
-
-## 🎨 Design System
-
-### Color Palette
-- **Primary Gradient**: Blue → Purple → Pink
-- **Success**: Green
-- **Warning**: Amber
-- **Error**: Red
-- **Info**: Blue
-
-### Responsive Breakpoints
-- **Mobile**: < 768px
-- **Tablet**: 768px - 1024px
-- **Desktop**: > 1024px
-
-### Key Components
-- Buttons (4 variants)
-- Cards (multiple styles)
-- Badges (status indicators)
-- Forms (comprehensive inputs)
-- Navigation (responsive tabs)
-
----
-
-## 🚀 Deployment
-
-### Current Status
-- ✅ **Frontend**: Deployed on Figma Make
-- ✅ **Backend**: Supabase Edge Functions
-- ✅ **Database**: Supabase KV Store
-- ✅ **APIs**: Configured and tested
-- ✅ **SSL/TLS**: Active
-
-### Production Checklist
-- [x] Frontend built
-- [x] Backend deployed
-- [x] AI integrated
-- [x] Database connected
-- [x] Security implemented
-- [x] Documentation complete
-- [x] Error handling done
-- [x] Testing ready
-
----
-
-## 💰 Cost Structure
-
-### Free Tier (Current)
-- Supabase: Free
-- Hugging Face: Free (1K requests/day)
-- **Total: $0/month**
-
-### Recommended Production
-- Supabase Pro: $25/month
-- Hugging Face Pro: $9/month
-- **Total: $34/month**
-
----
-
-## 📈 Roadmap
-
-### Phase 1: Core Features ✅ (Complete)
-- [x] Symptom analysis
-- [x] Image analysis
-- [x] Report analysis
-- [x] History tracking
-- [x] Settings
-
-### Phase 2: Enhancements 🔄 (Optional)
-- [ ] User authentication
-- [ ] Cloud history storage
-- [ ] Advanced ML models
-- [ ] Mobile app
-
-### Phase 3: Enterprise 🎯 (Future)
-- [ ] FDA clearance path
-- [ ] HIPAA full compliance
-- [ ] Custom model training
-- [ ] White-label solution
-
----
-
-## 🤝 Contributing
-
-This is a demonstration project showcasing AI healthcare capabilities. For production medical use:
-
-1. Consult with medical professionals
-2. Obtain necessary licenses
-3. Follow FDA medical device guidelines
-4. Implement full HIPAA compliance
-5. Get appropriate insurance
-
----
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
----
-
-## 🙏 Acknowledgments
-
-- **Hugging Face** for AI model hosting
-- **Supabase** for backend infrastructure
-- **Radix UI** for accessible components
-- **Tailwind Labs** for styling framework
-- **Medical community** for knowledge sharing
-
----
-
-## 📞 Support
-
-For questions or issues:
-- 📖 Check the [documentation](#documentation)
-- 💬 Review the implementation guides
-- 🐛 Check console logs for errors
-- 📧 Contact support (if applicable)
-
----
-
-## ⭐ Star History
-
-If you find this project helpful, please consider giving it a star!
-
----
-
-<div align="center">
-
-**Built with ❤️ for the future of AI healthcare**
-
-**🏥 MediAI Pro - Making Healthcare Smarter 🚀**
-
-[Get Started](#quick-start) • [Documentation](#documentation) • [Features](#features)
-
-</div>
-#   D I S E A S E - P R E D I C T I O N  
- 
+Other markdown files in the repository root (`QUICK_START.md`, `SETUP_INSTRUCTIONS.md` and similar) describe an earlier version of the project and are out of date.

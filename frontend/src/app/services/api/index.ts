@@ -4,5 +4,6 @@ export * from './password';
 export * from './predictions';
 export * from './admin';
 export * from './settings';
+export * from './profile';
 export * from './wearables';
 export * from './health';

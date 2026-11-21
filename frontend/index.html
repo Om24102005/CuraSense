@@ -4,13 +4,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-  <title>CuraSense | AI HEALTH ANALYSER Diagnostics</title>
+  <title>CuraSense — AI health analysis for symptoms, scans and lab reports</title>
+  <meta name="description" content="CuraSense reads symptoms, medical images and lab reports with AI-assisted analysis and shows the result in plain language, with an urgency level and next steps.">
+  <meta name="theme-color" content="#05070f">
+  <meta name="format-detection" content="telephone=no">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CuraSense">
+  <meta property="og:title" content="CuraSense — AI health analysis for symptoms, scans and lab reports">
+  <meta property="og:description" content="AI-assisted analysis of symptoms, medical images and lab reports, shown in plain language with an urgency level.">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*;">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Michroma&display=swap"
-    rel="stylesheet">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' blob: https: wss: http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:* __API_ORIGIN__;">
+  <script>
+    // No-flash theme bootstrap: runs before first paint, before React mounts.
+    // Keep this in sync with the dark/light `vars` in src/app/themes.ts —
+    // only the handful of paint-critical ones are duplicated here.
+    (function () {
+      try {
+        var saved = localStorage.getItem('curasense_theme');
+        var theme = (saved === 'light' || saved === 'dark')
+          ? saved
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        var vars = theme === 'light' ? {
+          '--bg-base': '#eaf0f9', '--text-primary': '#0a1230',
+          '--bg-surface': 'rgba(255,255,255,0.8)', '--bg-card': 'rgba(255,255,255,0.86)',
+          '--text-secondary': 'rgba(10,18,48,0.78)', '--text-muted': 'rgba(10,18,48,0.56)',
+          '--border-color': 'rgba(10,36,114,0.14)', '--header-bg': 'rgba(234,240,249,0.88)'
+        } : {
+          '--bg-base': '#05070f', '--text-primary': '#dceaf4',
+          '--bg-surface': 'rgba(8,12,26,0.66)', '--bg-card': 'rgba(10,16,34,0.72)',
+          '--text-secondary': 'rgba(220,234,244,0.74)', '--text-muted': 'rgba(220,234,244,0.48)',
+          '--border-color': 'rgba(135,191,255,0.14)', '--header-bg': 'rgba(5,7,15,0.78)'
+        };
+        var root = document.documentElement;
+        root.setAttribute('data-theme', theme);
+        root.style.backgroundColor = vars['--bg-base'];   // no white flash before the stylesheet arrives
+        root.style.colorScheme = theme;                   // native controls, scrollbars and the phone keyboard follow the theme
+        for (var k in vars) root.style.setProperty(k, vars[k]);
+      } catch (e) { /* localStorage/matchMedia unavailable — default dark CSS stays */ }
+    })();
+  </script>
 </head>
 
 <body>

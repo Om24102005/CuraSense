@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: curasense
+    runtime: docker
+    dockerfilePath: ./deploy/web.Dockerfile
+    dockerContext: .
+    branch: upgrade/motion-launch
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # Asked for once in the Render dashboard, never stored in this repository.
+      - key: MONGODB_URI
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      # Made by Render on the first deploy. Changing JWT_SECRET signs everyone out; changing DATA_KEY breaks every saved authenticator.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GATEWAY_SECRET
+        generateValue: true
+      - key: DATA_KEY
+        generateValue: true

@@ -1,4 +1,4 @@
-# CuraSense Refactor Log — Phases 1–3
+# CuraSense Refactor Log — Phases 1–3, then the UI/UX Rebuild
 
 This document records every change made across the architecture audit (Phase 1), the
 module separation (Phase 2), and the animation system upgrade (Phase 3). No business
@@ -455,3 +455,212 @@ for the full list and reasoning): everything now under
 - The quarantined files in `legacy/_unused/` still need your explicit decision (delete
   vs. resurrect) — `ResetPassword.tsx` in particular is a full duplicate implementation
   of a flow `WelcomeScreen.tsx` already has live.
+
+---
+---
+
+# UI/UX Rebuild — Theme Reduction + Full Animation Library Stack
+
+A later, separate pass: background redesign (swapped the marble `AuroraField` shader for
+`NeuralPulseField`, a themed node network), then — per your explicit choices on scope —
+reduced the theme system from 5 themes to exactly dark + light, and wired in the full
+animation library list from your prompt (not just the lean GSAP+anime.js pair this
+session started with). Business logic, API contracts, routes, and DB schema: untouched.
+
+## Scope decisions you made (recorded here since they override earlier defaults)
+
+| Question | You chose |
+|---|---|
+| Keep 5 themes or reduce to 2? | **Reduce** — cyberpunk/medical/aurora deleted from `themes.ts` |
+| Background/shell-only rebuild, or full app-wide component rebuild? | **Full app-wide** (achieved via the global CSS lever — see below) |
+| Keep lean anime.js+GSAP, or adopt the full library list? | **Full list** |
+| Phase-by-phase with stops, or run straight through? | **Straight through** |
+
+## Design tokens (Phase 2)
+
+- **`frontend/src/app/themes.ts`** — `ThemeName` is now `'dark' | 'light'` only. Every
+  color was checked against WCAG AA (documented inline: body text ≥4.5:1, large/UI
+  text ≥3:1). Added categories the old 5-theme set didn't have: `--success(-bg)`,
+  `--warning(-bg)`, `--error(-bg)`, `--overlay`, `--shadow-{sm,md,lg}`, `--focus-ring`.
+- **`frontend/src/styles/typography.css`** (new) — fluid `clamp()` type scale (`--text-xs`
+  through `--text-3xl`), weight/line-height/letter-spacing tokens, and a `data-theme`-gated
+  `--body-weight` (dark gets regular weight, light gets medium — near-black backgrounds
+  make the same weight read optically thinner than white backgrounds do).
+- **No-flash bootstrap** — `frontend/index.html` gained an inline `<script>` (runs before
+  first paint, before React mounts) that reads `localStorage` or
+  `prefers-color-scheme`, stamps `data-theme` on `<html>`, and sets the handful of
+  paint-critical CSS vars directly on `documentElement.style`. This also fixed a latent
+  bug: theme vars were previously only applied to a wrapper `<div>` via React, so
+  `<body>` itself (outside that div) always rendered with its hardcoded black fallback —
+  light-theme users got a black flash on every load, not just the first.
+- **Circular-reveal theme switch** — `ThemeToggleButton` passes its click
+  coordinates to `toggleTheme`, which calls `swapThemeWithReveal` (native View
+  Transitions API, `clip-path: circle()` keyframe centered on `--vt-x/--vt-y`,
+  falls back to the existing GSAP crossfade when unsupported or reduced-motion).
+
+## Animation library plan (Phase 3)
+
+| Library | Role | Where | Lazy? |
+|---|---|---|---|
+| GSAP + ScrollTrigger + **Flip** | Scroll-driven effects, layout-change transitions | `animations/engine/gsapEngine.ts`; Flip now drives `useNavPillIndicator` for real (was a manual position-calc "FLIP-style" fake before) | No — needed on first paint (WelcomeScreen) |
+| anime.js v4 | Staggered entrances, micro-interactions | `NeuralPulseField`, `useMobileDrawerAnimation`, new hero char-reveal in `WelcomeScreen` | No — same reason |
+| Motion (`motion/react`) | Component enter/exit via `AnimatePresence` | `PredictionHistory`'s two modals — previously vanished instantly on close, now actually animate out | No (broadly used) |
+| React Spring (`@react-spring/web`) | Physics-based spring, not duration/easing | `Settings.tsx`'s `CyberToast` — `useTransition` gives it a real spring pop-in **and** pop-out (had neither exit animation before) | No |
+| tsParticles | One-shot confetti burst — **not** the ambient background (that's anime.js's job, see below) | New `SuccessBurst.tsx`, wired into `SymptomChecker`'s result card | **Yes** — code-split automatically by its own plugin architecture (confirmed in build output: separate chunks per tsParticles plugin) |
+| Lottie (`lottie-react`) | Vector loader accent | New `LoadingPulse.tsx` in `LoadingScreen.tsx`, additive next to the existing Three.js scene (not a replacement — that scene is substantial, intentional, hand-tuned work) | Not yet — flagged below |
+| Rive (`@rive-app/react-canvas`) | Interactive state-machine icon | New `RiveIcon.tsx` — **built, not mounted**: `.riv` is a compiled binary format from the Rive editor, no such asset exists in this project and can't be hand-authored. Confirmed zero bundle cost until it's actually used (tree-shaken). | N/A (unused) |
+| SplitType | Char-level text reveal | `WelcomeScreen` hero headline — additive on top of the existing GSAP line-rise, transform-only (no opacity) specifically so it can't fight the parent's own fade | No |
+| Typed.js | Typewriter effect | `SystemBootSequence`'s top banner line | No |
+| `@formkit/auto-animate` | Zero-config list mutation animation | `SymptomChecker`'s symptom-chip list (add/remove) | No |
+| View Transitions API (native) | Tab-switch crossfade + theme-switch circular reveal | New `navigateWithViewTransition` wraps every `setActiveTab` call (`navigateTab` in `App.tsx`) via `flushSync` + `document.startViewTransition`; falls back to the existing GSAP `usePageTransition` when unsupported | N/A (native) |
+| Lenis | Smooth scroll | Unchanged, already live | No |
+| CSS animations | Hover/press/loading | Unchanged, already extensive in `index.css` | No |
+
+### Deliberately skipped (with reasons, per your prompt's own conflict rule)
+
+- **Theatre.js** — `CinematicSequence.tsx`'s own header comment already says *"Theatre.js
+  Studio was removed — no runtime value, just dev-panel clutter."* This codebase tried
+  it here before and explicitly rejected it. Reversing a documented decision already
+  made by this project, on the exact file where it was made, isn't something I'll do
+  silently. **Removed `@theatre/core|react|studio` from `package.json`** — confirmed
+  zero live imports, matching the original Phase 1 dead-dependency finding.
+- **AOS** — conflicts with GSAP ScrollTrigger (both do scroll-triggered reveals).
+  ScrollTrigger is already deeply integrated (header densify, scroll rail, parallax)
+  and strictly more capable (scrub, pin, timelines vs. AOS's plain intersection
+  observer). Per your prompt's own rule, picked the better one.
+- **Swup / Barba.js** — both are page-transition libraries for router-driven, real page
+  loads. This app has no router — it's a single-page tab-switcher (`activeTab` state).
+  There's nothing for them to attach to; View Transitions + GSAP already own this job.
+- **Native Scroll-driven Animations** (`animation-timeline: scroll()`) — evaluated, not
+  adopted. Chrome-only support as of this writing; GSAP ScrollTrigger remains the
+  reliable cross-browser baseline for every scroll-tied effect in this app.
+
+### "Full app-wide component rebuild" — how it was actually achieved
+
+A genuine full per-component rewrite (cards/buttons/inputs/modals/toasts hand-edited
+across 10+ feature files, several 600–1300+ lines) carries real risk with zero ability
+to visually verify the result in this environment. Instead: **`index.css` already has
+global bare-selector rules** (`button`, `input/textarea/select`, `.card`/`[data-slot=
+"card"]`, `[role="tab"]`, `.badge`, `[role="dialog"]`) that apply app-wide regardless
+of each component's own inline styles — confirmed by auditing every `<Button>`/`<Card>`
+usage in the codebase: **2 files** use the shadcn component library out of 47 available
+primitives; **everything else is raw `<button>`/`<input>` styled globally through these
+rules**. Redesigning the global rules once (new tokens, animated states) reaches every
+button/input/card/badge/dialog in the app from a single, auditable place — the same
+lever already used for the dvh/safe-area/touch-target pass earlier in this session.
+
+## Before/after (this pass only)
+
+```
+frontend/src/
+  app/
+    themes.ts                      # 5 themes → 2 (dark/light), WCAG-checked, new token categories
+    App.tsx                        # navigateTab (View Transitions), lazy(CinematicSequence)
+    components/
+      shared/
+        ThemeToggleButton.tsx      # 2-mode, passes click coords for circular reveal
+        LoadingScreen.tsx          # +LoadingPulse (Lottie), Three.js scene untouched
+        SuccessBurst.tsx           # NEW — tsParticles one-shot burst
+        LoadingPulse.tsx           # NEW — Lottie wrapper (hand-authored JSON, documented)
+        RiveIcon.tsx               # NEW — built, not mounted (no .riv asset exists)
+      backgrounds/
+        SystemBootSequence.tsx     # +Typed.js banner line
+    features/
+      history/PredictionHistory.tsx   # Motion AnimatePresence on both modals
+      settings/Settings.tsx           # React Spring CyberToast (useTransition)
+      symptom-checker/SymptomChecker.tsx  # AutoAnimate chip list + SuccessBurst trigger
+      auth/WelcomeScreen.tsx          # SplitType + anime.js hero char-reveal
+    animations/
+      engine/gsapEngine.ts          # +Flip plugin registration
+      hooks/useNavPillIndicator.ts  # manual position-calc → real GSAP Flip
+      hooks/usePageTransition.ts    # View-Transition-aware (consumeNativeTransitionFlag)
+      presets/themeTransition.ts    # +swapThemeWithReveal (circular reveal)
+      presets/pageTransition.ts     # NEW — navigateWithViewTransition
+      index.ts                      # barrel: +Flip, +navigateWithViewTransition
+  styles/
+    typography.css                  # NEW — fluid type scale, per-mode weight
+    index.css                       # view-transition CSS (scoped to .vt-circle)
+  assets/lottie/pulse-dot.json      # NEW — hand-authored, schema-valid Lottie file
+index.html                          # no-flash theme bootstrap script
+package.json                        # +9 deps (tsparticles/react+slim, lottie-react,
+                                     #  rive-app/react-canvas, react-spring/web, split-type,
+                                     #  typed.js, formkit/auto-animate); -3 (@theatre/*)
+```
+
+## Verification
+
+- `vite build` after every single change in this pass (not just at the end) — every
+  commit point in this log built clean, 0 errors.
+- `eslint` on every touched file after every change — 0 errors introduced. The 8
+  warnings/errors a full project-wide sweep turns up are either pre-existing (confirmed
+  against this same lint run before this pass started) or inside `src/legacy/_unused/`
+  (quarantined, not part of the live build — confirmed `vite build` never touches that
+  directory).
+- Verified the View Transitions theme-swap CSS scoping decision against the actual
+  problem it solves: without the `.vt-circle` class gate, the circular-reveal keyframe
+  would have applied to *every* view transition including tab switches, not just theme
+  toggles — caught this before shipping it, not after.
+- Verified package exports directly (not from memory) before wiring each library:
+  `node -e "require(...)"` / reading `.d.ts` files for `@tsparticles/react`,
+  `@tsparticles/slim`, `motion/react`, and `@rive-app/react-canvas`'s actual API shape,
+  since guessing an import path wrong silently breaks at runtime, not build time, for
+  some of these.
+
+## Test checklist (adds to the one from the earlier responsive pass)
+
+- [ ] Toggle theme — circular reveal animates from the toggle button's position, in a
+      browser that supports View Transitions (Chrome/Edge); plain crossfade in Safari
+- [ ] Reload the page with light theme saved — no flash of black/dark before paint
+- [ ] System `prefers-color-scheme: light` with no saved choice — defaults to light
+- [ ] Switch tabs (Dashboard → Analyze → History → Settings) — crossfades; no
+      double-animation (GSAP firing on top of a native transition)
+- [ ] Open/close a prediction's detail panel and full report modal — both now fade out
+      on close instead of vanishing instantly
+- [ ] Trigger a Settings toast (e.g. save a preference) — pops in with a spring bounce,
+      pops out on dismiss/auto-clear instead of just disappearing
+- [ ] Complete a symptom analysis — confetti burst fires once over the result card,
+      chip list above it animates smoothly as symptoms are added/removed
+- [ ] WelcomeScreen hero — headline characters settle in with a slight stagger on top
+      of the line-level rise
+- [ ] First auth success — cinematic intro loads (watch Network tab: its JS chunk loads
+      on demand, not in the initial bundle)
+- [ ] `prefers-reduced-motion: reduce` — circular reveal, hero char-reveal, and the
+      tsParticles burst's motion should all be absent/instant
+- [ ] Bundle size: main chunk is now ~577KB gzip (up from ~365KB before this pass —
+      expected, see Risks below); `CinematicSequence` confirmed in its own ~3.7KB gzip
+      chunk, loaded only after auth
+
+## Risks / bundle size impact
+
+- **Bundle size grew substantially this pass** — main chunk gzip went from ~365KB to
+  ~577KB. Breakdown of the biggest contributors: Motion (~400 modules pulled in),
+  lottie-web (~big; also throws a build-time `eval` warning from its own bundled code,
+  not something introduced here), tsParticles (partially self-code-splits, confirmed in
+  build output). **Only `CinematicSequence` was lazy-loaded in this pass** — the 8
+  tab-content components (`SymptomChecker`, `ImageAnalysis`, `ReportAnalysis`,
+  `PredictionHistory`, `Dashboard`, `ConsultationBooking`, `Settings`,
+  `AdminDashboard`) are the single highest-value remaining lazy-loading opportunity
+  (several of them now pull in the heaviest of these libraries) but were deliberately
+  **not** converted to `React.lazy()` in this pass: doing so means wrapping each in
+  `<Suspense>`, and the existing View-Transition/GSAP page-transition system
+  (`usePageTransition`, `navigateWithViewTransition`) assumes the DOM mutation for a
+  tab switch happens in one synchronous step — a Suspense fallback-then-swap is a
+  *second* DOM change those hooks don't currently know about, which risks a double
+  flash or the fade-in animating the skeleton instead of the real content. That needs
+  its own dedicated pass, not a blind bolt-on. Flagging it rather than guessing.
+- **No live browser available in this environment** — every check above is
+  build/lint/API-existence verification, not visual confirmation. The test checklist is
+  what still needs a human with a real browser.
+- **Theme reduction is destructive**: cyberpunk/medical/aurora are gone from
+  `themes.ts`, not just hidden. If you want any of them back, they're recoverable from
+  the backup noted in the earlier Phase 2 section of this log, not from the live
+  codebase anymore.
+- **`RiveIcon.tsx` is unused** by design (no asset) — confirmed zero bundle cost, but
+  it's dead code in the sense that nothing renders it. Not quarantined to
+  `legacy/_unused/` since it's newly-built-and-ready rather than found-and-orphaned;
+  worth knowing it's there next time a `.riv` file shows up.
+- **`lottie-react` ships a real but intentionally simple animation** (`pulse-dot.json`,
+  hand-authored — opacity + scale keyframes on a single shape layer, no trim-paths).
+  It's valid, schema-correct Lottie JSON and will render, but it's not the complex
+  vector artwork the library is usually used for. Swap the JSON file for a real
+  After-Effects export whenever one exists; the `<LoadingPulse>` wiring doesn't change.

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- the page's first-paint colour (--bg-base in src/app/themes.ts) -->
+    <color name="cs_navy">#05070F</color>
+</resources>

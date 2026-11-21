@@ -59,18 +59,19 @@ export function AdminDashboard() {
     const points = new THREE.Points(pGeo, pMat);
     scene.add(points);
 
-    let id: number;
-    const animate = () => {
+    let id: number, last = performance.now();
+    const animate = (now: number) => {
       id = requestAnimationFrame(animate);
-      mesh.rotation.y += 0.005;
-      mesh.rotation.x += 0.002;
-      points.rotation.y -= 0.002;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;   // rad/s, so the spin is the same at any refresh rate
+      mesh.rotation.y += 0.3 * dt;
+      mesh.rotation.x += 0.12 * dt;
+      points.rotation.y -= 0.12 * dt;
       renderer.render(scene, camera);
     };
-    animate();
+    animate(last);
 
     const ctx = gsap.context(() => {
-      gsap.fromTo('.admin-panel', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'expo.out' });
+      gsap.fromTo('.admin-panel', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity' });
     }, containerRef);
 
     return () => {
@@ -92,12 +93,12 @@ export function AdminDashboard() {
         <div ref={canvasRef} />
       </div>
 
-      <div className="relative z-10 flex items-center gap-4 admin-panel">
+      <div data-lg="plate" className="relative z-10 flex items-center gap-4 admin-panel w-fit px-6 py-4 rounded-2xl">
         <div className="p-4 rounded-xl bg-fuchsia-500/20 border border-fuchsia-500/50">
           <ShieldAlert className="w-8 h-8 text-fuchsia-500" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold uppercase tracking-widest text-fuchsia-500" style={{ fontFamily: "'Michroma', sans-serif" }}>Overwatch Protocol</h1>
+          <h1 className="text-3xl font-bold uppercase tracking-widest text-fuchsia-500" style={{ fontFamily: "var(--font-display)" }}>Overwatch Protocol</h1>
           <p className="text-sm font-bold uppercase tracking-widest" style={{ color: tMuted }}>Global Administrator Terminal</p>
         </div>
       </div>
@@ -119,8 +120,8 @@ export function AdminDashboard() {
 
       <div className="admin-panel relative z-10 p-6 rounded-2xl backdrop-blur-md" style={{ background: tCard, border: `1px solid ${tBdr}` }}>
         <div className="flex gap-4 mb-6 border-b border-fuchsia-500/20 pb-4">
-          <button onClick={() => setActiveTab('users')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition-all ${activeTab === 'users' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Identities</button>
-          <button onClick={() => setActiveTab('predictions')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition-all ${activeTab === 'predictions' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Data Logs</button>
+          <button onClick={() => setActiveTab('users')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition ${activeTab === 'users' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Identities</button>
+          <button onClick={() => setActiveTab('predictions')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition ${activeTab === 'predictions' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Data Logs</button>
         </div>
 
         {activeTab === 'users' && (
@@ -144,7 +145,7 @@ export function AdminDashboard() {
                     <td className="py-4 px-4"><span className={`px-2 py-1 rounded text-xs font-bold uppercase ${u.role === 'admin' ? 'bg-fuchsia-500/20 text-fuchsia-500' : 'bg-cyan-500/20 text-cyan-500'}`}>{u.role}</span></td>
                     <td className="py-4 px-4">
                       {u.role !== 'admin' && (
-                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition"><Trash2 className="w-4 h-4" /></button>
                       )}
                     </td>
                   </tr>

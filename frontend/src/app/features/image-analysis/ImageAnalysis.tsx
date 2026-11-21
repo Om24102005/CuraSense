@@ -1,3 +1,4 @@
+import { analyzeImage } from '../../services/api';
 import { useState, useRef, useEffect } from 'react';
 import { Upload, Image as ImageIcon, X, FileText, AlertTriangle, Plus, Layers as LayersIcon, ChevronDown } from 'lucide-react';
 import type { Prediction } from '../../App';
@@ -5,160 +6,19 @@ import { useTheme } from '../../App';
 import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
+import { EmergencyPrompt } from '../../components/shared/EmergencyPrompt';
+import { isEmergency } from '@curasense/shared/emergency';
+import { WrongPageNotice, type Redirect } from '../../components/shared/WrongPageNotice';
+import { SCAN_TYPES, SCAN_GROUPS, modalityOf, regionsOf, studyLabel, extractUrgency, URGENCY_MAP, MAX_FILES, MAX_FILE_MB, MAX_ZIP_MB } from '@curasense/shared/scans';
 
 interface ImageAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
+  onSwitchTab?: (tab: string) => void;
 }
 
-const SCAN_TYPES = [
-  // X-Ray
-  { id: 'xray-chest', name: 'Chest X-Ray', description: 'Lungs, heart, ribs, pleural effusion' },
-  { id: 'xray-bone', name: 'Bone / Limb X-Ray', description: 'Fractures, arthritis, density' },
-  { id: 'xray-spine', name: 'Spinal X-Ray', description: 'Cervical, thoracic, lumbar vertebrae' },
-  { id: 'xray-dental', name: 'Dental / Panoramic X-Ray', description: 'Teeth, jaw, sinuses, TMJ' },
-  { id: 'xray-abdominal', name: 'Abdominal X-Ray (KUB)', description: 'Bowel, kidney stones, obstruction' },
-  { id: 'xray-pelvis', name: 'Pelvic X-Ray', description: 'Pelvis, hip joints, sacrum' },
-  { id: 'xray-hand', name: 'Hand / Wrist X-Ray', description: 'Carpal bones, fractures, arthritis' },
-  { id: 'xray-foot', name: 'Foot / Ankle X-Ray', description: 'Fractures, plantar spur, arthritis' },
-  { id: 'xray-skull', name: 'Skull X-Ray', description: 'Skull, sinuses, facial bones' },
-  { id: 'xray-shoulder', name: 'Shoulder X-Ray', description: 'AC joint, rotator cuff calcification' },
-  // CT Scan
-  { id: 'ct-head', name: 'CT Head / Brain', description: 'Stroke, bleeding, tumors, hydrocephalus' },
-  { id: 'ct-chest', name: 'CT Chest', description: 'Lung nodules, pulmonary embolism, lymph nodes' },
-  { id: 'ct-abdomen', name: 'CT Abdomen & Pelvis', description: 'Liver, kidneys, bowel, masses' },
-  { id: 'ct-spine', name: 'CT Spine', description: 'Vertebrae, disc herniation, stenosis' },
-  { id: 'ct-coronary', name: 'CT Coronary Angiography (CTCA)', description: 'Coronary artery stenosis, calcium score' },
-  { id: 'ct-pulmonary', name: 'CT Pulmonary Angiography (CTPA)', description: 'Pulmonary embolism, pulmonary arteries' },
-  { id: 'ct-sinus', name: 'CT Sinus / Facial', description: 'Sinusitis, polyps, facial fractures' },
-  { id: 'ct-urogram', name: 'CT Urogram / KUB', description: 'Kidneys, ureters, bladder, stones' },
-  { id: 'ct-colonoscopy', name: 'CT Colonoscopy (Virtual)', description: 'Colon polyps, colorectal cancer screening' },
-  { id: 'ct-neck', name: 'CT Neck', description: 'Lymph nodes, thyroid, carotid arteries' },
-  // MRI
-  { id: 'mri-brain', name: 'MRI Brain', description: 'Tumors, MS plaques, stroke, seizures' },
-  { id: 'mri-spine-c', name: 'MRI Cervical Spine', description: 'Disc herniation, myelopathy, cord compression' },
-  { id: 'mri-spine-l', name: 'MRI Lumbar / Thoracic Spine', description: 'Disc disease, stenosis, sciatica' },
-  { id: 'mri-knee', name: 'MRI Knee', description: 'Meniscus, ACL/PCL, cartilage, effusion' },
-  { id: 'mri-shoulder', name: 'MRI Shoulder', description: 'Rotator cuff, labrum, impingement' },
-  { id: 'mri-hip', name: 'MRI Hip', description: 'AVN, labral tear, bursitis, stress fracture' },
-  { id: 'mri-abdomen', name: 'MRI Abdomen', description: 'Liver, pancreas, adrenal, bile ducts' },
-  { id: 'mri-pelvis', name: 'MRI Pelvis', description: 'Prostate, uterus, ovaries, rectum' },
-  { id: 'mri-cardiac', name: 'Cardiac MRI', description: 'Cardiomyopathy, viability, pericardium' },
-  { id: 'mri-breast', name: 'MRI Breast', description: 'Breast cancer screening, implant integrity' },
-  { id: 'mri-angio', name: 'MRA (MRI Angiography)', description: 'Blood vessels, aneurysms, stenosis' },
-  { id: 'mri-wrist', name: 'MRI Wrist / Hand', description: 'Ligament tears, TFCC, avascular necrosis' },
-  { id: 'mri-ankle', name: 'MRI Ankle / Foot', description: 'Ligaments, tendons, stress fractures' },
-  // Ultrasound
-  { id: 'us-abdominal', name: 'Abdominal Ultrasound', description: 'Liver, gallbladder, spleen, aorta' },
-  { id: 'us-pelvic', name: 'Pelvic Ultrasound', description: 'Uterus, ovaries, bladder' },
-  { id: 'us-tv', name: 'Transvaginal Ultrasound (TVUS)', description: 'Endometrium, ovaries, fibroids, IUD' },
-  { id: 'us-obstetric', name: 'Obstetric Ultrasound', description: 'Fetal development, dating, anomaly scan' },
-  { id: 'us-thyroid', name: 'Thyroid Ultrasound', description: 'Nodules, goiter, cysts' },
-  { id: 'us-breast', name: 'Breast Ultrasound', description: 'Cysts, masses, lymph nodes, abscess' },
-  { id: 'us-renal', name: 'Renal Ultrasound', description: 'Kidneys, hydronephrosis, stones, cysts' },
-  { id: 'us-doppler', name: 'Doppler / Vascular Ultrasound', description: 'DVT, carotid stenosis, blood flow' },
-  { id: 'echo', name: 'Echocardiogram', description: 'Heart valves, EF, wall motion, pericardium' },
-  { id: 'us-scrotal', name: 'Scrotal Ultrasound', description: 'Testes, epididymis, varicocele, hydrocele' },
-  { id: 'us-msk', name: 'Musculoskeletal Ultrasound', description: 'Tendons, bursae, joints, guided injections' },
-  // Nuclear Medicine / PET
-  { id: 'pet', name: 'PET Scan (FDG-PET)', description: 'Cancer staging, metabolic activity' },
-  { id: 'pet-ct', name: 'PET-CT', description: 'Combined metabolic + anatomical imaging' },
-  { id: 'bone-scan', name: 'Bone Scan (Scintigraphy)', description: 'Metastases, stress fractures, infection' },
-  { id: 'thyroid-scan', name: 'Thyroid Scan / I-131 Uptake', description: 'Hyperthyroidism, nodule function' },
-  { id: 'spect', name: 'SPECT Scan', description: 'Brain perfusion, cardiac stress, infection' },
-  // Mammography
-  { id: 'mammo', name: 'Mammography (2D)', description: 'Breast cancer screening, microcalcifications' },
-  { id: 'mammo-3d', name: '3D Mammography (Tomosynthesis)', description: 'Enhanced sensitivity, dense breasts' },
-  // Other
-  { id: 'skin', name: 'Skin Lesion / Dermoscopy', description: 'Melanoma, nevi, dermatological images' },
-  { id: 'dexa', name: 'DEXA Scan (Bone Density)', description: 'Osteoporosis, T-score, Z-score' },
-  { id: 'fluoroscopy', name: 'Fluoroscopy / Barium Study', description: 'Barium swallow, enema, GI dynamics' },
-  { id: 'retinal', name: 'Retinal / Ophthalmic Imaging', description: 'Fundus, OCT, diabetic retinopathy' },
-  { id: 'endoscopy', name: 'Endoscopy / Colonoscopy Image', description: 'GI mucosa, polyps, Barrett\'s esophagus' },
-  { id: 'angiogram', name: 'Conventional Angiogram', description: 'Catheter-based vascular imaging' },
-  { id: 'ekg', name: 'ECG / EKG Strip', description: 'Arrhythmia, MI, QT interval analysis' },
-  // Cancer & Oncology — PET / Nuclear Medicine
-  { id: 'onco-pet-full', name: 'Whole-Body FDG PET-CT (Staging)', description: 'Full cancer staging, recurrence detection, treatment response' },
-  { id: 'onco-psma-pet', name: 'PSMA PET-CT (Ga-68 / F-18)', description: 'Prostate cancer staging, recurrence, PSMA-targeted therapy selection' },
-  { id: 'onco-dotatate', name: 'DOTATATE PET-CT (Ga-68)', description: 'Neuroendocrine tumors, carcinoid, paraganglioma, pheochromocytoma' },
-  { id: 'onco-axumin', name: 'Axumin (Fluciclovine F-18) PET', description: 'Biochemical recurrence of prostate cancer post-treatment' },
-  { id: 'onco-mibg', name: 'MIBG Scan (I-123 / I-131)', description: 'Neuroblastoma, pheochromocytoma, paraganglioma, carcinoid' },
-  { id: 'onco-thyroid-rai', name: 'Radioiodine Whole-Body Scan (I-131)', description: 'Differentiated thyroid cancer, RAI uptake, residual / recurrent disease' },
-  { id: 'onco-octreotide', name: 'Octreotide / Somatostatin Receptor Scan', description: 'Neuroendocrine tumors, gastrinoma, carcinoid — SPECT/CT' },
-  { id: 'onco-sentinel', name: 'Sentinel Lymph Node Lymphoscintigraphy', description: 'Lymphatic mapping — breast, melanoma, vulvar, endometrial cancer' },
-  { id: 'onco-bone-spect', name: 'Bone Scan + SPECT/CT (Oncology)', description: 'Skeletal metastases — breast, prostate, lung, thyroid cancer' },
-  { id: 'onco-head-neck-pet', name: 'Head & Neck Cancer PET-CT', description: 'SCC staging, unknown primary, nodal mapping, post-treatment response' },
-  { id: 'onco-lymphoma-pet', name: 'Lymphoma PET-CT (Deauville Scoring)', description: 'Hodgkin / NHL staging, interim & end-of-treatment Deauville response' },
-  { id: 'onco-melanoma-pet', name: 'Melanoma Whole-Body PET-CT', description: 'Distant metastases, nodal staging, treatment response monitoring' },
-  { id: 'onco-lung-pet', name: 'Lung Cancer PET-CT (Staging)', description: 'NSCLC / SCLC mediastinal staging, nodal involvement, M-stage' },
-  { id: 'onco-gi-pet', name: 'GI / Colorectal Cancer PET-CT', description: 'Colorectal, esophageal, gastric cancer staging and recurrence' },
-  // Cancer & Oncology — CT Protocols
-  { id: 'onco-ldct', name: 'Low-Dose CT Lung Cancer Screening (LDCT)', description: 'Annual screening for high-risk smokers; Lung-RADS nodule classification' },
-  { id: 'onco-staging-cap', name: 'CT Chest / Abdomen / Pelvis (CAP Staging)', description: 'Pan-cancer full-body staging across all three regions in one study' },
-  { id: 'onco-pancreas-ct', name: 'Pancreatic Protocol CT (Triphasic)', description: 'Pancreatic adenocarcinoma, IPMN, resectability assessment' },
-  { id: 'onco-hepatic-ct', name: 'Hepatic Protocol CT (LI-RADS / HCC)', description: 'Arterial enhancement, washout, LI-RADS scoring for hepatocellular carcinoma' },
-  { id: 'onco-urography-ct', name: 'CT Urography (Urothelial Cancer)', description: 'Bladder, ureteral, renal pelvis transitional cell carcinoma' },
-  { id: 'onco-entero-ct', name: 'CT Enterography (Small Bowel Tumors)', description: 'GIST, small bowel adenocarcinoma, lymphoma, carcinoid' },
-  { id: 'onco-ovarian-ct', name: 'Ovarian Cancer CT (Peritoneal Staging)', description: 'Peritoneal spread, omental disease, surgical resectability' },
-  { id: 'onco-neck-ct', name: 'CT Neck (Lymphoma / Thyroid Cancer)', description: 'Cervical lymphadenopathy, thyroid mass, nodal levels I-VI' },
-  // Cancer & Oncology — MRI Protocols
-  { id: 'onco-wb-mri', name: 'Whole-Body MRI (Cancer Screening)', description: 'Metastases survey, multiple myeloma, lymphoma, Li-Fraumeni syndrome' },
-  { id: 'onco-dw-mri', name: 'Diffusion-Weighted MRI (DW-MRI / DWIBS)', description: 'Tumor cellularity, treatment response, occult nodal / bone metastases' },
-  { id: 'onco-dcemri', name: 'Dynamic Contrast-Enhanced MRI (DCE-MRI)', description: 'Tumor vascularity, angiogenesis quantification, therapy monitoring' },
-  { id: 'onco-prostate-mri', name: 'Prostate mp-MRI (PI-RADS v2.1)', description: 'PCa detection & grading, targeted biopsy guidance, staging' },
-  { id: 'onco-rectal-mri', name: 'Rectal Cancer MRI (mrTME Staging)', description: 'T/N/V staging, CRM, EMVI, neoadjuvant response, surgical planning' },
-  { id: 'onco-liver-mri', name: 'Liver MRI with Hepatobiliary Contrast', description: 'HCC (Eovist / Primovist), cholangiocarcinoma, colorectal liver mets' },
-  { id: 'onco-pancreas-mri', name: 'Pancreatic Protocol MRI / MRCP', description: 'Pancreatic cancer, branch-duct IPMN, biliary / ductal anatomy' },
-  { id: 'onco-cervical-mri', name: 'Cervical Cancer MRI (FIGO Staging)', description: 'Parametrial invasion, vaginal / bladder extension, nodal involvement' },
-  { id: 'onco-endo-mri', name: 'Endometrial / Uterine Cancer MRI', description: 'Myometrial invasion depth, cervical extension, nodal staging' },
-  { id: 'onco-bladder-mri', name: 'Bladder Cancer MRI (VI-RADS)', description: 'Muscle invasion depth, extravesical spread, lymph nodes' },
-  { id: 'onco-myeloma-mri', name: 'Multiple Myeloma Whole-Body MRI', description: 'Bone marrow infiltration patterns, focal lesions, response assessment' },
-  { id: 'onco-brain-spec', name: 'Brain Tumor MRI Protocol (+ Spectroscopy)', description: 'Glioma grading, meningioma, metastases — perfusion, DWI, MR spectroscopy' },
-  { id: 'onco-spine-mri', name: 'Spine MRI (Metastatic Cord Compression)', description: 'Vertebral metastases, epidural disease, MSCC — urgent oncology protocol' },
-  { id: 'onco-breast-mri', name: 'Breast MRI (Neoadjuvant Response)', description: 'Pre- / post-chemotherapy extent, residual tumor, pathologic complete response' },
-  // Cancer & Oncology — Ultrasound / Endoscopy
-  { id: 'onco-eus', name: 'Endoscopic Ultrasound (EUS)', description: 'GI wall layers, pancreatic / biliary tumors, mediastinal nodes, FNA guidance' },
-  { id: 'onco-ceus', name: 'Contrast-Enhanced Ultrasound (CEUS)', description: 'Liver lesion characterization, HCC LI-RADS, renal mass, SonoVue protocol' },
-  { id: 'onco-thyroid-us', name: 'Thyroid Ultrasound (TI-RADS / FNA)', description: 'Thyroid nodule characterization, malignancy risk, biopsy guidance' },
-  { id: 'onco-lymph-us', name: 'Lymph Node Ultrasound + Elastography', description: 'Cervical / axillary / inguinal nodal assessment, cortical morphology' },
-  { id: 'onco-capsule', name: 'Capsule Endoscopy (Small Bowel Tumors)', description: 'Small bowel tumors, GIST, occult bleeding, polyposis syndromes' },
-  { id: 'onco-ercp', name: 'ERCP / MRCP (Biliary & Pancreatic Cancer)', description: 'Cholangiocarcinoma, pancreatic cancer, bile duct stricture characterization' },
-  // Cancer & Oncology — Breast Imaging
-  { id: 'onco-cem', name: 'Contrast-Enhanced Mammography (CEM)', description: 'Breast cancer in dense breasts, neoadjuvant chemotherapy response monitoring' },
-  { id: 'onco-mbi', name: 'Molecular Breast Imaging (MBI / BSGI)', description: 'Supplemental screening in dense tissue, post-lumpectomy recurrence' },
-  { id: 'onco-ductogram', name: 'Ductography / Galactography', description: 'Intraductal papilloma, DCIS, pathologic nipple discharge workup' },
-];
-
-const SCAN_GROUPS = [
-  { label: 'X-Ray', filter: (t: { id: string }) => t.id.startsWith('xray') },
-  { label: 'CT Scan', filter: (t: { id: string }) => t.id.startsWith('ct-') },
-  { label: 'MRI', filter: (t: { id: string }) => t.id.startsWith('mri-') },
-  { label: 'Ultrasound', filter: (t: { id: string }) => t.id.startsWith('us-') || t.id === 'echo' },
-  { label: 'Nuclear Medicine/PET', filter: (t: { id: string }) => ['pet', 'pet-ct', 'bone-scan', 'thyroid-scan', 'spect'].includes(t.id) },
-  { label: 'Mammography', filter: (t: { id: string }) => t.id.startsWith('mammo') },
-  { label: 'Cancer & Oncology', filter: (t: { id: string }) => t.id.startsWith('onco-') },
-  { label: 'Other Imaging', filter: (t: { id: string }) => ['skin', 'dexa', 'fluoroscopy', 'retinal', 'endoscopy', 'angiogram', 'ekg'].includes(t.id) },
-];
-
-const URGENCY_MAP: Record<string, { color: string; bg: string; label: string }> = {
-  normal: { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: 'Normal' },
-  low: { color: '#10b981', bg: 'rgba(16,185,129,0.15)', label: 'Low' },
-  medium: { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', label: 'Medium' },
-  moderate: { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', label: 'Moderate' },
-  high: { color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: 'High' },
-  critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.20)', label: 'Critical' },
-  emergency: { color: '#ef4444', bg: 'rgba(239,68,68,0.25)', label: 'Emergency' },
-};
-
-const extractUrgency = (text: string) => {
-  const m = text.match(/urgency\s*(?:level)?\s*[:：]\s*(normal|low|medium|moderate|high|critical|emergency)/i);
-  return m ? URGENCY_MAP[m[1].toLowerCase()] : null;
-};
-
-const MAX_FILES = 6;
-const MAX_FILE_MB = 25;
 
 const ACCEPTED_SCAN_INPUTS =
-  'image/jpeg,image/png,image/webp,image/tiff,image/bmp,application/dicom,.dcm,.dicom,application/pdf,.txt,.md';
+  'image/jpeg,image/png,image/webp,image/tiff,image/bmp,application/dicom,.dcm,.dicom,application/zip,application/x-zip-compressed,.zip,application/pdf,.txt,.md';
 
 const SCAN_KEYWORDS = /\b(x-?ray|ct\s*scan|mri|ultrasound|sonograph|radiolog|imaging|dicom|tomograph|mammogra|pet\s*scan|fluorosc|skin\s*lesion|dermatosc)\b/i;
 const LAB_KEYWORDS = /\b(cbc|lipid\s*panel|hba1c|glucose|cholesterol|hemoglobin|wbc|rbc|platelet|biomarker|metabolic\s*panel|liver\s*function|kidney\s*function|electrolyte|tsh|vitamin\s*d|crp)\b/i;
@@ -174,12 +34,12 @@ interface ScanSection {
   num: number;
   filename: string;
   content: string;
-  isLabReport: boolean;
   detectedKind?: string;
   detectedConfidence?: number;
+  refusal?: { message: string; redirect?: Redirect };
 }
 
-export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
+export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps) {
   const ref = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -197,7 +57,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.ia-card', { y: 32, opacity: 0 }, { y: 0, opacity: 1, duration: 0.75, stagger: 0.12, ease: 'expo.out' });
+      gsap.fromTo('.ia-card', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity' });
     }, ref);
     return () => ctx.revert();
   }, []);
@@ -242,15 +102,18 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
   };
 
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
 
   const validateScanFile = async (file: File): Promise<{ ok: boolean; reason?: string; kind: UploadedFile['kind'] }> => {
     const name = file.name.toLowerCase();
     const type = file.type.toLowerCase();
-    if (file.size > MAX_FILE_MB * 1024 * 1024) return { ok: false, reason: `Too large (max ${MAX_FILE_MB}MB)`, kind: 'other' };
+    const isZip = name.endsWith('.zip') || type === 'application/zip' || type === 'application/x-zip-compressed';
+    const maxMb = isZip ? MAX_ZIP_MB : MAX_FILE_MB;
+    if (file.size > maxMb * 1024 * 1024) return { ok: false, reason: `Too large (max ${maxMb}MB${isZip ? '' : `; zip several files together, up to ${MAX_ZIP_MB}MB`})`, kind: 'other' };
+    if (isZip) return { ok: true, kind: 'other' };
     if (type.startsWith('image/')) return { ok: true, kind: 'image' };
-    if (name.endsWith('.dcm') || name.endsWith('.dicom') || type === 'application/dicom') return { ok: true, kind: 'image' };
+    if (name.endsWith('.dcm') || name.endsWith('.dicom') || type === 'application/dicom') return { ok: true, kind: 'other' };
     if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md')) {
       try {
         const text = await file.text();
@@ -305,23 +168,10 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
     if (files.length === 0) return;
     setAnalyzing(true); setResult(null);
     try {
-      const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
-      const token = (import.meta as any).env?.VITE_API_TOKEN;
-
-      const requests = files.map((uf: UploadedFile) => {
-        const fd = new FormData();
-        fd.append('patient_id', 'demo-user');
-        fd.append('scan_type', scanType);
-        if (customContext.trim()) fd.append('clinical_context', customContext.trim());
-        fd.append('file', uf.file);
-        return fetch(`${apiBase}/api/v1/diagnostics/imaging`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        }).then(async (r: Response) => {
-          if (!r.ok) throw new Error(`Gateway error on ${uf.file.name}`);
-          return { name: uf.file.name, data: await r.json() };
-        });
+      const requests = files.map(async (uf: UploadedFile) => {
+        const res = await analyzeImage(uf.file, modalityOf(scanType), studyLabel(scanType), customContext.trim(), regionsOf(scanType));
+        if (res.error || !res.data) throw new Error(res.error || `Gateway error on ${uf.file.name}`);
+        return { name: uf.file.name, data: res.data };
       });
 
       const settled = await Promise.allSettled(requests);
@@ -337,49 +187,46 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
           num: i + 1,
           filename: value.name,
           content: va.analysis || va.error || 'No analysis returned.',
-          isLabReport: va.detected_kind === 'lab_report',
           detectedKind: va.detected_kind,
           detectedConfidence: va.detected_confidence,
+          // The AI service refuses files that are not the selected kind of scan (see WrongPageNotice).
+          refusal: va.error ? { message: va.error, redirect: va.redirect } : undefined,
         };
       });
+      const analysed = scanSections.filter(s => !s.refusal);
 
       const combined = scanSections.map(s => `### ${s.num}. ${s.filename}\n\n${s.content}`).join('\n\n---\n\n');
       const failureNote = failed.length ? `\n\n> ⚠ ${failed.length} file${failed.length > 1 ? 's' : ''} failed to analyze.` : '';
 
-      const labResults = ok
-        .map(o => o.value.data?.vision_analysis)
-        .filter((va: any) => va?.redirected_to === 'lab_report' && Array.isArray(va?.lab?.biomarkers))
-        .flatMap((va: any) => va.lab.biomarkers);
-
-      const allDetected = ok.map(o => o.value.data?.vision_analysis?.detected_kind).filter(Boolean);
-      const labCount = allDetected.filter((k: string) => k === 'lab_report').length;
-      const confidence = Math.floor(Math.random() * (95 - 80 + 1)) + 80;
+      // Confidence is how sure the AI was about what kind of scan this is. It is reported by the model, not made up.
+      const confidence = analysed.length
+        ? Math.round(analysed.reduce((sum, s) => sum + (s.detectedConfidence ?? 0), 0) / analysed.length)
+        : null;
 
       const mappedResult = {
-        diagnosis: labCount === ok.length && ok.length > 0
-          ? `AI Auto-Detected: Lab Report${ok.length > 1 ? `s (${ok.length})` : ''}`
+        diagnosis: analysed.length === 0
+          ? 'Not Analysed'
           : files.length > 1
-            ? `Multi-Scan Radiology Assessment (${ok.length}/${files.length})`
+            ? `Multi-Scan Radiology Assessment (${analysed.length}/${files.length})`
             : 'AI Radiology Assessment',
         confidence,
         details: combined + failureNote,
         scanSections,
-        recommendations: [
-          labCount > 0 ? 'Re-upload lab reports under the Reports tab for full biomarker workflow.' : 'Review findings with a licensed radiologist.',
+        recommendations: analysed.length === 0 ? [] : [
+          'Review findings with a licensed radiologist.',
           'Cross-reference with patient medical history and clinical presentation.',
           files.length > 1 ? 'Compare findings across all submitted scans for temporal trends.' : 'Follow up as indicated by urgency level.',
         ],
         findings: [],
-        biomarkers: labResults,
       };
 
       setResult(mappedResult);
-      onPrediction({ type: 'image', ...mappedResult, scanSections: mappedResult.scanSections as any });
+      if (analysed.length) onPrediction({ type: 'image', ...mappedResult, confidence: confidence ?? 0, scanSections: mappedResult.scanSections as any });
     } catch (error) {
       console.error(error);
       setResult({
-        diagnosis: 'Processing Error', confidence: 0,
-        details: 'Image Core Offline. Ensure Python backend is running on port 8000 with VITE_API_TOKEN set.',
+        diagnosis: 'Processing Error', confidence: null,
+        details: 'Image Core Offline. Check that the API server and AI service are running, then try again.',
         scanSections: [], recommendations: [], findings: [],
       });
     } finally {
@@ -387,7 +234,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
     }
   };
 
-  if (analyzing) return <LoadingScreen message="SCAN IS IN PROGRESS..." />;
+  if (analyzing) return <LoadingScreen message="SCAN IS IN PROGRESS..." variant="scans" subject={{ images: files.filter((f) => /^image\/(jpeg|png|webp|gif|bmp|avif)$/.test(f.file.type)).map((f) => f.preview) }} />;
 
   const selectedScan = SCAN_TYPES.find(t => t.id === scanType);
 
@@ -407,7 +254,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
         {/* ── LEFT: Upload panel ── */}
         <div className="ia-card" style={{ ...glass, padding: '1.75rem' }}>
           <h3 style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 700, color: T.head, marginBottom: '4px' }}>Upload Medical Scan</h3>
-          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Upload X-rays, CT scans, MRIs, or other medical images</p>
+          <p style={{ color: T.sub, fontSize: '0.82rem', marginBottom: '1.25rem' }}>Upload X-rays, CT scans, MRIs or other medical images: JPG, PNG, DICOM, ZIP (a whole study) or PDF</p>
 
           {/* ── Custom themed dropdown ── */}
           <div style={{ marginBottom: '1rem' }}>
@@ -553,7 +400,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
-              className="transition-all duration-300"
+              className="transition duration-300"
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 width: '100%', padding: files.length === 0 ? '3rem 1rem' : '1.25rem',
@@ -568,7 +415,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                 <>
                   <Upload className="w-10 h-10 mb-3" style={{ color: isDark ? '#a78bfa' : '#6d28d9' }} />
                   <p style={{ fontFamily: S, fontWeight: 700, fontSize: '0.9rem', color: T.head, marginBottom: '4px' }}>Drop or click to add scans</p>
-                  <p style={{ fontSize: '0.72rem', color: T.muted, textAlign: 'center' }}>JPG · PNG · WEBP · TIFF · DICOM · PDF · TXT &nbsp;·&nbsp; up to {MAX_FILES} files, {MAX_FILE_MB}MB each</p>
+                  <p style={{ fontSize: '0.72rem', color: T.muted, textAlign: 'center' }}>JPG · PNG · WEBP · TIFF · DICOM · ZIP · PDF · TXT &nbsp;·&nbsp; up to {MAX_FILES} files, {MAX_FILE_MB}MB each (ZIP {MAX_ZIP_MB}MB)</p>
                 </>
               ) : (
                 <>
@@ -616,7 +463,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
           <button
             onClick={handleAnalyze}
             disabled={files.length === 0 || analyzing}
-            className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full transition duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: files.length > 0 ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: files.length > 0 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}
           >
             Analyze {files.length > 1 ? `${files.length} Scans` : 'with AI'}
@@ -643,6 +490,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
 
           {result && (
             <div
+              data-result
               style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
             >
               {/* Overall header card */}
@@ -652,25 +500,32 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                     <div style={{ fontSize: '0.62rem', fontFamily: S, letterSpacing: '0.16em', color: T.accentPurple, marginBottom: '4px' }}>ASSESSMENT RESULT</div>
                     <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1rem', lineHeight: 1.3 }}>{result.diagnosis}</h4>
                   </div>
+                  {result.confidence != null && (
                   <span style={{ padding: '4px 14px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, fontFamily: S, whiteSpace: 'nowrap', flexShrink: 0, background: result.confidence >= 85 ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: result.confidence >= 85 ? '#10b981' : '#f59e0b', border: `1px solid ${result.confidence >= 85 ? 'rgba(16,185,129,0.30)' : 'rgba(245,158,11,0.30)'}` }}>
-                    {result.confidence}% confidence
+                    {result.confidence}% scan match
                   </span>
+                  )}
                 </div>
+                {result.confidence != null && (
+                  <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '6px', color: T.muted }}>
-                  <span>Model Confidence</span>
+                  <span>Scan-type recognition</span>
                   <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
                 </div>
                 <div style={{ height: '6px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', boxShadow: '0 0 10px rgba(99,102,241,0.5)', transition: 'width 1s ease' }} />
+                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', boxShadow: '0 0 10px rgba(99,102,241,0.5)', }} />
                 </div>
+                  </>
+                )}
               </div>
+
+              <EmergencyPrompt active={isEmergency({ scanSections: result.scanSections })} isDark={isDark} />
 
               {/* Per-scan cards */}
               {result.scanSections && result.scanSections.length > 0 && result.scanSections.map((section: ScanSection, i: number) => {
                 const urgency = extractUrgency(section.content);
-                const isLab = section.isLabReport;
-                const cardBorder = isLab
-                  ? 'rgba(245,158,11,0.35)'
+                const cardBorder = section.refusal
+                  ? T.amberBdr
                   : urgency?.color
                     ? `${urgency.color}44`
                     : T.cardBdr;
@@ -687,12 +542,7 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                         {section.filename}
                       </span>
                       {/* Tags */}
-                      {isLab && (
-                        <span style={{ padding: '2px 9px', borderRadius: '6px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b', fontSize: '0.62rem', fontWeight: 800, fontFamily: S, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                          LAB REPORT
-                        </span>
-                      )}
-                      {section.detectedKind && section.detectedKind !== 'other' && !isLab && (
+                      {section.detectedKind && section.detectedKind !== 'other' && !section.refusal && (
                         <span style={{ padding: '2px 9px', borderRadius: '6px', background: isDark ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.10)', border: `1px solid ${isDark ? 'rgba(139,92,246,0.40)' : 'rgba(99,102,241,0.30)'}`, color: T.accentPurple, fontSize: '0.62rem', fontWeight: 800, fontFamily: S, whiteSpace: 'nowrap' }}>
                           {section.detectedKind.replace(/_/g, ' ').toUpperCase()}
                         </span>
@@ -705,39 +555,13 @@ export function ImageAnalysis({ onPrediction }: ImageAnalysisProps) {
                     </div>
                     {/* Analysis content */}
                     <div style={{ padding: '1rem 1.1rem' }}>
-                      <MedicalAIOutput text={section.content} isDark={isDark} textColor={T.text} mutedColor={T.muted} />
+                      {section.refusal
+                        ? <WrongPageNotice message={section.refusal.message} redirect={section.refusal.redirect} onSwitchTab={onSwitchTab} isDark={isDark} T={T} S={S} />
+                        : <MedicalAIOutput text={section.content} isDark={isDark} textColor={T.text} mutedColor={T.muted} />}
                     </div>
                   </div>
                 );
               })}
-
-              {/* Biomarkers (when AI auto-routed lab report) */}
-              {result.biomarkers && result.biomarkers.length > 0 && (
-                <div>
-                  <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.75rem' }}>
-                    <AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} /> Extracted Biomarkers
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {result.biomarkers.map((b: any, i: number) => {
-                      const status = b.status || 'normal';
-                      const color = status === 'critical' ? '#ef4444' : status === 'high' || status === 'low' ? '#f59e0b' : '#10b981';
-                      return (
-                        <div key={i} style={{ padding: '0.75rem 0.9rem', borderRadius: '10px', background: T.findBg, border: `1px solid ${color}22` }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: T.text }}>{b.name}</span>
-                            <span style={{ fontFamily: S, fontWeight: 700, color, fontSize: '0.95rem' }}>
-                              {Number.isInteger(b.value) ? b.value : Number(b.value).toFixed(1)} <span style={{ fontSize: '0.7rem', color: T.muted, fontWeight: 400 }}>{b.unit}</span>
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.65rem', color: T.muted, marginTop: 2 }}>
-                            Normal: {b.normal_min}–{b.normal_max} {b.unit} · <span style={{ color, fontWeight: 600, textTransform: 'uppercase' }}>{status}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* Secondary findings */}
               {result.findings && result.findings.length > 0 && (

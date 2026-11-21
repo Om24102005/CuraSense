@@ -1,3 +1,4 @@
+import { analyzeReportText, analyzeReportFile } from '../../services/api';
 import { useState, useRef, useEffect } from 'react';
 import { FileText, CircleCheck, AlertTriangle, Play, Upload, X, Image as ImageIcon } from 'lucide-react';
 import type { Prediction } from '../../App';
@@ -5,12 +6,16 @@ import { useTheme } from '../../App';
 import gsap from 'gsap';
 import { LoadingScreen } from '../../components/shared/LoadingScreen';
 import MedicalAIOutput from '../../components/shared/MedicalAIOutput';
+import { EmergencyPrompt } from '../../components/shared/EmergencyPrompt';
+import { WrongPageNotice, type Redirect } from '../../components/shared/WrongPageNotice';
+import { SAMPLE_REPORT } from '@curasense/shared/sampleReport';
 
 interface ReportAnalysisProps {
   onPrediction: (prediction: Omit<Prediction, 'id' | 'timestamp'>) => void;
+  onSwitchTab?: (tab: string) => void;
 }
 
-export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
+export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -24,72 +29,28 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Reports tab: ACCEPT lab/blood/biomarker reports — REJECT raw radiology scan images.
-  // Allow PDFs/text/CSV/MD freely; for images, allow only if filename hints at lab/blood (otherwise route to Scans tab).
-  const ACCEPTED = '.pdf,.txt,.csv,.md,image/*';
-  const MAX_FILE_MB = 15;
+  // The AI service reads the file and refuses anything that is not a lab / blood report, naming the right page.
+  // Here: only the checks that need no AI (size, and DICOM, which is always a scan).
+  const ACCEPTED = '.pdf,.txt,.csv,.tsv,.md,.json,.xml,.html,.htm,.rtf,.docx,.xlsx,.pptx,.odt,.ods,.odp,.doc,.xls,.ppt,.heic,.heif,.zip,image/*';
+  const MAX_FILE_MB = 25;
+  const MAX_ZIP_MB = 40; // a ZIP of report pages, or a Word / Excel file (also a ZIP inside); the server reads every file by what it contains
+  const ZIP_LIKE = /\.(zip|docx|xlsx|pptx|odt|ods|odp)$/;
 
-  // Heuristics
-  const SCAN_NAME_RE = /\b(x-?ray|xray|ct|mri|ultrasound|sonogram|dicom|scan|radiograph|mammogra|pet|tomograph|fluorosc|skin\s*lesion|dermatosc)\b/i;
-  const SCAN_TEXT_RE = /\b(x-?ray|ct\s*scan|mri|ultrasound|sonograph|radiolog|imaging|dicom|tomograph|mammogra|pet\s*scan|fluorosc)\b/i;
-  const LAB_TEXT_RE = /\b(cbc|lipid|hba1c|glucose|cholesterol|hemoglobin|wbc|rbc|platelet|biomarker|metabolic|liver\s*function|kidney|electrolyte|tsh|vitamin|albumin|creatinine|urea|ferritin|sodium|potassium|chloride|bilirubin|protein|enzyme|panel|blood)\b/i;
-
-  const pickFile = async (f: File | null) => {
+  const pickFile = (f: File | null) => {
     if (!f) { setSelectedFile(null); return; }
-    if (f.size > MAX_FILE_MB * 1024 * 1024) {
-      setResult({ diagnosis: 'File Too Large', confidence: 0, details: `Max ${MAX_FILE_MB}MB. Please compress or split the file.`, urgency: 'low', recommendations: [], biomarkers: [] });
-      return;
-    }
-
     const name = f.name.toLowerCase();
-    const type = f.type.toLowerCase();
-
-    // 1) Block obvious DICOM
-    if (name.endsWith('.dcm') || name.endsWith('.dicom') || type === 'application/dicom') {
-      setResult({
-        diagnosis: 'Wrong Section — Use Scans Tab',
-        confidence: 0,
-        details: '**This looks like a DICOM scan file.** The Reports tab is for **blood / lab / biomarker** reports only.\n\nPlease upload it under the **Scans** tab instead, which is built to read radiology imaging (X-ray, CT, MRI, ultrasound, etc.).',
-        urgency: 'low',
-        recommendations: ['Switch to the Scans tab and upload the DICOM there.'],
-        biomarkers: [],
-      });
-      return;
+    const refuse = (message: string, redirect?: Redirect) => {
+      setSelectedFile(null);
+      setResult({ refusal: { message, redirect } });
+    };
+    const maxMb = ZIP_LIKE.test(name) ? MAX_ZIP_MB : MAX_FILE_MB;
+    if (f.size > maxMb * 1024 * 1024) return refuse(`File too large (max ${maxMb}MB). Please compress or split the file.`);
+    if (name.endsWith('.dcm') || name.endsWith('.dicom') || f.type === 'application/dicom') {
+      return refuse('This is a **DICOM scan file**, not a lab report. Open the **Scans** page and upload it there.', { page: 'scans' });
     }
-
-    // 2) Image filename heuristic — strong scan signal in name
-    if (type.startsWith('image/') && SCAN_NAME_RE.test(name)) {
-      setResult({
-        diagnosis: 'Wrong Section — Use Scans Tab',
-        confidence: 0,
-        details: `**"${f.name}"** looks like a radiology scan image.\n\nThe **Reports** tab only accepts blood / lab / biomarker reports (CBC, lipid panel, HbA1c, etc.). Radiology images go in the **Scans** tab where the vision model is wired in.`,
-        urgency: 'low',
-        recommendations: ['Switch to the Scans tab and upload this image there.'],
-        biomarkers: [],
-      });
-      return;
+    if (/\.(doc|xls|ppt)$/.test(name)) {
+      return refuse('Old Word / Excel / PowerPoint files (.doc, .xls, .ppt) cannot be read. Open the file, save it as **PDF** (or as .docx / .xlsx) and upload that.');
     }
-
-    // 3) For text-like files, peek inside
-    if (type.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.png') || name.endsWith('.csv')) {
-      try {
-        const text = await f.text();
-        const isScan = SCAN_TEXT_RE.test(text);
-        const isLab = LAB_TEXT_RE.test(text);
-        if (isScan && !isLab) {
-          setResult({
-            diagnosis: 'Wrong Section — Use Scans Tab',
-            confidence: 0,
-            details: 'This document reads like a **radiology report**, not a blood / lab report.\n\nThe Reports tab is restricted to blood and biomarker tests. Please upload it under the **Scans** tab.',
-            urgency: 'low',
-            recommendations: ['Switch to the Scans tab and upload the report there.'],
-            biomarkers: [],
-          });
-          return;
-        }
-      } catch { /* fall through */ }
-    }
-
     setSelectedFile(f);
     setResult(null);
   };
@@ -101,7 +62,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.ra-card', { y: 32, opacity: 0 }, { y: 0, opacity: 1, duration: 0.75, stagger: 0.12, ease: 'expo.out' });
+      gsap.fromTo('.ra-card', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity' });
     }, ref);
     return () => ctx.revert();
   }, []);
@@ -125,8 +86,8 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   };
 
   const glass = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, boxShadow: T.shadow, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '20px' };
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
 
   const handleAnalyze = async () => {
     const hasText = reportText.trim().length > 0;
@@ -135,37 +96,13 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
     if (mode === 'upload' && !hasFile) return;
     setAnalyzing(true); setResult(null);
 
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-    const token = import.meta.env.VITE_API_TOKEN;
-
     try {
-      let response: Response;
-      if (mode === 'upload' && selectedFile) {
-        const fd = new FormData();
-        fd.append('patient_id', 'demo-user');
-        if (customContext.trim()) fd.append('clinical_context', customContext.trim());
-        fd.append('file', selectedFile);
-        response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report-file`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        });
-      } else {
-        const contextNote = customContext.trim() ? `\n\n[CLINICAL CONTEXT: ${customContext.trim()}]` : '';
-        response = await fetch(`${apiBase}/api/v1/diagnostics/lab-report`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ patient_id: 'demo-user', report_text: reportText + contextNote }),
-        });
-      }
-
-      if (!response.ok) {
-        let detail = 'API Gateway Offline';
-        try { const j = await response.json(); detail = j.detail || j.error || detail; } catch { /* ignore */ }
-        throw new Error(detail);
-      }
-      const data = await response.json();
-      console.log('[Reports] backend response:', data);
+      const context = customContext.trim();
+      const res = mode === 'upload' && selectedFile
+        ? await analyzeReportFile(selectedFile, context)
+        : await analyzeReportText(reportText, context);
+      if (res.error || !res.data) throw new Error(res.error || 'API Gateway Offline');
+      const data = res.data;
 
       let a = (data.analysis || {}) as any;
       // Same fallback as SymptomChecker: backend may return JSON string in data.result
@@ -176,23 +113,28 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
         } catch { /* plain text result — leave a as-is */ }
       }
 
+      // Refused: this is not a lab report (it is a scan, or not medical). `redirect` names the right page.
+      if (a.redirect) {
+        setResult({ refusal: { message: a.error, redirect: a.redirect } });
+        return;
+      }
+
       if (a.error) {
+        const details = typeof a.error === 'string' ? a.error : JSON.stringify(a.error);
+        // A busy AI service is not the file's fault: say so, and do not send the user hunting for another format.
+        const busy = /did not respond|try again in a minute|unavailable|took too long/i.test(details);
         setResult({
-          diagnosis: 'Could Not Read Report',
+          diagnosis: busy ? 'AI Service Busy' : 'Could Not Read Report',
           confidence: 0,
-          details: typeof a.error === 'string' ? a.error : JSON.stringify(a.error),
+          details,
           urgency: 'low',
-          recommendations: ['Try re-uploading as a clear image (JPG/PNG) or paste the text directly.'],
+          recommendations: busy
+            ? ['Nothing is wrong with your file. Wait a minute and press Analyze again.']
+            : ['Try a clearer photo or a PDF, or paste the text directly. Word, Excel, text and ZIP files work too.'],
           biomarkers: [],
         });
         return;
       }
-
-      // Auto-routed: AI detected this is actually a radiology scan, not a lab report.
-      const wasRedirected = a.redirected_to === 'radiology';
-      const diagnosis = wasRedirected
-        ? `AI Auto-Detected: ${(a.detected_kind || 'scan').toUpperCase()} (radiology read)`
-        : 'CLINICAL LAB ANALYSIS';
 
       const urgencyRaw = String(a.urgency || 'medium').trim().toLowerCase();
       const urgency = (['low', 'medium', 'high', 'emergency'] as const).includes(urgencyRaw as any)
@@ -200,7 +142,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
         : 'medium';
 
       const mappedResult = {
-        diagnosis,
+        diagnosis: 'CLINICAL LAB ANALYSIS',
         confidence: typeof a.confidence === 'number' ? a.confidence : 80,
         details: a.assessment || 'No assessment returned.',
         urgency,
@@ -208,7 +150,6 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
           ? a.recommendations
           : ['Review extracted values with a physician.'],
         biomarkers: Array.isArray(a.biomarkers) ? a.biomarkers : [],
-        detected_kind: a.detected_kind,
       };
 
       setResult(mappedResult);
@@ -219,7 +160,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
       setResult({
         diagnosis: 'Processing Error',
         confidence: 0,
-        details: 'AI analyst offline. Ensure the Python backend is running on port 8000 and that MISTRAL_API_KEY or GROQ_API_KEY is set in backend/.env.',
+        details: 'The analysis service could not be reached. Please try again in a moment.',
         urgency: 'low',
         recommendations: [],
         biomarkers: [],
@@ -313,7 +254,6 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
             borderRadius: '50%',
             background: s.color,
             boxShadow: `0 0 14px ${s.color}, 0 0 0 3px ${isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.8)'}`,
-            transition: 'left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
           }} />
         </div>
 
@@ -338,10 +278,10 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
   };
 
   const loadSampleReport = () => {
-    setReportText(`LABORATORY REPORT\n\nPatient: John Doe\nDate: December 20, 2025\n\nLIPID PANEL:\n- Total Cholesterol: 245 mg/dL (H)\n- LDL Cholesterol: 165 mg/dL (H)\n- HDL Cholesterol: 35 mg/dL (L)\n- Triglycerides: 225 mg/dL (H)\n\nGLUCOSE METABOLISM:\n- Fasting Glucose: 165 mg/dL (H)\n- HbA1c: 8.2% (H)`);
+    setReportText(SAMPLE_REPORT);
   };
 
-  if (analyzing) return <LoadingScreen message="REPORT UNDER REVIEW..." />;
+  if (analyzing) return <LoadingScreen message="REPORT UNDER REVIEW..." variant="reports" subject={{ lines: mode === 'paste' ? reportText.split('\n') : [] }} />;
 
   return (
     <div ref={ref} style={{ fontFamily: I }}>
@@ -378,7 +318,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    transition: 'all 0.25s',
+                    transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
                   }}
                 >
                   {m === 'paste' ? <FileText className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
@@ -419,13 +359,13 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                     justifyContent: 'center',
                     gap: '12px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
+                    transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s',
                   }}
                 >
                   <Upload className="w-10 h-10" style={{ color: T.muted, opacity: 0.6 }} />
                   <div style={{ textAlign: 'center', padding: '0 1rem' }}>
                     <p style={{ fontSize: '0.9rem', fontWeight: 600, color: T.text, marginBottom: '4px' }}>Drop blood/lab report here or click to browse</p>
-                    <p style={{ fontSize: '0.72rem', color: T.muted }}>PDF, TXT, CSV (or photo of a printed lab report) · up to {MAX_FILE_MB}MB</p>
+                    <p style={{ fontSize: '0.72rem', color: T.muted }}>PDF, photo or scan, Word, Excel, text or ZIP · up to {MAX_FILE_MB}MB</p>
                     <p style={{ fontSize: '0.65rem', color: T.muted, marginTop: '6px', opacity: 0.7 }}>X-rays / CT / MRI / DICOM are auto-rejected here</p>
                   </div>
                 </div>
@@ -477,7 +417,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
           {(() => {
             const ready = mode === 'paste' ? !!reportText.trim() : !!selectedFile;
             return (
-              <button onClick={handleAnalyze} disabled={!ready || analyzing} className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mb-4" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: ready ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: ready ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
+              <button onClick={handleAnalyze} disabled={!ready || analyzing} className="w-full transition duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mb-4" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: ready ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: ready ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
                 Analyze Report <Play className="w-4 h-4 ml-1" />
               </button>
             );
@@ -508,8 +448,12 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
             </div>
           )}
 
-          {result && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {result?.refusal && (
+            <WrongPageNotice message={result.refusal.message} redirect={result.refusal.redirect} onSwitchTab={onSwitchTab} isDark={isDark} T={T} S={S} />
+          )}
+
+          {result && !result.refusal && (
+            <div data-result style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ padding: '1.25rem', borderRadius: '14px', background: T.resBg, border: `1px solid ${T.resBdr}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <h4 style={{ fontFamily: S, fontWeight: 700, color: T.head, fontSize: '1.1rem' }}>{result.diagnosis}</h4>
@@ -518,6 +462,8 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                 <MedicalAIOutput text={result.details} isDark={isDark} textColor={T.text} mutedColor={T.muted} />
               </div>
 
+              <EmergencyPrompt active={result.urgency === 'emergency'} isDark={isDark} />
+
               {/* Confidence bar (parity with Symptoms tab) */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
@@ -525,7 +471,7 @@ export function ReportAnalysis({ onPrediction }: ReportAnalysisProps) {
                   <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
                 </div>
                 <div style={{ height: '8px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', transition: 'width 1s ease' }} />
+                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', }} />
                 </div>
               </div>
 

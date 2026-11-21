@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "CuraSense",
+    "slug": "curasense",
+    "scheme": "curasense",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#05070f",
+    "ios": {
+      "bundleIdentifier": "com.curasense.mobile",
+      "supportsTablet": false,
+      "infoPlist": {
+        "CFBundleDisplayName": "CuraSense Beta",
+        "NSLocalNetworkUsageDescription": "CuraSense connects to the CuraSense server on your local network while the app is being tested."
+      }
+    },
+    "android": {
+      "package": "com.curasense.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon-foreground.png",
+        "backgroundColor": "#05070f"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CuraSense reads the photos you choose so they can be analyzed.",
+          "cameraPermission": "CuraSense uses the camera so you can photograph a scan or a lab report.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 140,
+          "backgroundColor": "#05070f",
+          "dark": { "backgroundColor": "#05070f" }
+        }
+      ]
+    ]
+  }
+}

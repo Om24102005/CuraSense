@@ -6,7 +6,7 @@ export async function savePrediction(req, res) {
     const saved = await newPrediction.save();
     res.json(saved);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 }
 
@@ -15,7 +15,7 @@ export async function getPredictions(req, res) {
     const predictions = await Prediction.find({ userId: req.user._id }).sort({ timestamp: -1 });
     res.json({ predictions });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 }
 
@@ -24,6 +24,6 @@ export async function deletePrediction(req, res) {
     await Prediction.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 }

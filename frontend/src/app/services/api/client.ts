@@ -1,39 +1,15 @@
-// Default to the Node API port (5001). The Python AI service runs on
-// 8000 and is reached via VITE_API_BASE_URL, NOT this constant.
-const API_BASE_URL = import.meta.env.VITE_NODE_BASE_URL || 'http://localhost:5001';
+// The shared API client lives in packages/shared. The website keeps the token in localStorage and reads the API address from the Vite environment.
+import { configureApi } from '@curasense/shared/api/client';
 
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-}
+configureApi({
+  baseUrl: import.meta.env.VITE_NODE_BASE_URL ?? 'http://localhost:5001',   // empty = this site's own address (see SystemStatus.tsx)
+  getToken: () => localStorage.getItem('curasense_token'),
+  onUnauthorized: () => {
+    if (!localStorage.getItem('curasense_token')) return;
+    localStorage.removeItem('curasense_token');
+    localStorage.removeItem('curasense_user');
+    location.reload();
+  },
+});
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('curasense_token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
-};
-
-export async function fetchAPI<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders(),
-        ...options.headers,
-      } as HeadersInit,
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return { error: error.error || `HTTP ${response.status}` };
-    }
-
-    const data = await response.json();
-    return { data };
-  } catch {
-    return { error: 'Network error. Please check your connection.' };
-  }
-}
+export * from '@curasense/shared/api/client';

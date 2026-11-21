@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  User, Mail, Shield, Zap, Key, CheckCircle, AlertCircle, Eye, EyeOff, Save, Loader2, Sparkles,
+  User, Mail, Shield, Zap, CheckCircle, AlertCircle, Eye, EyeOff, Save, Loader2, Sparkles,
   Brain, Sliders, Activity,
   Users, UserPlus, Calendar, FlaskConical, Trash2, Plus,
   HeartPulse, Phone, BellRing,
@@ -17,77 +17,82 @@ import {
   type Dependent,
   type EmergencyContact,
 } from '../../state/AppSettingsContext';
-import { getWearableStatus, syncAppleHealth, type WearableData } from '../../services/api';
+import { getWearableStatus, syncAppleHealth, updateProfile, changePassword, deleteAccount, type WearableData } from '../../services/api';
 import gsap from 'gsap';
+import { useTransition, animated } from '@react-spring/web';
 
 // ─── CyberToast ───────────────────────────────────────────────────────────────
+// Spring physics (tension/friction) for the pop-in/pop-out — distinct from the
+// Motion-driven modal fades elsewhere: a toast's "pop" reads better as a spring
+// than a duration/easing curve. useTransition also gives it a real exit
+// animation on dismiss, which the old CSS-keyframe-only version never had.
 
-interface CyberToastProps {
+interface ToastData {
   msg: string;
   type: 'success' | 'error';
+}
+
+interface CyberToastProps {
+  toast: ToastData | null;
   onClose: () => void;
 }
 
-function CyberToast({ msg, type, onClose }: CyberToastProps) {
-  const ok = type === 'success';
-  const accent = ok ? '#10b981' : '#ef4444';
-  const glow   = ok ? 'rgba(16,185,129,0.22)' : 'rgba(239,68,68,0.22)';
-  const bg     = ok ? 'rgba(16,185,129,0.09)' : 'rgba(239,68,68,0.09)';
-  return (
-    <>
-      <style>{`
-        @keyframes _cyberIn {
-          from { opacity:0; transform:translateX(-50%) translateY(14px) scale(0.94); }
-          to   { opacity:1; transform:translateX(-50%) translateY(0)     scale(1);   }
-        }
-      `}</style>
+function CyberToast({ toast, onClose }: CyberToastProps) {
+  const transitions = useTransition(toast, {
+    from: { opacity: 0, transform: 'translateX(-50%) translateY(14px) scale(0.94)' },
+    enter: { opacity: 1, transform: 'translateX(-50%) translateY(0px) scale(1)' },
+    leave: { opacity: 0, transform: 'translateX(-50%) translateY(10px) scale(0.96)' },
+    config: { tension: 380, friction: 28 },
+  });
+
+  return transitions((style, item) => item && (
+    <animated.div style={{
+      position: 'fixed', bottom: '2rem', left: '50%',
+      zIndex: 9999,
+      display: 'flex', alignItems: 'center', gap: '10px',
+      padding: '0.7rem 1.15rem',
+      background: 'rgba(7,7,18,0.94)',
+      border: `1px solid ${item.type === 'success' ? '#10b981' : '#ef4444'}55`,
+      borderRadius: '999px',
+      backdropFilter: 'blur(22px)',
+      WebkitBackdropFilter: 'blur(22px)',
+      boxShadow: `0 0 36px ${item.type === 'success' ? 'rgba(16,185,129,0.22)' : 'rgba(239,68,68,0.22)'}, 0 10px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)`,
+      pointerEvents: 'all',
+      opacity: style.opacity,
+      transform: style.transform,
+    }}>
       <div style={{
-        position: 'fixed', bottom: '2rem', left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 9999,
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '0.7rem 1.15rem',
-        background: 'rgba(7,7,18,0.94)',
-        border: `1px solid ${accent}55`,
-        borderRadius: '999px',
-        backdropFilter: 'blur(22px)',
-        WebkitBackdropFilter: 'blur(22px)',
-        boxShadow: `0 0 36px ${glow}, 0 10px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)`,
-        animation: '_cyberIn 0.38s cubic-bezier(0.16,1,0.3,1) forwards',
-        pointerEvents: 'all',
+        width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
+        background: item.type === 'success' ? 'rgba(16,185,129,0.09)' : 'rgba(239,68,68,0.09)',
+        border: `1px solid ${item.type === 'success' ? '#10b981' : '#ef4444'}44`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <div style={{
-          width: '26px', height: '26px', borderRadius: '50%', flexShrink: 0,
-          background: bg, border: `1px solid ${accent}44`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {ok
-            ? <CheckCircle style={{ width: '13px', height: '13px', color: accent }} />
-            : <AlertCircle style={{ width: '13px', height: '13px', color: accent }} />
-          }
-        </div>
-        <span style={{
-          fontSize: '0.84rem', fontWeight: 600,
-          color: '#eeeeff', letterSpacing: '0.01em',
-          fontFamily: "'Inter', sans-serif",
-          whiteSpace: 'nowrap',
-        }}>
-          {msg}
-        </span>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(255,255,255,0.32)', padding: '2px',
-            borderRadius: '50%', display: 'flex', alignItems: 'center',
-            lineHeight: 0,
-          }}
-        >
-          <X style={{ width: '13px', height: '13px' }} />
-        </button>
+        {item.type === 'success'
+          ? <CheckCircle style={{ width: '13px', height: '13px', color: '#10b981' }} />
+          : <AlertCircle style={{ width: '13px', height: '13px', color: '#ef4444' }} />
+        }
       </div>
-    </>
-  );
+      <span style={{
+        fontSize: '0.84rem', fontWeight: 600,
+        color: '#eeeeff', letterSpacing: '0.01em',
+        fontFamily: "var(--font-body)",
+        whiteSpace: 'nowrap',
+      }}>
+        {item.msg}
+      </span>
+      <button
+        onClick={onClose}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'rgba(255,255,255,0.32)', padding: '2px',
+          borderRadius: '50%', display: 'flex', alignItems: 'center',
+          lineHeight: 0,
+        }}
+      >
+        <X style={{ width: '13px', height: '13px' }} />
+      </button>
+    </animated.div>
+  ));
 }
 
 // ─── ToggleSwitch ─────────────────────────────────────────────────────────────
@@ -115,10 +120,11 @@ function ToggleSwitch({ enabled, onToggle, accent = '#22d3ee' }: ToggleSwitchPro
     >
       <div style={{
         position: 'absolute', top: '3px',
-        left: enabled ? '25px' : '3px',
+        left: '3px',
+        transform: enabled ? 'translateX(22px)' : 'none',
         width: '18px', height: '18px', borderRadius: '50%',
         background: '#fff',
-        transition: 'left 0.25s cubic-bezier(0.4,0,0.2,1)',
+        transition: 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
         boxShadow: '0 1px 6px rgba(0,0,0,0.4)',
       }} />
     </div>
@@ -152,7 +158,7 @@ function MetricTile({ icon, label, value, unit, status, accent, T }: MetricTileP
       padding: '1rem 1.1rem', borderRadius: '16px',
       background: hasData ? `${accent}09` : T.rowBg,
       border: `1px solid ${hasData ? accent + '28' : T.cardBdr}`,
-      transition: 'all 0.3s',
+      transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '0.6rem' }}>
         {icon}
@@ -163,7 +169,7 @@ function MetricTile({ icon, label, value, unit, status, accent, T }: MetricTileP
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px', marginBottom: '0.4rem' }}>
         <span style={{
           fontSize: '1.65rem', fontWeight: 800, color: hasData ? accent : T.muted,
-          fontFamily: "'Michroma', sans-serif", lineHeight: 1,
+          fontFamily: "var(--font-display)", lineHeight: 1,
           textShadow: hasData ? `0 0 20px ${accent}55` : 'none',
         }}>
           {value}
@@ -175,7 +181,7 @@ function MetricTile({ icon, label, value, unit, status, accent, T }: MetricTileP
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '4px',
         padding: '2px 8px', borderRadius: '6px', fontSize: '0.65rem',
-        fontWeight: 700, fontFamily: "'Michroma', sans-serif", letterSpacing: '0.06em',
+        fontWeight: 700, fontFamily: "var(--font-display)", letterSpacing: '0.06em',
         background: `${statusColor}18`, color: statusColor,
         border: `1px solid ${statusColor}30`,
       }}>
@@ -235,9 +241,16 @@ export function Settings() {
 
   // ── Identity / Security local state (unchanged) ──────────────────────────
   const [showPassword, setShowPassword] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [apiKeyStatus, setApiKeyStatus] = useState<'checking' | 'valid' | 'invalid' | null>(null);
-  const [showApiKey, setShowApiKey] = useState(false);
+  const { clearAll: clearLocalSettings } = useAppSettings();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePw, setDeletePw] = useState('');
+  const [deleteCode, setDeleteCode] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [isSavingPw, setIsSavingPw] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
   const [userData, setUserData] = useState({ name: '', email: '', role: 'user' });
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
@@ -422,43 +435,74 @@ export function Settings() {
     setIsSyncing(false);
     if (res.data?.wearableData) {
       setWearableData(res.data.wearableData);
-      showToast('Apple Health sync complete. AI baseline updated.', 'success');
+      showToast('Demo readings generated. They are added to your next symptom analysis.', 'success');
     } else {
-      showToast(res.error ?? 'Sync failed. Check server connection.', 'error');
+      showToast(res.error ?? 'Could not save the readings. Check the server connection.', 'error');
     }
   };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('curasense_user');
-    if (storedUser) setUserData(JSON.parse(storedUser));
+    if (storedUser) {
+      const u = JSON.parse(storedUser);
+      setUserData(u);
+      setNameDraft((d) => d || u.name || '');
+    }
 
     const storedAvatar = localStorage.getItem('curasense_avatar');
     if (storedAvatar) setAvatar(storedAvatar);
 
-    const savedKey = localStorage.getItem('hf_api_key');
-    if (savedKey) {
-      setApiKey(savedKey);
-      setApiKeyStatus('valid');
-    }
-
     const ctx = gsap.context(() => {
       gsap.fromTo('.set-card',
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, stagger: 0.1, ease: 'expo.out' }
+        { y: 8, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.28, stagger: { amount: 0.16 }, ease: 'power2.out', clearProps: 'transform,opacity' }
       );
     }, ref);
     return () => ctx.revert();
   }, [theme]);
 
-  const handleVerifyApiKey = async () => {
-    if (!apiKey.trim()) return;
-    setApiKeyStatus('checking');
-    setTimeout(() => {
-      const isValid = apiKey.startsWith('hf_') && apiKey.length > 20;
-      setApiKeyStatus(isValid ? 'valid' : 'invalid');
-      if (isValid) localStorage.setItem('hf_api_key', apiKey);
-      else localStorage.removeItem('hf_api_key');
-    }, 1500);
+  // ── Identity: change the display name (the email is the account's identity and stays read-only) ──
+  const handleSaveName = async () => {
+    const name = nameDraft.trim();
+    if (!name || name === userData.name) return;
+    setIsSavingName(true);
+    const res = await updateProfile(name);
+    setIsSavingName(false);
+    if (res.error || !res.data?.user) return showToast(res.error ?? 'Could not save the name.', 'error');
+    const next = { ...userData, name: res.data.user.name };
+    localStorage.setItem('curasense_user', JSON.stringify({ ...JSON.parse(localStorage.getItem('curasense_user') || '{}'), name: next.name }));
+    setUserData(next);
+    setNameDraft(next.name);
+    window.dispatchEvent(new Event('curasense:user'));   // the profile chip in the header re-reads it
+    showToast('Name updated.', 'success');
+  };
+
+  // ── Security: change the password (the server checks the current one) ──
+  const handleChangePassword = async () => {
+    if (!currentPw || !newPw) return showToast('Enter your current and your new password.', 'error');
+    if (newPw.length < 8) return showToast('The new password must be at least 8 characters.', 'error');
+    setIsSavingPw(true);
+    const res = await changePassword(currentPw, newPw);
+    setIsSavingPw(false);
+    if (res.error) return showToast(res.error, 'error');
+    if (res.data?.token) localStorage.setItem('curasense_token', res.data.token);   // the change ended every older session, this one included
+    setCurrentPw('');
+    setNewPw('');
+    showToast('Password updated. Other devices have been signed out.', 'success');
+  };
+
+  // ── Account deletion: the server checks the password and the authenticator code ──
+  const handleDeleteAccount = async () => {
+    if (!deletePw) return showToast('Enter your password to confirm.', 'error');
+    setIsDeleting(true);
+    const res = await deleteAccount(deletePw, deleteCode.trim());
+    setIsDeleting(false);
+    if (res.error) return showToast(res.error, 'error');
+    clearLocalSettings();
+    // Health data must not outlive the account on this device.
+    Object.keys(localStorage).filter((k) => k.startsWith('curasense_')).forEach((k) => localStorage.removeItem(k));
+    sessionStorage.clear();
+    location.assign('/');
   };
 
   // ── Theme tokens ──────────────────────────────────────────────────────────
@@ -486,8 +530,8 @@ export function Settings() {
     warnBg: 'rgba(245,158,11,0.08)', warnTxt: '#d97706',
   };
 
-  const S = "'Michroma', sans-serif";
-  const I = "'Inter', sans-serif";
+  const S = "var(--font-display)";
+  const I = "var(--font-body)";
   const glass = {
     background: T.cardBg, border: `1px solid ${T.cardBdr}`,
     boxShadow: T.shadow, backdropFilter: 'blur(24px)',
@@ -515,7 +559,7 @@ export function Settings() {
       onClick={onClick}
       style={{
         padding: '0.9rem 1rem', borderRadius: '14px', cursor: 'pointer',
-        textAlign: 'left', transition: 'all 0.2s',
+        textAlign: 'left', transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s',
         border: `1px solid ${active ? accent + '55' : T.cardBdr}`,
         background: active ? `${accent}16` : T.rowBg,
         color: active ? accent : T.sub,
@@ -537,7 +581,7 @@ export function Settings() {
   ) => (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '1rem 1.25rem', borderRadius: '14px', transition: 'all 0.3s',
+      padding: '1rem 1.25rem', borderRadius: '14px', transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
       background: enabled ? `${accent}0d` : T.rowBg,
       border: `1px solid ${enabled ? accent + '40' : T.cardBdr}`,
     }}>
@@ -555,19 +599,19 @@ export function Settings() {
   );
 
   const SaveBtn = ({
-    onClick, loading, label = 'Save', icon = <Save className="w-4 h-4" />,
-  }: { onClick: () => void; loading: boolean; label?: string; icon?: React.ReactNode }) => (
+    onClick, loading, label = 'Save', icon = <Save className="w-4 h-4" />, disabled = false,
+  }: { onClick: () => void; loading: boolean; label?: string; icon?: React.ReactNode; disabled?: boolean }) => (
     <button
       onClick={onClick}
-      disabled={loading}
+      disabled={loading || disabled}
       style={{
         padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600,
         background: loading ? 'rgba(99,102,241,0.45)' : T.btnBg,
         color: '#fff', border: 'none',
-        boxShadow: loading ? 'none' : T.btnSh,
-        cursor: loading ? 'not-allowed' : 'pointer',
+        boxShadow: loading || disabled ? 'none' : T.btnSh,
+        cursor: loading || disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center', gap: '6px',
-        transition: 'all 0.2s', opacity: loading ? 0.72 : 1,
+        transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s', opacity: loading ? 0.72 : disabled ? 0.5 : 1,
       }}
     >
       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : icon}
@@ -582,9 +626,7 @@ export function Settings() {
     <div ref={ref} style={{ fontFamily: I, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {/* ── Cyberpunk Toast ─────────────────────────────────────────────────── */}
-      {toast && (
-        <CyberToast msg={toast.msg} type={toast.type} onClose={clearToast} />
-      )}
+      <CyberToast toast={toast} onClose={clearToast} />
 
       {/* ── Admin Global Controls ──────────────────────────────────────────── */}
       {userData.role === 'admin' && (
@@ -594,37 +636,20 @@ export function Settings() {
               <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <Sparkles className="w-5 h-5 text-fuchsia-500" /> Admin Global Controls
               </h3>
-              <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Configure system-wide AI models and API integrations</p>
+              <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Where the AI runs and who can see this page</p>
             </div>
             <span style={{ padding: '4px 12px', borderRadius: '999px', fontSize: '0.7rem', fontWeight: 700, fontFamily: S, background: 'linear-gradient(135deg,#d946ef,#8b5cf6)', color: '#fff', letterSpacing: '0.05em' }}>ADMIN ONLY</span>
           </div>
 
-          <div style={{ padding: '1rem', background: T.rowBg, borderRadius: '12px', border: `1px dashed ${T.cardBdr}`, marginBottom: '1.25rem', display: 'flex', gap: '12px' }}>
+          <div style={{ padding: '1rem', background: T.rowBg, borderRadius: '12px', border: `1px dashed ${T.cardBdr}`, display: 'flex', gap: '12px' }}>
             <div style={{ padding: '8px', background: 'rgba(139,92,246,0.15)', borderRadius: '8px', flexShrink: 0, alignSelf: 'flex-start' }}><Zap className="w-5 h-5 text-purple-500" /></div>
             <div>
-              <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: T.head, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Model Pipeline Status
-                {apiKeyStatus === 'valid' && <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '0.65rem', background: T.succBg, color: T.succTxt, display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle className="w-3 h-3" /> Online</span>}
-              </h4>
-              <p style={{ fontSize: '0.75rem', color: T.muted, marginBottom: '2px' }}><strong style={{ color: T.succTxt }}>Without API key:</strong> Uses local edge models.</p>
-              <p style={{ fontSize: '0.75rem', color: T.muted }}><strong style={{ color: '#a855f7' }}>With API key:</strong> Uses cloud Hugging Face resources.</p>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: T.head, marginBottom: '4px' }}>Model pipeline</h4>
+              <p style={{ fontSize: '0.75rem', color: T.muted, lineHeight: 1.55 }}>
+                Every analysis is sent through the CuraSense server to the DeepSeek API. The keys for it are set on the server, in its environment file, and cannot be changed from the browser.
+                The live status of the server, the AI service and the database is on the Access page.
+              </p>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={labelStyle}><Key className="w-4 h-4 inline mr-1" style={{ verticalAlign: '-3px' }}/> Hugging Face API Key</label>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <input type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={e => { setApiKey(e.target.value); setApiKeyStatus(null); }} placeholder="hf_••••••••••••••••••••" style={{ ...inputStyle, paddingRight: '2.5rem', borderColor: apiKeyStatus === 'valid' ? T.succTxt : apiKeyStatus === 'invalid' ? T.errTxt : T.cardBdr }} />
-                <button onClick={() => setShowApiKey(!showApiKey)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: T.muted, cursor: 'pointer' }}>
-                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <button onClick={handleVerifyApiKey} disabled={!apiKey.trim() || apiKeyStatus === 'checking'} style={{ padding: '0 1.25rem', borderRadius: '12px', background: T.btnBg, color: '#fff', fontWeight: 600, fontSize: '0.85rem', cursor: apiKey.trim() ? 'pointer' : 'not-allowed', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', opacity: apiKey.trim() ? 1 : 0.6 }}>
-                {apiKeyStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Verify & Save
-              </button>
-            </div>
-            {apiKeyStatus === 'invalid' && <p style={{ fontSize: '0.75rem', color: T.errTxt, marginTop: '8px', display: 'flex', gap: '4px' }}><AlertCircle className="w-4 h-4" /> Invalid key. Must start with hf_ and be &gt;20 chars.</p>}
           </div>
         </div>
       )}
@@ -674,14 +699,14 @@ export function Settings() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1rem' }}>
-          <div><label style={labelStyle}>Full Name / Handle</label><input defaultValue={userData.name} style={inputStyle} disabled={userData.role !== 'admin'} /></div>
+          <div><label htmlFor="settings-name" style={labelStyle}>Full Name / Handle</label><input id="settings-name" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); }} maxLength={80} autoComplete="name" style={inputStyle} /></div>
           <div>
             <label style={labelStyle}>System Email</label>
             <div style={{ position: 'relative' }}><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: T.muted }}/><input type="email" defaultValue={userData.email} style={{ ...inputStyle, paddingLeft: '2.5rem' }} disabled /></div>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
-          <button style={{ padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, background: T.btnBg, color: '#fff', border: 'none', boxShadow: T.btnSh, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Save className="w-4 h-4" /> Save Configuration</button>
+          <SaveBtn onClick={handleSaveName} loading={isSavingName} label="Save name" disabled={!nameDraft.trim() || nameDraft.trim() === userData.name} />
         </div>
       </div>
 
@@ -689,21 +714,58 @@ export function Settings() {
       <div className="set-card" style={glass}>
         <div style={{ marginBottom: '1.25rem' }}>
           <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head, display: 'flex', gap: '8px', alignItems: 'center' }}><Shield className="w-5 h-5 text-green-500" /> Security & Privacy</h3>
-          <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Manage your encryption keys and passwords</p>
+          <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>Change the password you sign in with. Your authenticator app stays as it is.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1.5rem' }}>
           <div>
-            <label style={labelStyle}>Current Password</label>
+            <label htmlFor="settings-current-password" style={labelStyle}>Current Password</label>
             <div style={{ position: 'relative' }}>
-              <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" style={{ ...inputStyle, paddingRight: '2.5rem' }} />
-              <button onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: T.muted, cursor: 'pointer' }}>{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+              <input id="settings-current-password" type={showPassword ? 'text' : 'password'} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} autoComplete="current-password" placeholder="••••••••" style={{ ...inputStyle, paddingRight: '2.5rem' }} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide passwords' : 'Show passwords'} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: T.muted, cursor: 'pointer' }}>{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
             </div>
           </div>
-          <div><label style={labelStyle}>New Password</label><input type="password" placeholder="••••••••" style={inputStyle} /></div>
+          <div>
+            <label htmlFor="settings-new-password" style={labelStyle}>New Password</label>
+            <input id="settings-new-password" type={showPassword ? 'text' : 'password'} value={newPw} onChange={(e) => setNewPw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleChangePassword(); }} autoComplete="new-password" placeholder="At least 8 characters" style={inputStyle} />
+          </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button style={{ padding: '0.65rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, background: T.btnBg, color: '#fff', border: 'none', boxShadow: T.btnSh, cursor: 'pointer' }}>Update Encryption</button>
+          <SaveBtn onClick={handleChangePassword} loading={isSavingPw} label="Update password" disabled={!currentPw || !newPw} />
         </div>
+      </div>
+
+      {/* ── Delete account ───────────────────────────────────────────────── */}
+      <div className="set-card" style={glass}>
+        <h3 style={{ fontFamily: S, fontWeight: 700, fontSize: '1.1rem', color: T.head }}>Delete account</h3>
+        <p style={{ fontSize: '0.82rem', color: T.sub, margin: '2px 0 1rem' }}>
+          Permanently removes your account and saved analyses from CuraSense. This cannot be undone.
+        </p>
+        {!deleteOpen ? (
+          <button type="button" onClick={() => setDeleteOpen(true)} style={{ padding: '0.6rem 1.1rem', borderRadius: '12px', border: `1px solid ${T.errTxt}`, background: T.errBg, color: T.errTxt, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+            Delete my account
+          </button>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1rem' }}>
+              <div>
+                <label htmlFor="settings-delete-password" style={labelStyle}>Password to confirm</label>
+                <input id="settings-delete-password" type="password" value={deletePw} onChange={(e) => setDeletePw(e.target.value)} autoComplete="current-password" style={inputStyle} />
+              </div>
+              <div>
+                <label htmlFor="settings-delete-code" style={labelStyle}>Authenticator code</label>
+                <input id="settings-delete-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={deleteCode} onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, ''))} style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button type="button" disabled={isDeleting} onClick={() => { setDeleteOpen(false); setDeletePw(''); setDeleteCode(''); }} style={{ padding: '0.6rem 1.1rem', borderRadius: '12px', border: `1px solid ${T.divider}`, background: 'transparent', color: T.text, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>
+                Keep my account
+              </button>
+              <button type="button" disabled={isDeleting || !deletePw} onClick={() => void handleDeleteAccount()} style={{ padding: '0.6rem 1.1rem', borderRadius: '12px', border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                {isDeleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── AI Inference Preferences ──────────────────────────────────────── */}
@@ -713,7 +775,7 @@ export function Settings() {
             <Brain className="w-5 h-5 text-cyan-400" /> AI Inference Preferences
           </h3>
           <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>
-            Tune how DeepSeek V4 Pro and Groq generate medical insights for you
+            Saved to your account. The AI does not use these choices yet, so they do not change its answers.
           </p>
         </div>
 
@@ -723,10 +785,10 @@ export function Settings() {
             <Sliders className="w-4 h-4 text-cyan-400" style={{ flexShrink: 0 }} /> Explainability Level
           </label>
           <p style={{ fontSize: '0.75rem', color: T.muted, marginBottom: '0.85rem' }}>
-            Controls the medical vocabulary and tone used in AI-generated reports
+            The vocabulary and tone you would like
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {segmentCard(explainLevel === 'clinical', '#22d3ee', 'Clinical & Professional', 'Full medical terminology, ICD codes, and clinical reasoning for healthcare professionals', () => setExplainLevel('clinical'))}
+            {segmentCard(explainLevel === 'clinical', '#22d3ee', 'Clinical & Professional', 'Full medical terminology and clinical reasoning, written for healthcare professionals', () => setExplainLevel('clinical'))}
             {segmentCard(explainLevel === 'simple',   '#a855f7', 'Simple & Empathetic',      'Plain-language summaries written for patients — no jargon, empathetic tone',             () => setExplainLevel('simple'))}
           </div>
         </div>
@@ -737,7 +799,7 @@ export function Settings() {
             <Activity className="w-4 h-4 text-violet-400" style={{ flexShrink: 0 }} /> Output Depth
           </label>
           <p style={{ fontSize: '0.75rem', color: T.muted, marginBottom: '0.85rem' }}>
-            Controls how detailed the analysis, differential diagnosis, and recommendations are
+            How much detail you would like
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {segmentCard(outputDepth === 'concise',       '#10b981', 'Concise Summaries',       'Key findings, urgency level, and top recommendation — optimised for speed',                              () => setOutputDepth('concise'))}
@@ -765,8 +827,8 @@ export function Settings() {
             onClick={() => setShowAddDependent(v => !v)}
             style={{
               padding: '0.45rem 0.9rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 600,
-              background: showAddDependent ? 'transparent' : 'rgba(34,211,238,0.10)',
-              border: `1px solid ${showAddDependent ? T.cardBdr : 'rgba(34,211,238,0.30)'}`,
+              background: showAddDependent ? 'transparent' : 'rgba(38,103,255,0.10)',
+              border: `1px solid ${showAddDependent ? T.cardBdr : 'rgba(38,103,255,0.30)'}`,
               color: showAddDependent ? T.muted : '#22d3ee',
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
             }}
@@ -782,7 +844,7 @@ export function Settings() {
             {dependents.map(dep => (
               <div key={dep.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderRadius: '12px', background: T.rowBg, border: `1px solid ${T.cardBdr}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,rgba(34,211,238,0.15),rgba(139,92,246,0.15))', border: '1px solid rgba(34,211,238,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg,rgba(38,103,255,0.15),rgba(139,92,246,0.15))', border: '1px solid rgba(38,103,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <User className="w-4 h-4 text-cyan-400" />
                   </div>
                   <div>
@@ -813,7 +875,7 @@ export function Settings() {
 
         {/* Add Dependent form */}
         {showAddDependent && (
-          <div style={{ padding: '1.25rem', background: 'rgba(34,211,238,0.04)', border: '1px solid rgba(34,211,238,0.14)', borderRadius: '14px' }}>
+          <div style={{ padding: '1.25rem', background: 'rgba(38,103,255,0.04)', border: '1px solid rgba(38,103,255,0.14)', borderRadius: '14px' }}>
             <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#22d3ee', marginBottom: '1rem', fontFamily: S }}>New Dependent Profile</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginBottom: '1rem' }}>
               <div>
@@ -933,7 +995,7 @@ export function Settings() {
 
         {/* Auto-Alerts toggle */}
         <div style={{
-          padding: '1.1rem 1.25rem', borderRadius: '14px', transition: 'all 0.3s',
+          padding: '1.1rem 1.25rem', borderRadius: '14px', transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           background: autoAlertsEnabled ? 'rgba(239,68,68,0.08)' : T.rowBg,
           border: `1px solid ${autoAlertsEnabled ? 'rgba(239,68,68,0.35)' : T.cardBdr}`,
@@ -951,7 +1013,7 @@ export function Settings() {
                 )}
               </div>
               <div style={{ fontSize: '0.74rem', color: T.muted, marginTop: '3px', maxWidth: '480px', lineHeight: 1.5 }}>
-                When DeepSeek V4 Pro detects a <strong style={{ color: '#f87171' }}>critical</strong> or <strong style={{ color: '#f87171' }}>emergency</strong> condition, you will be immediately prompted to contact your registered emergency contacts.
+                When a result is marked <strong style={{ color: '#f87171' }}>emergency</strong>, or a scan page <strong style={{ color: '#f87171' }}>critical</strong>, a panel under it offers Call and Message buttons for your contacts. CuraSense never calls or sends anything itself: you press the button.
               </div>
             </div>
           </div>
@@ -1047,7 +1109,7 @@ export function Settings() {
               <Watch className="w-5 h-5" style={{ color: '#22d3ee' }} /> Connected Devices & Wearables
             </h3>
             <p style={{ fontSize: '0.82rem', color: T.sub, marginTop: '2px' }}>
-              Apple Watch biometric pipeline — real-time clinical data stream fed into DeepSeek V4 Pro
+              Demonstration: these numbers are generated on this page, not read from a watch. Real Apple Health sync will come with the iPhone app.
             </p>
           </div>
 
@@ -1056,7 +1118,7 @@ export function Settings() {
             padding: '5px 13px', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 700,
             fontFamily: S, letterSpacing: '0.06em', flexShrink: 0,
             background: isLive
-              ? 'linear-gradient(135deg,rgba(16,185,129,0.14),rgba(34,211,238,0.14))'
+              ? 'linear-gradient(135deg,rgba(16,185,129,0.14),rgba(38,103,255,0.14))'
               : 'rgba(255,255,255,0.05)',
             border: isLive
               ? '1px solid rgba(16,185,129,0.35)'
@@ -1070,7 +1132,7 @@ export function Settings() {
               boxShadow: isLive ? '0 0 9px #34d399' : 'none',
               animation: isLive ? '_wPulse 2s ease-in-out infinite' : 'none',
             }} />
-            {isLive ? 'LIVE SYNCED' : 'NOT CONNECTED'}
+            {isLive ? 'DEMO DATA' : 'NO DATA'}
           </div>
 
           <style>{`
@@ -1085,7 +1147,7 @@ export function Settings() {
         {wearableLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', gap: '14px' }}>
             <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#22d3ee' }} />
-            <span style={{ fontSize: '0.85rem', color: T.muted }}>Fetching biometric stream…</span>
+            <span style={{ fontSize: '0.85rem', color: T.muted }}>Loading…</span>
           </div>
         ) : (
           <>
@@ -1093,13 +1155,13 @@ export function Settings() {
             {isLive && (
               <div style={{
                 padding: '0.85rem 1.1rem', borderRadius: '12px', marginBottom: '1.25rem',
-                background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.18)',
+                background: 'rgba(38,103,255,0.06)', border: '1px solid rgba(38,103,255,0.18)',
                 display: 'flex', gap: '10px', alignItems: 'flex-start',
               }}>
                 <Wifi className="w-4 h-4" style={{ color: '#22d3ee', flexShrink: 0, marginTop: '2px' }} />
                 <div style={{ fontSize: '0.75rem', color: T.sub, lineHeight: 1.55 }}>
-                  <strong style={{ color: '#22d3ee' }}>Biometric baseline active.</strong>{' '}
-                  Your Apple Watch metrics are automatically injected into every DeepSeek V4 Pro symptom analysis as an immutable clinical baseline — giving the AI objective ground-truth data alongside your reported symptoms.
+                  <strong style={{ color: '#22d3ee' }}>Demo readings in use.</strong>{' '}
+                  These generated numbers are added to your symptom analyses as if a watch had measured them. They are not real measurements, so do not rely on them for your health.
                 </div>
               </div>
             )}
@@ -1152,8 +1214,8 @@ export function Settings() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: T.muted }}>
                 <Clock className="w-3.5 h-3.5" style={{ flexShrink: 0 }} />
                 {isLive
-                  ? `Last synced: ${formatRelativeTime(wearableData!.lastSyncedAt!)}`
-                  : 'No sync data. Tap Force Resync to connect Apple Health.'}
+                  ? `Generated: ${formatRelativeTime(wearableData!.lastSyncedAt!)}`
+                  : 'No demo readings yet. Tap the button to generate some.'}
               </div>
 
               <button
@@ -1162,18 +1224,18 @@ export function Settings() {
                 style={{
                   padding: '0.55rem 1.1rem', borderRadius: '10px',
                   fontSize: '0.8rem', fontWeight: 600,
-                  background: isSyncing ? 'rgba(34,211,238,0.08)' : 'rgba(34,211,238,0.10)',
-                  border: '1px solid rgba(34,211,238,0.30)',
+                  background: isSyncing ? 'rgba(38,103,255,0.08)' : 'rgba(38,103,255,0.10)',
+                  border: '1px solid rgba(38,103,255,0.30)',
                   color: '#22d3ee', cursor: isSyncing ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px',
-                  transition: 'all 0.2s', opacity: isSyncing ? 0.65 : 1,
-                  boxShadow: isSyncing ? 'none' : '0 0 18px rgba(34,211,238,0.12)',
+                  transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s', opacity: isSyncing ? 0.65 : 1,
+                  boxShadow: isSyncing ? 'none' : '0 0 18px rgba(38,103,255,0.12)',
                 }}
               >
                 {isSyncing
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   : <RefreshCw className="w-3.5 h-3.5" />}
-                {isSyncing ? 'Syncing…' : 'Force Resync'}
+                {isSyncing ? 'Generating…' : 'Generate demo readings'}
               </button>
             </div>
           </>

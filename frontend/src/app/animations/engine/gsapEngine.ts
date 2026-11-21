@@ -3,7 +3,9 @@
 // plus device-tier gating consumed by the hooks in ../hooks/.
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Flip } from 'gsap/Flip';
+import { SplitText } from 'gsap/SplitText';
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, Flip, SplitText);
 
-export { gsap, ScrollTrigger };
+export { gsap, ScrollTrigger, Flip, SplitText };

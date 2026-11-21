@@ -1,3 +1,4 @@
+import { ExpandCard } from '../../components/shared/ExpandCard';
 import { useEffect, useRef } from 'react';
 import { Activity, Brain, FileText, TrendingUp, Calendar, Clock, CircleAlert, Zap, Target } from 'lucide-react';
 import type { Prediction } from '../../App';
@@ -15,7 +16,7 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.dash-card', { y: 40, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.8, stagger: 0.1, ease: 'expo.out', delay: 0.1 });
+      gsap.fromTo('.dash-card', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.04, clearProps: 'transform,opacity', ease: 'expo.out', delay: 0.1 });
     }, ref);
     return () => ctx.revert();
   }, [theme]);
@@ -43,6 +44,7 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
   const recentPredictions = predictions.slice(0, 3);
   const todayAnalyses = predictions.filter(p => new Date(p.timestamp).toDateString() === new Date().toDateString()).length;
   const statValues = [totalAnalyses, todayAnalyses, `${avgConfidence}%`, '2.5s'];
+  const statDetails = ['Every analysis you have run so far.', 'Analyses run today.', 'Average model confidence across all your analyses.', 'Typical time the AI takes to answer.'];
 
   const typeColors: Record<string, string> = { symptom: '#0ea5e9', image: '#8b5cf6', report: '#ec4899' };
   const getIcon = (type: string) => ({ symptom: <Activity className="w-4 h-4" />, image: <Brain className="w-4 h-4" />, report: <FileText className="w-4 h-4" /> }[type]);
@@ -56,35 +58,35 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
   const glassCard = { background: T.cardBg, border: `1px solid ${T.cardBdr}`, backdropFilter: 'blur(24px)', borderRadius: '16px', padding: '1.25rem' };
 
   return (
-    <div ref={ref} style={{ fontFamily: "'Inter', sans-serif" }}>
-      <div className="mb-6">
-        <h2 style={{ fontFamily: "'Michroma', sans-serif", fontSize: '1.35rem', fontWeight: 800, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.welcome')}</h2>
+    <div ref={ref} style={{ fontFamily: "var(--font-body)" }}>
+      <div data-lg="plate" className="mb-6 w-full sm:w-fit px-6 py-4 rounded-2xl">
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: '1.35rem', fontWeight: 800, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.welcome')}</h2>
         <p style={{ color: T.sub, fontSize: '0.85rem' }}>{t('dashboard.overview')}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {T.statCards.map(({ from, to, label, icon: Icon, badge }, i) => (
-          <div key={label} className="dash-card relative overflow-hidden transition-transform duration-300 hover:-translate-y-1" style={{ borderRadius: '14px', padding: '1.1rem', background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 6px 18px ${from}44` }}>
+          <ExpandCard key={label} className="dash-card relative overflow-hidden transition-transform duration-300 hover:-translate-y-1" style={{ borderRadius: '14px', padding: '1.1rem', background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 6px 18px ${from}44` }} detail={<>{statDetails[i]} <button onClick={() => onNavigate('history')} style={{ textDecoration: 'underline', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>View history</button></>}>
             <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl pointer-events-none bg-white/15 translate-x-1/3 -translate-y-1/3" />
             <div className="flex items-center justify-between mb-3 relative z-10">
               <div style={{ padding: '0.45rem', background: 'rgba(255,255,255,0.2)', borderRadius: '8px' }}><Icon className="w-4 h-4 text-white" /></div>
-              <span style={{ fontFamily: "'Michroma', sans-serif", fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(255,255,255,0.25)', color: '#fff', padding: '2px 7px', borderRadius: '999px' }}>{badge}</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', background: 'rgba(255,255,255,0.25)', color: '#fff', padding: '2px 7px', borderRadius: '999px' }}>{badge}</span>
             </div>
-            <div style={{ fontFamily: "'Michroma', sans-serif", fontSize: '1.6rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{statValues[i]}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: '1.6rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{statValues[i]}</div>
             <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.80)', marginTop: '4px' }}>{label}</div>
-          </div>
+          </ExpandCard>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="dash-card lg:col-span-2" style={glassCard}>
-          <h3 style={{ fontFamily: "'Michroma', sans-serif", fontSize: '0.9rem', fontWeight: 700, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.quickActions')}</h3>
+          <h3 style={{ fontFamily: "var(--font-display)", fontSize: '0.9rem', fontWeight: 700, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.quickActions')}</h3>
           <p style={{ color: T.sub, fontSize: '0.75rem', marginBottom: '1rem' }}>{t('dashboard.startNewAnalysis')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {quickActions.map(({ label, desc, icon: Icon, from, to }) => (
               <button key={label} onClick={() => onNavigate('analyze')} className="group text-left transition-transform duration-300 hover:-translate-y-1" style={{ padding: '1rem', borderRadius: '12px', background: T.row, border: `1px solid ${T.rowBdr}` }}>
                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: `linear-gradient(135deg,${from},${to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.6rem', boxShadow: `0 4px 12px ${from}55` }}><Icon className="w-4 h-4 text-white" /></div>
-                <div style={{ fontFamily: "'Michroma', sans-serif", fontSize: '0.75rem', fontWeight: 700, color: T.head, marginBottom: '2px' }}>{label}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: '0.75rem', fontWeight: 700, color: T.head, marginBottom: '2px' }}>{label}</div>
                 <div style={{ fontSize: '0.68rem', color: T.muted }}>{desc}</div>
               </button>
             ))}
@@ -92,7 +94,7 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
         </div>
 
         <div className="dash-card" style={glassCard}>
-          <h3 style={{ fontFamily: "'Michroma', sans-serif", fontSize: '0.9rem', fontWeight: 700, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.analysisTypes')}</h3>
+          <h3 style={{ fontFamily: "var(--font-display)", fontSize: '0.9rem', fontWeight: 700, color: T.head, marginBottom: '0.2rem' }}>{t('dashboard.analysisTypes')}</h3>
           <p style={{ color: T.sub, fontSize: '0.75rem', marginBottom: '1rem' }}>{t('dashboard.breakdownByCategory')}</p>
           {Object.keys(typeBreakdown).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem 0', color: T.muted }}><CircleAlert className="w-10 h-10 mx-auto mb-2 opacity-40" /><p style={{ fontSize: '0.82rem' }}>{t('dashboard.noAnalysesYet')}</p></div>
@@ -104,7 +106,7 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
                   <div style={{ height: '6px', background: T.trackBg, borderRadius: '999px', overflow: 'hidden' }}><div style={{ height: '100%', width: `${(count / totalAnalyses) * 100}%`, borderRadius: '999px', background: `linear-gradient(90deg, ${typeColors[type] || '#8b5cf6'}, ${typeColors[type] || '#8b5cf6'}88)` }} /></div>
                 </div>
               ))}
-              <button onClick={() => onNavigate('history')} style={{ marginTop: '0.5rem', padding: '0.6rem 1rem', borderRadius: '10px', border: `1px solid ${T.cardBdr}`, background: T.row, color: T.text, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'Michroma', sans-serif" }}>{t('dashboard.viewFullHistory')}</button>
+              <button onClick={() => onNavigate('history')} style={{ marginTop: '0.5rem', padding: '0.6rem 1rem', borderRadius: '10px', border: `1px solid ${T.cardBdr}`, background: T.row, color: T.text, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', fontFamily: "var(--font-display)" }}>{t('dashboard.viewFullHistory')}</button>
             </div>
           )}
         </div>
@@ -113,7 +115,7 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
       <div className="dash-card mb-6" style={glassCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>
-            <h3 style={{ fontFamily: "'Michroma', sans-serif", fontSize: '0.9rem', fontWeight: 700, color: T.head }}>{t('dashboard.recentAnalyses')}</h3>
+            <h3 style={{ fontFamily: "var(--font-display)", fontSize: '0.9rem', fontWeight: 700, color: T.head }}>{t('dashboard.recentAnalyses')}</h3>
             <p style={{ color: T.sub, fontSize: '0.75rem', marginTop: '2px' }}>{t('dashboard.latestPredictions')}</p>
           </div>
         </div>
