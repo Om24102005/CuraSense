@@ -71,3 +71,4 @@ blob-report/
 # Presentation server (start-prod.sh)
 backend/.env.production
 frontend/dist-web/
+graphify-out/
