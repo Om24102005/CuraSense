@@ -33,8 +33,9 @@ export function connectDB() {
     console.error('[FATAL] MONGODB_URI is not set. Check backend/.env');
   }
 
-  mongoose.connect(MONGODB_URI, {
-    serverSelectionTimeoutMS: 4000,
+  // Keeps trying: a hosted database can be slow at boot or be fixed later, and the API must recover without a restart.
+  const attempt = () => mongoose.connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 10_000,
   })
     .then(async () => {
       console.log('Connected to MongoDB:', withoutCredentials(MONGODB_URI));
@@ -52,5 +53,7 @@ export function connectDB() {
     .catch(err => {
       console.error('[MongoDB] Connection failed:', err.message);
       console.error('[MongoDB] Is mongod running on the host in MONGODB_URI?');
+      if (MONGODB_URI && mongoose.connection.readyState !== 1) setTimeout(attempt, 15_000);
     });
+  attempt();
 }
