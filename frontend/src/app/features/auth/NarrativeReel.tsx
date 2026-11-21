@@ -353,12 +353,9 @@ function BackdropManager({ active, show }: { active: SceneKey; show: boolean }) 
         transition: 'opacity 0.9s cubic-bezier(0.65, 0, 0.35, 1)',
       }}
     >
-      <BgProblem active={show && active === 'problem'} />
-      <BgApproach active={show && active === 'approach'} />
-      <BgSymptoms active={show && active === 'symptoms'} />
-      <BgImaging active={show && active === 'imaging'} />
-      <BgLabs active={show && active === 'labs'} />
-      <BgFinale active={show && active === 'finale'} />
+      {([['problem', BgProblem], ['approach', BgApproach], ['symptoms', BgSymptoms], ['imaging', BgImaging], ['labs', BgLabs], ['finale', BgFinale]] as const).map(([key, Bg]) => (
+        <div key={key} style={{ display: 'contents' }} data-reel-paused={!show || active !== key || undefined}><Bg active={show && active === key} /></div>
+      ))}
     </div>
   );
 }
@@ -391,7 +388,10 @@ function Scene({ id, scene, onActivate, children }: SceneProps) {
       { threshold: [0.5, 0.7] }
     );
     io.observe(el);
-    return () => io.disconnect();
+    // Set on the element, not in state: scrolling past a scene must not re-render it.
+    const near = new IntersectionObserver(([e]) => el.toggleAttribute('data-reel-paused', !e.isIntersecting), { rootMargin: '20% 0px' });
+    near.observe(el);
+    return () => { io.disconnect(); near.disconnect(); };
   }, [scene, onActivate]);
 
   return (
@@ -1235,7 +1235,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
 
       <button
         onClick={onPrimaryCta}
-        className="fin-cta group relative inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold transition-all hover:scale-[1.03] active:scale-[0.97]"
+        className="fin-cta group relative inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold transition hover:scale-[1.03] active:scale-[0.97]"
         style={{
           fontFamily: I, fontSize: '1rem',
           background: 'linear-gradient(135deg, #22d3ee, #a855f7)',

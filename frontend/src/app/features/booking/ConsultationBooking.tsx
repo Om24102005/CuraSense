@@ -308,17 +308,17 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
     if (!stepRef.current || view !== 'new') return;
     gsap.fromTo(stepRef.current,
       { opacity: 0, y: 16 },
-      { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out' }
+      { opacity: 1, y: 0, duration: 0.24, ease: 'expo.out' }
     );
   }, [step, view]);
 
   // Animate success overlay
   useEffect(() => {
     if (!showSuccess || !successRef.current || !checkRef.current) return;
-    gsap.fromTo(successRef.current, { opacity: 0 }, { opacity: 1, duration: 0.35 });
+    gsap.fromTo(successRef.current, { opacity: 0 }, { opacity: 1, duration: 0.2 });
     gsap.fromTo(checkRef.current,
       { scale: 0, rotation: -30 },
-      { scale: 1, rotation: 0, duration: 0.65, ease: 'back.out(1.8)', delay: 0.25 }
+      { scale: 1, rotation: 0, duration: 0.32, ease: 'expo.out', delay: 0.06 }
     );
   }, [showSuccess]);
 
@@ -423,7 +423,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                 display:'flex', alignItems:'center', justifyContent:'center',
                 background: done ? '#10b981' : active ? 'rgba(38,103,255,0.16)' : T.rowBg,
                 border: `2px solid ${c}`,
-                transition:'all 0.3s ease',
+                transition:'color 0.24s ease, background-color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease, transform 0.24s ease',
               }}>
                 {done
                   ? <Check style={{ width:13, height:13, color:'#fff' }} />
@@ -458,7 +458,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
           padding:'0.85rem 1rem', borderRadius:'13px', marginBottom:'0.65rem', cursor:'pointer',
           background: selectedDiagnosis === null ? 'rgba(38,103,255,0.10)' : T.rowBg,
           border: `1px solid ${selectedDiagnosis === null ? '#22d3ee' : T.rowBdr}`,
-          display:'flex', alignItems:'center', gap:'12px', transition:'all 0.2s ease',
+          display:'flex', alignItems:'center', gap:'12px', transition:'color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease',
         }}
       >
         <div style={{ width:34, height:34, borderRadius:'9px', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(38,103,255,0.12)', color:'#22d3ee' }}>
@@ -492,7 +492,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                   background: sel ? `${tc}12` : T.rowBg,
                   border: `1px solid ${sel ? tc : T.rowBdr}`,
                   boxShadow: sel ? `0 0 18px -8px ${tc}55` : 'none',
-                  transition:'all 0.2s ease',
+                  transition:'color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease',
                 }}
               >
                 <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
@@ -540,7 +540,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                 border: `1px solid ${isSel ? doc.color : T.rowBdr}`,
                 boxShadow: isSel ? `0 0 22px -8px ${doc.color}55` : 'none',
                 opacity: doc.available ? 1 : 0.5,
-                transition:'all 0.2s ease', position:'relative',
+                transition:'color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease', position:'relative',
               }}
             >
               <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'9px' }}>
@@ -616,7 +616,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                 background: sel ? `${color}12` : T.rowBg,
                 border: `2px solid ${sel ? color : T.rowBdr}`,
                 boxShadow: sel ? `0 0 30px -8px ${color}66` : 'none',
-                transition:'all 0.25s ease',
+                transition:'color 0.24s ease, background-color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease, transform 0.24s ease',
               }}
             >
               <div style={{ color: sel ? color : T.muted, marginBottom:'0.85rem', transition:'color 0.25s ease' }}>{icon}</div>
@@ -664,7 +664,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                     flexShrink:0, padding:'0.7rem 0.8rem', borderRadius:'12px', cursor:'pointer', textAlign:'center',
                     background: sel ? 'rgba(38,103,255,0.14)' : T.rowBg,
                     border: `1px solid ${sel ? '#22d3ee' : T.rowBdr}`,
-                    minWidth:'52px', transition:'all 0.2s ease',
+                    minWidth:'52px', transition:'color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease',
                   }}
                 >
                   <div style={{ fontSize:'0.65rem', fontFamily:S, letterSpacing:'0.07em', color: sel?'#22d3ee':T.muted, textTransform:'uppercase', marginBottom:'4px' }}>{d.day}</div>
@@ -697,7 +697,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                       color: isBooked ? T.muted : isSel ? '#22d3ee' : T.text,
                       opacity: isBooked ? 0.35 : 1,
                       textDecoration: isBooked ? 'line-through' : 'none',
-                      transition:'all 0.2s ease',
+                      transition:'color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease',
                     }}
                   >
                     {slot}
@@ -794,7 +794,6 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
       style={{
         position:'fixed', inset:0, zIndex:9999,
         background:'radial-gradient(ellipse 55% 60% at 50% 50%, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.92) 25%, rgba(0,0,0,0.72) 50%, rgba(0,0,0,0.38) 72%, rgba(0,0,0,0.10) 90%, rgba(0,0,0,0.00) 100%)',
-        backdropFilter:'blur(10px)', WebkitBackdropFilter:'blur(10px)',
         display:'flex', alignItems:'center', justifyContent:'center',
         padding:'1.5rem',
       }}
@@ -813,7 +812,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
           padding:'0.7rem 1rem', borderRadius:'12px', marginBottom:'1.35rem',
           background: emailStatus === 'sent' ? 'rgba(16,185,129,0.10)' : 'rgba(38,103,255,0.08)',
           border: `1px solid ${emailStatus === 'sent' ? 'rgba(16,185,129,0.30)' : 'rgba(38,103,255,0.20)'}`,
-          display:'flex', alignItems:'center', gap:'10px', transition:'all 0.4s ease',
+          display:'flex', alignItems:'center', gap:'10px', transition:'color 0.24s ease, background-color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease, transform 0.24s ease',
         }}>
           <Mail style={{ width:15, height:15, color: emailStatus === 'sent' ? '#10b981' : '#22d3ee', flexShrink:0 }} />
           <span style={{ fontSize:'0.79rem', color:T.text }}>
@@ -838,7 +837,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
             fontFamily:S, fontWeight:800, fontSize:'0.82rem', letterSpacing:'0.06em',
             border: emailStatus === 'sending' ? `1px solid ${T.rowBdr}` : 'none',
             boxShadow: emailStatus !== 'sending' ? '0 8px 24px rgba(38,103,255,0.35)' : 'none',
-            transition:'all 0.25s ease',
+            transition:'color 0.24s ease, background-color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease, transform 0.24s ease',
           }}
         >
           {emailStatus === 'sending' ? 'Saving…' : 'View Booking Details →'}
@@ -1315,7 +1314,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                 color: canAdvance() ? '#fff' : T.muted,
                 fontFamily:S, fontWeight:700, fontSize:'0.75rem', letterSpacing:'0.06em',
                 boxShadow: canAdvance() ? '0 6px 20px rgba(38,103,255,0.35)' : 'none',
-                transition:'all 0.2s ease',
+                transition:'color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease',
               }}
             >
               {step === 1 ? (selectedDiagnosis ? 'CONTINUE' : 'SKIP & CONTINUE') : 'CONTINUE'}
@@ -1334,7 +1333,7 @@ export function ConsultationBooking({ predictions, initialView = 'new' }: Consul
                 fontFamily:S, fontWeight:700, fontSize:'0.75rem', letterSpacing:'0.06em',
                 boxShadow:'0 6px 20px rgba(38,103,255,0.35)',
                 opacity: isSubmitting ? 0.72 : 1,
-                transition:'all 0.2s ease',
+                transition:'color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease',
               }}
             >
               <CalendarCheck style={{ width:15, height:15 }} />

@@ -67,6 +67,11 @@ export function LoadingScreen({ message = 'ANALYZING SYMPTOMS...', variant = 'sy
   // and dissolves; it never takes input, so the result can be read and used from its first frame.
   const stageOn = useRef(false);
   stageOn.current = !!Stage;
+  useEffect(() => {
+    if (!Stage) return;
+    dispatchEvent(new CustomEvent('cs:covered', { detail: true }));   // the page's 3D scene rests for the whole wait
+    return () => { dispatchEvent(new CustomEvent('cs:covered', { detail: false })); };
+  }, [Stage]);
   useLayoutEffect(() => () => {
     if (!stageOn.current || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const cover = document.createElement('div');

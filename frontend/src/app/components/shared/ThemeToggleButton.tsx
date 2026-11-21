@@ -19,7 +19,7 @@ export function ThemeToggleButton() {
       onClick={(e) => toggleTheme(e.clientX, e.clientY)}
       aria-label={`Current theme: ${current.label}. Switch to ${next} mode.`}
       title={`${current.label} mode — Click for ${next}`}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95"
+      className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition duration-300 hover:scale-105 active:scale-95"
       style={{
         fontFamily: "var(--font-body)",
         letterSpacing: '0.06em',

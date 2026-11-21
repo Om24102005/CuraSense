@@ -400,7 +400,7 @@ export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps)
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
-              className="transition-all duration-300"
+              className="transition duration-300"
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 width: '100%', padding: files.length === 0 ? '3rem 1rem' : '1.25rem',
@@ -463,7 +463,7 @@ export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps)
           <button
             onClick={handleAnalyze}
             disabled={files.length === 0 || analyzing}
-            className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full transition duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: files.length > 0 ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: files.length > 0 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}
           >
             Analyze {files.length > 1 ? `${files.length} Scans` : 'with AI'}
@@ -513,7 +513,7 @@ export function ImageAnalysis({ onPrediction, onSwitchTab }: ImageAnalysisProps)
                   <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
                 </div>
                 <div style={{ height: '6px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', boxShadow: '0 0 10px rgba(99,102,241,0.5)', transition: 'width 1s ease' }} />
+                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg,#6366f1,#8b5cf6)', boxShadow: '0 0 10px rgba(99,102,241,0.5)', }} />
                 </div>
                   </>
                 )}

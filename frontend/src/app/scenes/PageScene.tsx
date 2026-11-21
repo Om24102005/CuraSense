@@ -157,6 +157,7 @@ export default function PageScene({ scene, light, ready = true, paused = false, 
   const tier = useDeviceTier();
   const reduced = useReducedMotion();
   const [hidden, setHidden] = useState(() => document.hidden);
+  const [covered, setCovered] = useState(false);   // the opaque analysis page is over this scene: nothing here can be seen
   const ok = useMemo(() => tier !== 'low' && hasWebGL(), [tier]);
 
   // Stamped here (landing and app both mount PageScene) so liquid-glass.css can drop blur on low tier.
@@ -168,6 +169,12 @@ export default function PageScene({ scene, light, ready = true, paused = false, 
     return () => document.removeEventListener('visibilitychange', on);
   }, []);
 
+  useEffect(() => {
+    const on = (e: Event) => setCovered((e as CustomEvent<boolean>).detail);
+    addEventListener('cs:covered', on);
+    return () => removeEventListener('cs:covered', on);
+  }, []);
+
   if (scene === 'welcome') {
     return ok
       ? <Suspense fallback={null}><CellScene tier={tier} light={light} frozen={reduced} hidden={hidden || paused} slow={slow} ready={ready} /></Suspense>
@@ -177,15 +184,15 @@ export default function PageScene({ scene, light, ready = true, paused = false, 
   const count = tier === 'high' ? 9000 : isPhone() ? 2600 : 4200;   // fewer points on a phone: the same picture, a lighter load on its GPU and battery
   return (
     <div aria-hidden data-page-scene={scene} style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+      {/* one Canvas across tabs: remounting it made a new WebGL context on every switch, and iOS allows only a few */}
       <Canvas
-        key={scene}
         dpr={tier === 'high' ? [1, 1.5] : 1}
-        frameloop={hidden ? 'never' : reduced ? 'demand' : 'always'}
+        frameloop={hidden || covered ? 'never' : reduced ? 'demand' : 'always'}
         camera={{ position: [0, 0, 9], fov: 50 }}
         gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}
         style={{ pointerEvents: 'none' }}
       >
-        <Field scene={scene} count={count} light={light} frozen={reduced} />
+        <Field key={scene} scene={scene} count={count} light={light} frozen={reduced} />
       </Canvas>
     </div>
   );

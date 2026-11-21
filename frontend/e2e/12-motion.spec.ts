@@ -123,3 +123,16 @@ test('a result below the fold is fully visible without scrolling, and the hand-o
   await expect.poll(() => page.locator('[data-result] > *').evaluateAll((els) => els.length > 0 && els.every((e) => getComputedStyle(e).opacity === '1'))).toBe(true);
   expect(errorsOf(page).filter(noise)).toEqual([]);
 });
+
+test('switching tabs keeps the one WebGL canvas instead of making a new context', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, request, 'motion-canvas');
+  const canvas = page.locator('[data-page-scene] canvas');
+  await canvas.first().waitFor({ state: 'attached', timeout: 8000 }).catch(() => {});
+  test.skip(await canvas.count() === 0, 'this browser draws no 3D scene');
+  await canvas.first().evaluate((el) => { (window as any).__sceneCanvas = el; });
+  await page.locator('[data-nav-id="history"]').click();
+  await expect(page.locator('[data-page-scene="history"]')).toBeAttached();
+  expect(await page.locator('[data-page-scene] canvas').evaluate((el) => el === (window as any).__sceneCanvas)).toBe(true);
+  expect(errorsOf(page).filter(noise)).toEqual([]);
+});

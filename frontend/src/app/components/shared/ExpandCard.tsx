@@ -1,6 +1,6 @@
 import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 
 interface ExpandCardProps {
   children: ReactNode;
@@ -23,7 +23,7 @@ export function ExpandCard({ children, detail, className, style }: ExpandCardPro
   }, [open]);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user" transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}>
       <motion.div
         layoutId={id}
         className={className}
@@ -45,7 +45,7 @@ export function ExpandCard({ children, detail, className, style }: ExpandCardPro
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setOpen(false)}
-              style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'var(--overlay)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}
+              style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'grid', placeItems: 'center', padding: '1rem', background: 'var(--overlay, rgba(0,0,0,0.78))', }}
             >
               <motion.div
                 layoutId={id}
@@ -68,6 +68,6 @@ export function ExpandCard({ children, detail, className, style }: ExpandCardPro
         </AnimatePresence>,
         document.body
       )}
-    </>
+    </MotionConfig>
   );
 }

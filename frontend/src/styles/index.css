@@ -702,15 +702,15 @@ html.cura-large-text {
 .cs-aurora-field {
   position: absolute; border-radius: 50%;
   width: 62vmax; height: 62vmax;
-  filter: blur(90px);
-  opacity: 0.38;
-  will-change: transform;
+  opacity: 0.3;
 }
-:root[data-theme="light"] .cs-aurora-field { opacity: 0.26; filter: blur(110px); }
-.cs-aurora-a { left: -18vmax; top: -22vmax; background: var(--accent-cyan);   animation: cs-drift-a 38s ease-in-out infinite alternate; }
-.cs-aurora-b { right: -22vmax; top: 18vh;   background: var(--accent-violet); animation: cs-drift-b 46s ease-in-out infinite alternate; }
+:root[data-theme="light"] .cs-aurora-field { opacity: 0.2; }
+:root[data-tier="low"] .cs-aurora-field { animation: none; }
+/* soft by construction: a gradient that fades to nothing, where a blur filter on a layer this large costs GPU memory and repaints */
+.cs-aurora-a { left: -18vmax; top: -22vmax; background: radial-gradient(circle closest-side, var(--accent-cyan), transparent);   animation: cs-drift-a 38s ease-in-out infinite alternate; }
+.cs-aurora-b { right: -22vmax; top: 18vh;   background: radial-gradient(circle closest-side, var(--accent-violet), transparent); animation: cs-drift-b 46s ease-in-out infinite alternate; }
 .cs-aurora-c { left: 22vw; bottom: -34vmax; width: 52vmax; height: 52vmax;
-  background: color-mix(in srgb, var(--accent-cyan) 55%, var(--accent-violet));
+  background: radial-gradient(circle closest-side, color-mix(in srgb, var(--accent-cyan) 55%, var(--accent-violet)), transparent);
   animation: cs-drift-c 52s ease-in-out infinite alternate; }
 @keyframes cs-drift-a { to { transform: translate3d(14vw, 10vh, 0) scale(1.12); } }
 @keyframes cs-drift-b { to { transform: translate3d(-12vw, -8vh, 0) scale(1.08); } }
@@ -776,11 +776,13 @@ html.vt-circle::view-transition-new(root) {
    ANALYSIS RESULT: content first
    Opacity only, because a transform here would become the containing block of anything fixed inside the emergency prompt.
    ═══════════════════════════════════════════════════════ */
+[role="tabpanel"][data-state="active"] { animation: result-in 0.2s ease-out both; }
+[data-reel-paused] * { animation-play-state: paused !important; }   /* the story's loops rest while they are off screen */
 [data-result] > * { animation: result-in 0.2s ease-out both; }
 [data-result] > :nth-child(2) { animation-delay: 30ms; }
 [data-result] > :nth-child(n + 3) { animation-delay: 60ms; }
 @keyframes result-in { from { opacity: 0; } to { opacity: 1; } }
 .ls-exit { position: fixed; inset: 0; z-index: 99999; background: #03050b; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
-  [data-result] > * { animation: none; }
+  [data-result] > *, [role="tabpanel"][data-state="active"] { animation: none; }
 }

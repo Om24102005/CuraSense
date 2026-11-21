@@ -84,3 +84,11 @@ test('content starts below the notch and the status bar', async ({ page, request
   await expect(page.locator('#page-content')).toBeVisible({ timeout: 20_000 });
   expect(await y('header [aria-label="Go to Dashboard"]'), 'signed-in header').toBeGreaterThanOrEqual(59);
 });
+
+test('a phone starts with no backdrop blur, on the dense surfaces', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('cs_booted', '1'));
+  await page.goto('/');
+  await expect(page.locator('h1').first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.dataset.fx)).toBe('2');
+  expect(await page.locator('.sn').evaluate((el) => getComputedStyle(el).backdropFilter)).toMatch(/^(none|)$/);
+});

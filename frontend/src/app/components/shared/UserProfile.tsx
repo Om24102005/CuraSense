@@ -90,7 +90,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookin
 
     gsap.fromTo(menuRef.current, 
       { opacity: 0, y: -20, scale: 0.95 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(1.2)' }
+      { opacity: 1, y: 0, scale: 1, duration: 0.2, ease: 'power2.out' }
     );
 
     return () => {
@@ -114,7 +114,7 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookin
       {/* Navbar Trigger Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105"
+        className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition duration-300 hover:scale-105"
         style={{ 
           background: isOpen ? 'var(--nav-active-bg)' : 'var(--bg-surface)', 
           color: isOpen ? 'var(--accent-violet)' : 'var(--text-secondary)', 
@@ -199,28 +199,28 @@ export function UserProfile({ predictionsCount, onNavigate, onLogout, onMyBookin
             <div className="space-y-1.5">
               <button
                 onClick={() => { onMyBookings?.(); setIsOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition hover:translate-x-1"
                 style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
               >
                 <CalendarCheck className="w-4 h-4" /> My Bookings
               </button>
               <button
                 onClick={() => handleNavigation('history')}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition hover:translate-x-1"
                 style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
               >
                 <History className="w-4 h-4" /> View Full History
               </button>
               <button
                 onClick={() => handleNavigation('settings')}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:translate-x-1"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition hover:translate-x-1"
                 style={{ color: 'var(--text-primary)', background: 'var(--bg-surface)' }}
               >
                 <Settings className="w-4 h-4" /> Account Settings
               </button>
               <button 
                 onClick={onLogout} 
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all hover:translate-x-1 hover:bg-red-500/10"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition hover:translate-x-1 hover:bg-red-500/10"
                 style={{ color: '#ef4444' }}
               >
                 <LogOut className="w-4 h-4" /> Secure Sign Out

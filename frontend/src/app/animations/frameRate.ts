@@ -6,6 +6,8 @@
    frame it is given. This module measures the real rate so a loop can budget against it, and switches the costliest effects off
    (data-fx on <html>, see liquid-glass.css) when frames keep being missed. */
 
+import { isPhone } from './deviceTier';
+
 const RATES = [30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 240];
 const snap = (hz: number) => RATES.reduce((best, r) => (Math.abs(r - hz) < Math.abs(best - hz) ? r : best));
 
@@ -25,6 +27,8 @@ const FIRST_MS = 8000;      // page load, the intro and a cold dev server are no
 export function watchFrames() {
   if (started || typeof window === 'undefined') return;
   started = true;
+  // A phone starts with no backdrop blur at all, on the dense surfaces of level 2: stacked blurs are its largest GPU and battery cost.
+  if (isPhone()) document.documentElement.dataset.fx = '2';
   const ring = new Float32Array(8), sorted = new Float32Array(8);
   let n = 0, last = 0, lastWall = 0, fastest = Infinity;
   let winStart = 0, frames = 0, missed = 0, bad = 0, mute = FIRST_MS;

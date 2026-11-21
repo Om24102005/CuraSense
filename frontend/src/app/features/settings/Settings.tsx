@@ -120,10 +120,11 @@ function ToggleSwitch({ enabled, onToggle, accent = '#22d3ee' }: ToggleSwitchPro
     >
       <div style={{
         position: 'absolute', top: '3px',
-        left: enabled ? '25px' : '3px',
+        left: '3px',
+        transform: enabled ? 'translateX(22px)' : 'none',
         width: '18px', height: '18px', borderRadius: '50%',
         background: '#fff',
-        transition: 'left 0.25s cubic-bezier(0.4,0,0.2,1)',
+        transition: 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
         boxShadow: '0 1px 6px rgba(0,0,0,0.4)',
       }} />
     </div>
@@ -157,7 +158,7 @@ function MetricTile({ icon, label, value, unit, status, accent, T }: MetricTileP
       padding: '1rem 1.1rem', borderRadius: '16px',
       background: hasData ? `${accent}09` : T.rowBg,
       border: `1px solid ${hasData ? accent + '28' : T.cardBdr}`,
-      transition: 'all 0.3s',
+      transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '0.6rem' }}>
         {icon}
@@ -448,8 +449,8 @@ export function Settings() {
 
     const ctx = gsap.context(() => {
       gsap.fromTo('.set-card',
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, stagger: 0.1, ease: 'expo.out' }
+        { y: 8, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.28, stagger: { amount: 0.16 }, ease: 'power2.out', clearProps: 'transform,opacity' }
       );
     }, ref);
     return () => ctx.revert();
@@ -538,7 +539,7 @@ export function Settings() {
       onClick={onClick}
       style={{
         padding: '0.9rem 1rem', borderRadius: '14px', cursor: 'pointer',
-        textAlign: 'left', transition: 'all 0.2s',
+        textAlign: 'left', transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s',
         border: `1px solid ${active ? accent + '55' : T.cardBdr}`,
         background: active ? `${accent}16` : T.rowBg,
         color: active ? accent : T.sub,
@@ -560,7 +561,7 @@ export function Settings() {
   ) => (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '1rem 1.25rem', borderRadius: '14px', transition: 'all 0.3s',
+      padding: '1rem 1.25rem', borderRadius: '14px', transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
       background: enabled ? `${accent}0d` : T.rowBg,
       border: `1px solid ${enabled ? accent + '40' : T.cardBdr}`,
     }}>
@@ -590,7 +591,7 @@ export function Settings() {
         boxShadow: loading || disabled ? 'none' : T.btnSh,
         cursor: loading || disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center', gap: '6px',
-        transition: 'all 0.2s', opacity: loading ? 0.72 : disabled ? 0.5 : 1,
+        transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s', opacity: loading ? 0.72 : disabled ? 0.5 : 1,
       }}
     >
       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : icon}
@@ -940,7 +941,7 @@ export function Settings() {
 
         {/* Auto-Alerts toggle */}
         <div style={{
-          padding: '1.1rem 1.25rem', borderRadius: '14px', transition: 'all 0.3s',
+          padding: '1.1rem 1.25rem', borderRadius: '14px', transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           background: autoAlertsEnabled ? 'rgba(239,68,68,0.08)' : T.rowBg,
           border: `1px solid ${autoAlertsEnabled ? 'rgba(239,68,68,0.35)' : T.cardBdr}`,
@@ -1173,7 +1174,7 @@ export function Settings() {
                   border: '1px solid rgba(38,103,255,0.30)',
                   color: '#22d3ee', cursor: isSyncing ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px',
-                  transition: 'all 0.2s', opacity: isSyncing ? 0.65 : 1,
+                  transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s', opacity: isSyncing ? 0.65 : 1,
                   boxShadow: isSyncing ? 'none' : '0 0 18px rgba(38,103,255,0.12)',
                 }}
               >

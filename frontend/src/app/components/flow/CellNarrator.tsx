@@ -44,7 +44,7 @@ export default function CellNarrator() {
           {String(i + 1).padStart(2, '0')} / {String(STAGE_COPY.length).padStart(2, '0')} · {c.label}
         </span>
         <span style={{ flex: 1, height: 2, borderRadius: 2, background: 'rgba(255,255,255,0.14)', overflow: 'hidden' }}>
-          <span style={{ display: 'block', height: '100%', width: `${((i + 1) / STAGE_COPY.length) * 100}%`, background: 'linear-gradient(90deg,#22d3ee,#a855f7,#ec4899)', transition: 'width 0.6s ease' }} />
+          <span style={{ display: 'block', height: '100%', width: `${((i + 1) / STAGE_COPY.length) * 100}%`, background: 'linear-gradient(90deg,#22d3ee,#a855f7,#ec4899)', }} />
         </span>
       </div>
       <p key={i} style={{ margin: 0, fontSize: 14, lineHeight: 1.45, color: '#e6eefb', animation: 'cs-narr-in 0.5s ease both' }}>{c.text}</p>

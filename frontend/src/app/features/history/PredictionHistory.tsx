@@ -85,7 +85,7 @@ function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () =>
     if (!panelRef.current) return;
     gsap.fromTo(panelRef.current,
       { opacity: 0, y: 30, scale: 0.97 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.38, ease: 'power3.out' }
+      { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: 'expo.out' }
     );
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -126,8 +126,7 @@ function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () =>
         transition={{ duration: 0.22 }}
         style={{
           position: 'fixed', inset: 0, zIndex: 9200,
-          background: 'rgba(0,0,0,0.88)',
-          backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+          background: 'rgba(0,0,0,0.9)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '1.25rem',
         }}
@@ -140,7 +139,6 @@ function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () =>
             border: `1px solid ${T.bdr}`,
             borderRadius: '22px',
             boxShadow: `0 36px 90px rgba(0,0,0,0.65), 0 0 0 1px ${typeColor}22`,
-            backdropFilter: 'blur(36px)', WebkitBackdropFilter: 'blur(36px)',
             width: '100%', maxWidth: '820px',
             maxHeight: 'calc(100dvh - 2.5rem)',
             display: 'flex', flexDirection: 'column',
@@ -191,7 +189,7 @@ function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () =>
                   height: '100%', width: `${p.confidence}%`, borderRadius: '999px',
                   background: `linear-gradient(90deg, ${typeColor}, ${typeColor}cc)`,
                   boxShadow: `0 0 16px ${typeColor}88`,
-                  transition: 'width 1.1s cubic-bezier(0.34,1.56,0.64,1)',
+                  
                 }} />
               </div>
             </div>
@@ -250,7 +248,7 @@ function FullReportModal({ p, onClose, isDark }: { p: Prediction; onClose: () =>
                           <span style={{ fontFamily: S, fontWeight: 800, fontSize: '1rem', color: barColor }}>{pct}%</span>
                         </div>
                         <div style={{ height: '7px', background: T.track, borderRadius: '999px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, borderRadius: '999px', background: `linear-gradient(90deg, ${barColor}, ${barColor}bb)`, boxShadow: `0 0 10px ${barColor}77`, transition: 'width 1s cubic-bezier(0.34,1.56,0.64,1)' }} />
+                          <div style={{ height: '100%', width: `${pct}%`, borderRadius: '999px', background: `linear-gradient(90deg, ${barColor}, ${barColor}bb)`, boxShadow: `0 0 10px ${barColor}77`, }} />
                         </div>
                       </div>
                     );
@@ -419,7 +417,7 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
     if (!panelRef.current) return;
     gsap.fromTo(panelRef.current,
       { opacity: 0, y: 40, scale: 0.97 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'power3.out' }
+      { opacity: 1, y: 0, scale: 1, duration: 0.28, ease: 'expo.out' }
     );
   }, []);
 
@@ -460,8 +458,7 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
         transition={{ duration: 0.25 }}
         style={{
           position: 'fixed', inset: 0, zIndex: 9000,
-          background: 'rgba(0,0,0,0.72)',
-          backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+          background: 'rgba(0,0,0,0.86)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: '1.25rem',
         }}
@@ -475,7 +472,6 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
             border: `1px solid ${T.bdr}`,
             borderRadius: '20px',
             boxShadow: `0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px ${typeColor}18`,
-            backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
             width: '100%', maxWidth: '860px',
             maxHeight: 'calc(100dvh - 2.5rem)',
             display: 'flex', flexDirection: 'column',
@@ -555,7 +551,7 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
                   borderRadius: '999px',
                   background: `linear-gradient(90deg, ${typeColor}, ${typeColor}cc)`,
                   boxShadow: `0 0 12px ${typeColor}88`,
-                  transition: 'width 0.9s cubic-bezier(0.34,1.56,0.64,1)',
+                  
                 }} />
               </div>
             </div>
@@ -735,7 +731,7 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
                                 width: `${valPct}%`,
                                 background: `linear-gradient(90deg, ${st.c}55, ${st.c})`,
                                 borderRadius: '999px',
-                                transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
+                                
                               }} />
                               {/* Value needle dot */}
                               <div style={{
@@ -841,7 +837,7 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
                     color: typeColor,
                     border: `1px solid ${typeColor}40`,
                     boxShadow: `0 0 18px -6px ${typeColor}55`,
-                    transition: 'all 0.25s ease',
+                    transition: 'color 0.24s ease, background-color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease, transform 0.24s ease',
                     letterSpacing: '0.04em',
                   }}
                 >
@@ -861,7 +857,7 @@ function DetailPanel({ p, onClose, onLike, onViewFullReport, isDark }: DetailPan
                       color: p.liked ? '#fff' : T.muted,
                       border: `1px solid ${p.liked ? 'transparent' : T.rowBdr}`,
                       boxShadow: p.liked ? '0 4px 14px rgba(236,72,153,0.4)' : 'none',
-                      transition: 'all 0.25s ease',
+                      transition: 'color 0.24s ease, background-color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease, transform 0.24s ease',
                     }}
                   >
                     <Heart style={{ width: 14, height: 14, fill: p.liked ? '#fff' : 'none' }} />
@@ -911,8 +907,8 @@ export function PredictionHistory({ predictions, onLike }: PredictionHistoryProp
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo('.ph-item',
-        { y: 28, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.65, stagger: 0.08, ease: 'expo.out' }
+        { y: 8, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.28, stagger: { amount: 0.2 }, ease: 'power2.out', clearProps: 'transform,opacity' }
       );
     }, ref);
     return () => ctx.revert();
@@ -991,7 +987,7 @@ export function PredictionHistory({ predictions, onLike }: PredictionHistoryProp
                 color: filterLiked ? '#fff' : T.muted,
                 border: `1px solid ${filterLiked ? 'transparent' : T.rowBdr}`,
                 boxShadow: filterLiked ? '0 4px 12px rgba(236,72,153,0.4)' : 'none',
-                transition: 'all 0.3s ease',
+                transition: 'color 0.24s ease, background-color 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease, opacity 0.24s ease, transform 0.24s ease',
               }}
             >
               <Heart className="w-4 h-4" style={{ fill: filterLiked ? '#fff' : 'none' }} />
@@ -1020,7 +1016,7 @@ export function PredictionHistory({ predictions, onLike }: PredictionHistoryProp
                   tabIndex={0}
                   onClick={() => setSelected(p)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(p); } }}
-                  className="transition-all duration-300 hover:scale-[1.01]"
+                  className="transition duration-300 hover:scale-[1.01]"
                   style={{ padding: '1rem 1.25rem', borderRadius: '14px', background: T.rowBg, border: `1px solid ${T.rowBdr}`, cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.5rem' }}>

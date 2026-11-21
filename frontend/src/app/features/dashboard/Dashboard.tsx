@@ -16,7 +16,7 @@ export function Dashboard({ predictions, onNavigate }: DashboardProps) {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.fromTo('.dash-card', { y: 40, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.8, stagger: 0.1, ease: 'expo.out', delay: 0.1 });
+      gsap.fromTo('.dash-card', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.04, clearProps: 'transform,opacity', ease: 'expo.out', delay: 0.1 });
     }, ref);
     return () => ctx.revert();
   }, [theme]);

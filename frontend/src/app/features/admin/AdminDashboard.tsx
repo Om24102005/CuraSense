@@ -71,7 +71,7 @@ export function AdminDashboard() {
     animate(last);
 
     const ctx = gsap.context(() => {
-      gsap.fromTo('.admin-panel', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'expo.out' });
+      gsap.fromTo('.admin-panel', { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, stagger: 0.05, ease: 'power2.out', clearProps: 'transform,opacity' });
     }, containerRef);
 
     return () => {
@@ -120,8 +120,8 @@ export function AdminDashboard() {
 
       <div className="admin-panel relative z-10 p-6 rounded-2xl backdrop-blur-md" style={{ background: tCard, border: `1px solid ${tBdr}` }}>
         <div className="flex gap-4 mb-6 border-b border-fuchsia-500/20 pb-4">
-          <button onClick={() => setActiveTab('users')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition-all ${activeTab === 'users' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Identities</button>
-          <button onClick={() => setActiveTab('predictions')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition-all ${activeTab === 'predictions' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Data Logs</button>
+          <button onClick={() => setActiveTab('users')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition ${activeTab === 'users' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Identities</button>
+          <button onClick={() => setActiveTab('predictions')} className={`px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-sm transition ${activeTab === 'predictions' ? 'bg-fuchsia-500 text-white' : 'bg-transparent text-fuchsia-500'}`}>Data Logs</button>
         </div>
 
         {activeTab === 'users' && (
@@ -145,7 +145,7 @@ export function AdminDashboard() {
                     <td className="py-4 px-4"><span className={`px-2 py-1 rounded text-xs font-bold uppercase ${u.role === 'admin' ? 'bg-fuchsia-500/20 text-fuchsia-500' : 'bg-cyan-500/20 text-cyan-500'}`}>{u.role}</span></td>
                     <td className="py-4 px-4">
                       {u.role !== 'admin' && (
-                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition"><Trash2 className="w-4 h-4" /></button>
                       )}
                     </td>
                   </tr>

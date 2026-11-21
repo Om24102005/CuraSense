@@ -254,7 +254,6 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
             borderRadius: '50%',
             background: s.color,
             boxShadow: `0 0 14px ${s.color}, 0 0 0 3px ${isDark ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.8)'}`,
-            transition: 'left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
           }} />
         </div>
 
@@ -319,7 +318,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    transition: 'all 0.25s',
+                    transition: 'color 0.24s, background-color 0.24s, border-color 0.24s, box-shadow 0.24s, opacity 0.24s, transform 0.24s',
                   }}
                 >
                   {m === 'paste' ? <FileText className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
@@ -360,7 +359,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
                     justifyContent: 'center',
                     gap: '12px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
+                    transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s',
                   }}
                 >
                   <Upload className="w-10 h-10" style={{ color: T.muted, opacity: 0.6 }} />
@@ -418,7 +417,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
           {(() => {
             const ready = mode === 'paste' ? !!reportText.trim() : !!selectedFile;
             return (
-              <button onClick={handleAnalyze} disabled={!ready || analyzing} className="w-full transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mb-4" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: ready ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: ready ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
+              <button onClick={handleAnalyze} disabled={!ready || analyzing} className="w-full transition duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed mb-4" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: ready ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: ready ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
                 Analyze Report <Play className="w-4 h-4 ml-1" />
               </button>
             );
@@ -472,7 +471,7 @@ export function ReportAnalysis({ onPrediction, onSwitchTab }: ReportAnalysisProp
                   <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
                 </div>
                 <div style={{ height: '8px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', transition: 'width 1s ease' }} />
+                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', }} />
                 </div>
               </div>
 

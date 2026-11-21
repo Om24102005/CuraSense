@@ -220,8 +220,8 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
                     {catSymptoms.map(s => {
                       const sel = selectedSymptoms.includes(s.id);
                       return (
-                        <label key={s.id} className="transition-all duration-200 cursor-pointer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.55rem 0.75rem', borderRadius: '10px', background: sel ? T.selBg : 'transparent', border: `1px solid ${sel ? T.selBdr : 'transparent'}` }} onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = T.rowHov; }} onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-                          <div style={{ width: '16px', height: '16px', borderRadius: '5px', border: `2px solid ${sel ? '#8b5cf6' : T.catHead}`, background: sel ? '#8b5cf6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
+                        <label key={s.id} className="transition duration-200 cursor-pointer" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.55rem 0.75rem', borderRadius: '10px', background: sel ? T.selBg : 'transparent', border: `1px solid ${sel ? T.selBdr : 'transparent'}` }} onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = T.rowHov; }} onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                          <div style={{ width: '16px', height: '16px', borderRadius: '5px', border: `2px solid ${sel ? '#8b5cf6' : T.catHead}`, background: sel ? '#8b5cf6' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s' }}>
                             {sel && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                           </div>
                           <input type="checkbox" checked={sel} onChange={() => toggleSymptom(s.id)} style={{ display: 'none' }} />
@@ -259,7 +259,7 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
             </div>
           </div>
 
-          <button onClick={handleAnalyze} disabled={!hasAnySymptom || analyzing} className="w-full mt-5 transition-all duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: hasAnySymptom ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: hasAnySymptom ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
+          <button onClick={handleAnalyze} disabled={!hasAnySymptom || analyzing} className="w-full mt-5 transition duration-300 hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ padding: '0.9rem', borderRadius: '14px', background: T.btnBg, boxShadow: hasAnySymptom ? T.btnSh : 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 700, fontFamily: S, border: 'none', cursor: hasAnySymptom ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', letterSpacing: '0.05em' }}>
             {analyzing ? (<><Loader2 className="w-4 h-4 animate-spin" /> Analyzing with AI...</>) : 'Analyze Symptoms'}
           </button>
         </div>
@@ -382,7 +382,7 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
                               borderRadius: '999px',
                               background: `linear-gradient(90deg, ${barColor}, ${barColor}cc)`,
                               boxShadow: `0 0 10px ${barColor}88`,
-                              transition: 'width 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                              
                             }} />
                           </div>
                         </div>
@@ -398,7 +398,7 @@ export function SymptomChecker({ onPrediction, onSwitchTab }: SymptomCheckerProp
                   <span style={{ fontWeight: 700, color: T.text }}>{result.confidence}%</span>
                 </div>
                 <div style={{ height: '8px', background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', borderRadius: '999px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', transition: 'width 1s ease' }} />
+                  <div style={{ height: '100%', width: `${result.confidence}%`, borderRadius: '999px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', }} />
                 </div>
               </div>
 
