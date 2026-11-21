@@ -32,14 +32,14 @@
 .fx-check { position: absolute; width: 58px; height: 58px; opacity: 0; }
 .fx-check path { fill: none; stroke: var(--fx-c); stroke-width: 4.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
 .ad-fx[data-phase="success"] .fx-check { opacity: 1; }
-.ad-fx[data-phase="success"] .fx-check path { animation: fx-draw 0.38s 0.22s cubic-bezier(0.3, 0.7, 0.3, 1) forwards; }
+.ad-fx[data-phase="success"] .fx-check path { animation: fx-draw 0.32s 0.16s cubic-bezier(0.3, 0.7, 0.3, 1) forwards; }
 @keyframes fx-draw { to { stroke-dashoffset: 0; } }
 .fx-ripple { position: absolute; inset: 8px; border-radius: 50%; border: 2px solid var(--fx-c); opacity: 0; }
-.ad-fx[data-phase="success"] .fx-ripple { animation: fx-ripple 0.75s 0.2s ease-out forwards; }
+.ad-fx[data-phase="success"] .fx-ripple { animation: fx-ripple 0.5s 0.16s ease-out forwards; }
 @keyframes fx-ripple { from { opacity: 0.65; transform: scale(0.8); } to { opacity: 0; transform: scale(1.7); } }
 .fx-sparks { position: absolute; inset: 0; pointer-events: none; }
 .fx-sparks i { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--fx-c); opacity: 0; }
-.ad-fx[data-phase="success"] .fx-sparks i { animation: fx-spark 0.6s 0.24s ease-out forwards; }
+.ad-fx[data-phase="success"] .fx-sparks i { animation: fx-spark 0.46s 0.18s ease-out forwards; }
 @keyframes fx-spark { from { opacity: 1; transform: rotate(var(--a)) translateX(46px) scale(1); } to { opacity: 0; transform: rotate(var(--a)) translateX(80px) scale(0.3); } }
 .fx-ecg { width: 150px; height: 26px; margin: 0 0 0.9rem; overflow: visible; transition: opacity 0.25s ease; }
 .fx-ecg path { fill: none; stroke: var(--accent-cyan); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: fx-ecg 1.6s ease-in-out infinite; }

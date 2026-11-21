@@ -90,3 +90,21 @@ test('the intro iris opens onto the page and leaves nothing covering it', async 
   await expect(page.locator('.hero-text').first()).toBeInViewport();
   await expect.poll(() => page.locator('.hero-text').first().evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m42)).toBeCloseTo(0, 0);
 });
+
+test('moving between sign-in and sign-up slides the step in and leaves it clean, at one panel height', async ({ page }) => {
+  trackErrors(page);
+  await page.addInitScript(() => sessionStorage.setItem('cs_booted', '1'));
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Sign in' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await page.waitForTimeout(450);
+  const height = () => page.locator('.ad-main').evaluate((el) => (el as HTMLElement).offsetHeight);
+  const first = await height();
+  await page.getByRole('button', { name: 'Create an account' }).click();
+  await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();
+  await expect.poll(() => page.locator('.ad-step > *').first().evaluate((el) => (el as HTMLElement).style.transform)).toBe('');
+  await expect.poll(() => page.locator('.ad-main').evaluate((el) => (el as HTMLElement).style.opacity)).toBe('');
+  expect(await height()).toBe(first);
+  expect(errorsOf(page).filter(noise)).toEqual([]);
+});

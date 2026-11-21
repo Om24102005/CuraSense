@@ -4,8 +4,7 @@
 import { useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ArrowRight, ActivitySquare, AlertCircle, Check, Copy, Lock, Mail, ShieldCheck, User, X } from 'lucide-react';
-import gsap from 'gsap';
-import { useReducedMotion } from '../../animations';
+import { gsap, useReducedMotion } from '../../animations';
 import { useTheme } from '../../App';
 import { AuthStepFx, type FxPhase } from './AuthStepFx';
 import { CodeBoxes } from './CodeBoxes';
@@ -17,6 +16,8 @@ export type AuthIntent = 'symptoms' | 'image' | 'report';
 export const INTENT_KEY = 'curasense_intent';
 
 const INTENT_COPY: Record<AuthIntent, string> = { symptoms: 'Check symptoms', image: 'Read a scan', report: 'Explain a lab report' };
+// Steps sit on a line, so moving between them slides in the direction of travel.
+const ORDER: Record<AuthMode, number> = { forgot: 0, login: 1, register: 2 };
 const TITLES: Record<AuthMode, string> = { login: 'Sign in to CuraSense', register: 'Create your CuraSense account', forgot: 'Reset your CuraSense password' };
 
 interface AuthDialogProps {
@@ -141,7 +142,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
   // A request shows the loading screen for at least MIN_LOAD ms (a fast server must not make it flash), a success then holds
   // for HOLD ms, and only then does the next step appear. The last step (the authenticator code) uses neither: the big
   // arrival animation is the only thing that plays there.
-  const MIN_LOAD = reduced ? 0 : 650, HOLD = reduced ? 120 : 950;
+  const MIN_LOAD = reduced ? 0 : 480, HOLD = reduced ? 120 : 720;
   const nap = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
   const withLoading = async <T,>(title: string, sub: string, work: () => Promise<T>): Promise<T> => {
     setFx({ phase: 'loading', title, sub });
@@ -162,27 +163,28 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
   };
   /** Rise-in for the pieces of the step on screen. CSS transitions are switched off on them for the length of the tween: the global
       button/input rule transitions every property, which would low-pass the tween and make buttons arrive late. */
-  const riseIn = () => {
+  const riseIn = (dir = 0) => {
     const els = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('.ad-step > *') ?? []);
     if (!els.length) return;
     els.forEach((el) => { el.style.transition = 'none'; });
-    gsap.fromTo(els, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, stagger: { amount: 0.3 }, ease: 'expo.out', clearProps: 'opacity,transform,transition' });   // 0.3 s in total, however many pieces the step has
+    gsap.fromTo(els, { opacity: 0, x: dir * 18, y: dir ? 0 : 8 }, { opacity: 1, x: 0, y: 0, duration: 0.32, stagger: { amount: 0.12 }, ease: 'expo.out', clearProps: 'opacity,transform,transition' });   // the same short stagger however many pieces the step has
   };
   const fail = (message: string) => { setFx(null); setIsAuthenticating(false); setError(message); };
 
-  /** Sign-in, sign-up and reset swap places: the old step fades down, then the new one's pieces rise in. Opacity and transform
+  /** Sign-in, sign-up and reset swap places: the old step slides out one way and the new one's pieces follow from the other. Opacity and transform
       only: a blur or a shadow animated on the whole panel is repainted every frame. */
   const switchAuthMode = (next: AuthMode) => {
     setError('');
     setSuccessMsg('');
     const panel = panelRef.current;
     if (!panel || reduced) { setAuthMode(next); return; }
+    const dir = Math.sign(ORDER[next] - ORDER[authMode]) || 1;
     gsap.to(panel, {
-      opacity: 0, y: 6, duration: 0.14, ease: 'power2.in',
+      opacity: 0, x: -dir * 14, duration: 0.12, ease: 'power2.in', overwrite: true,
       onComplete: () => {
         setAuthMode(next);
         // the new step is committed and painted (still hidden) two frames later: show the panel and let its pieces rise in together
-        requestAnimationFrame(() => requestAnimationFrame(() => { gsap.set(panel, { clearProps: 'opacity,transform' }); riseIn(); }));
+        requestAnimationFrame(() => requestAnimationFrame(() => { gsap.set(panel, { clearProps: 'opacity,transform' }); riseIn(dir); }));
       },
     });
   };
@@ -298,7 +300,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
     secTitle: '#0a0a1a', secText: 'rgba(0,0,0,0.72)',
   };
 
-  const inpStyle = { width: '100%', padding: '1rem 1rem 1rem 3rem', background: T.inpBg, border: `1px solid ${T.inpBdr}`, borderRadius: '16px', color: T.text, fontSize: '0.9rem', outline: 'none', transition: 'all 0.3s' };
+  const inpStyle = { width: '100%', padding: '1rem 1rem 1rem 3rem', background: T.inpBg, border: `1px solid ${T.inpBdr}`, borderRadius: '16px', color: T.text, fontSize: '0.9rem', outline: 'none', transition: 'border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease' };
   // z-index: the global input rule gives inputs a backdrop-filter, which paints them over an unstyled absolutely-positioned icon.
   const iconStyle = { position: 'absolute' as any, left: '16px', top: '50%', transform: 'translateY(-50%)', color: T.initClr, zIndex: 2, pointerEvents: 'none' as const };
 
@@ -322,7 +324,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
           <aside className="ad-aside">
             <span className="ad-mark" aria-hidden><ActivitySquare size={22} /></span>
             <p className="ad-kicker">CuraSense</p>
-            <p className="ad-lede">{authMode === 'register' ? 'One account for every analysis.' : authMode === 'forgot' ? 'Back in a minute.' : 'Welcome back.'}</p>
+            <p className="ad-lede" key={authMode}>{authMode === 'register' ? 'One account for every analysis.' : authMode === 'forgot' ? 'Back in a minute.' : 'Welcome back.'}</p>
             <ul className="ad-points">
               <li><ShieldCheck size={16} aria-hidden />Authenticator-app two-factor sign-in, set up at sign-up</li>
               <li><ShieldCheck size={16} aria-hidden />AI keys stay on the server, never in your browser</li>
@@ -393,7 +395,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
                 type="button"
                 onClick={() => submitTotpCode()}
                 disabled={isAuthenticating || totpCode.length !== 6}
-                className="mag w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-3"
+                className="mag w-full py-4 rounded-full text-white font-semibold mb-3"
                 style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: (isAuthenticating || totpCode.length !== 6) ? 0.5 : 1, cursor: (isAuthenticating || totpCode.length !== 6) ? 'not-allowed' : 'pointer' }}
               >
                 {isAuthenticating ? 'Verifying…' : (totpFlow === 'setup' ? 'Verify & finish sign-up' : 'Verify & sign in')}
@@ -428,7 +430,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
               <button
                 type="submit"
                 disabled={isAuthenticating}
-                className="auth-stagger mag w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
+                className="auth-stagger mag w-full py-4 rounded-full text-white font-semibold mb-4"
                 style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.7 : 1, cursor: isAuthenticating ? 'wait' : 'pointer' }}
               >
                 {isAuthenticating ? 'Signing in…' : <>Sign in <ArrowRight className="inline w-5 h-5 ml-2" /></>}
@@ -451,7 +453,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
               <button
                 type="submit"
                 disabled={isAuthenticating}
-                className="auth-stagger mag w-full py-4 rounded-full text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] mb-4"
+                className="auth-stagger mag w-full py-4 rounded-full text-white font-semibold mb-4"
                 style={{ fontFamily: I, fontSize: '0.95rem', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.7 : 1, cursor: isAuthenticating ? 'wait' : 'pointer' }}
               >
                 {isAuthenticating ? 'Creating account…' : <>Continue <ArrowRight className="inline w-5 h-5 ml-2" /></>}
@@ -488,7 +490,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
                       />
                     </div>
                   </div>
-                  <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-full text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.6 : 1 }}>
+                  <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-full text-white font-bold mb-4" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.6 : 1 }}>
                     {isAuthenticating ? 'Sending…' : <>Send Code <ArrowRight className="inline w-5 h-5 ml-2" /></>}
                   </button>
                 </>
@@ -537,7 +539,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
                     />
                   </div>
 
-                  <button type="submit" disabled={isAuthenticating || typedCode.length !== 6} className="mag w-full py-5 rounded-full text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: (isAuthenticating || typedCode.length !== 6) ? 0.5 : 1 }}>
+                  <button type="submit" disabled={isAuthenticating || typedCode.length !== 6} className="mag w-full py-5 rounded-full text-white font-bold mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: (isAuthenticating || typedCode.length !== 6) ? 0.5 : 1 }}>
                     {isAuthenticating ? 'Verifying…' : <>Verify Code <ArrowRight className="inline w-5 h-5 ml-2" /></>}
                   </button>
                   {/* No skip on this screen — user must verify the code first */}
@@ -573,7 +575,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
                     </div>
                   </div>
 
-                  <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-full text-white font-bold transition-all hover:scale-[1.03] active:scale-[0.97] mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.6 : 1 }}>
+                  <button type="submit" disabled={isAuthenticating} className="mag w-full py-5 rounded-full text-white font-bold mb-3" style={{ fontFamily: S, fontSize: '0.85rem', letterSpacing: '0.2em', textTransform: 'uppercase', background: T.btnBg, boxShadow: T.btnShadow, opacity: isAuthenticating ? 0.6 : 1 }}>
                     {isAuthenticating ? 'Updating…' : <>Reset Password <ArrowRight className="inline w-5 h-5 ml-2" /></>}
                   </button>
 
@@ -582,7 +584,7 @@ export function AuthDialog({ open, mode: initialMode, intent, container, onClose
                   <button
                     type="button"
                     onClick={() => { cancelReset(); switchAuthMode('login'); }}
-                    className="w-full py-3 rounded-2xl font-bold transition-all"
+                    className="w-full py-3 rounded-2xl font-bold"
                     style={{
                       fontFamily: S,
                       fontSize: '0.75rem',
