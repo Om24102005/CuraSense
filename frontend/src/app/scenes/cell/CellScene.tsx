@@ -82,7 +82,7 @@ function World({ u, q, light, frozen, slow, ready, labels, fx, veil, onDpr }: {
   const neon = useRef<THREE.Group>(null);
   const { invalidate } = useThree();
   const dprNow = useThree((st) => st.viewport.dpr);
-  const S = useRef({ s: 0, dir: 1, vel: 0, time: frozen ? 3 : 0, fall: 0, px: 0, py: 0, tx: 0, ty: 0, ripple: 99, ready: false, introAt: -1, on: false, igniteAt: 0, first: true });
+  const S = useRef({ s: 0, dir: 1, vel: 0, time: frozen ? 3 : 0, fall: 0, px: 0, py: 0, tx: 0, ty: 0, ripple: 99, ready: false, introAt: -1, on: false, igniteAt: 0, first: true, stage: 0, beat: 9, rang: false });
   const gov = useRef({ dts: [] as number[], cap: 0, changedAt: 0, wait: 10000, grew: false });
   const tmp = useMemo(() => ({ v: new THREE.Vector3(), fwd: new THREE.Vector3(), hit: new THREE.Vector3(), q: new THREE.Quaternion(), pk: new THREE.Vector3(), dir: new THREE.Vector3(0, 0, 1) }), []);
   const anchors = useMemo(() => CALLOUTS.map((c) => c.at()), []);
@@ -153,6 +153,7 @@ function World({ u, q, light, frozen, slow, ready, labels, fx, veil, onDpr }: {
     } else gv.dts.length = 0;
     const ip = frozen ? 1 : ready ? Math.min(1, (now - st.introAt) / 3400) : 0;
     const ie = 1 - Math.pow(1 - ip, 3);
+    const form = 1 - ie;   // 1 while the cell is still forming, 0 once it has settled
     const aspect = state.size.width / state.size.height;
 
     // scroll → smoothed stage index, velocity, direction
@@ -166,6 +167,15 @@ function World({ u, q, light, frozen, slow, ready, labels, fx, veil, onDpr }: {
       if (Math.abs(d) > 0.004) st.dir += (Math.sign(d) - st.dir) * Math.min(1, dt * 6);
     }
     const k = sampleKey(st.s);
+    // A new chapter: the cell answers with one soft ripple and a pulse of its nucleus. Not during the intro, which has its own.
+    const stage = Math.round(st.s);
+    const beat = stage !== st.stage && !frozen && ip >= 1;
+    st.stage = stage;
+    if (beat) st.beat = 0;
+    if (st.beat < 9) st.beat += dt;
+    // The intro's own ripple, as the headline lands: the membrane closes and rings once.
+    const ring = !st.rang && ip > 0.26 && ip < 1;
+    if (ip > 0.26) st.rang = true;
     const af = THREE.MathUtils.clamp((aspect - 0.9) / 0.7, 0, 1);
     const fit = THREE.MathUtils.clamp((aspect + 0.35) / 1.35, 0.6, 1);
 
@@ -175,14 +185,26 @@ function World({ u, q, light, frozen, slow, ready, labels, fx, veil, onDpr }: {
     const dolly = (1 - ie) * 6 * (1 - Math.min(1, st.s));
     cam.position.set(k.cx + st.px * 0.35, k.cy + st.py * 0.22, k.cz + dolly);
     cam.lookAt(k.lx, k.ly, k.lz);
-    if (Math.abs(cam.fov - k.fov) > 0.01) { cam.fov = k.fov; cam.updateProjectionMatrix(); }
+    cam.rotateZ(THREE.MathUtils.clamp(st.vel * -0.012, -0.03, 0.03));   // banks into the scroll, 1.7 degrees at most
+    const fov = k.fov + Math.min(2.5, Math.abs(st.vel) * 1.1);          // and widens a little with speed
+    if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
 
     // cell transform
     const portraitLift = (1 - af) * 1.2 * (1 - THREE.MathUtils.smoothstep(st.s, 1, 2));
-    g.position.set(k.px * af, k.py + portraitLift, k.pz);
-    g.scale.setScalar(k.sc * fit);
-    g.rotation.set(st.py * 0.1, k.ry + st.time * 0.045 + st.px * 0.2, 0);
+    // Alive at rest: it breathes and drifts a little. Forming: smaller, and it turns into place.
+    const rest = frozen ? 0 : 1;
+    g.position.set(k.px * af, k.py + portraitLift + rest * 0.05 * Math.sin(st.time * 0.62), k.pz);
+    g.scale.setScalar(k.sc * fit * (1 - 0.14 * form) * (1 + rest * 0.012 * Math.sin(st.time * 0.9)));
+    g.rotation.set(st.py * 0.1, k.ry + st.time * 0.045 + st.px * 0.2 - form * 1.2, 0);
     g.updateMatrixWorld(true); cam.updateMatrixWorld(true);
+
+    if (beat || ring) {
+      // from the side that faces the camera. A chapter's ripple starts part-way through its decay, so it is the softer of the two.
+      tmp.q.copy(g.quaternion).invert();
+      tmp.v.copy(cam.position).sub(g.position).applyQuaternion(tmp.q).normalize();
+      st.ripple = ring ? 0 : 0.55;
+      u.uRipple.value.set(tmp.v.x, tmp.v.y, tmp.v.z, st.ripple);
+    }
 
     // pointer → direction on the cell, for the membrane to reach toward the cursor
     tmp.v.set(st.px, st.py, 0.5).unproject(cam).sub(cam.position).normalize();
@@ -214,8 +236,10 @@ function World({ u, q, light, frozen, slow, ready, labels, fx, veil, onDpr }: {
     u.uEnv.value.set(st.px * 0.7, st.py * 0.25);
     u.uRes.value.set(state.size.width * cur, state.size.height * cur);
     u.uTime.value = st.time;
-    u.uAmp.value = k.amp; u.uHealth.value = THREE.MathUtils.clamp(k.hp, 0, 1); u.uOpacity.value = THREE.MathUtils.clamp(k.op, 0, 1);
-    u.uNuc.value = k.nu + k.st * k.st * (0.25 + 0.25 * Math.sin(st.time * 3));
+    u.uAmp.value = k.amp * (1 + form * 1.4); u.uHealth.value = THREE.MathUtils.clamp(k.hp, 0, 1); u.uOpacity.value = THREE.MathUtils.clamp(k.op, 0, 1);
+    // the nucleus lights half-way through the intro, and pulses once on every chapter
+    const spark = frozen ? 0 : 0.55 * Math.exp(-Math.pow((ip - 0.5) / 0.13, 2)) * (ip < 1 ? 1 : 0) + 0.3 * Math.exp(-st.beat * 3.2);
+    u.uNuc.value = k.nu + k.st * k.st * (0.25 + 0.25 * Math.sin(st.time * 3)) + spark;
     u.uScanOn.value = THREE.MathUtils.clamp(k.sn, 0, 1); u.uScanY.value = Math.sin(st.time * 0.55) * 2.0;
     u.uStreams.value = THREE.MathUtils.clamp(k.st, 0, 1); u.uStrand.value = THREE.MathUtils.clamp(k.sr, 0, 1);
     u.uConst.value = THREE.MathUtils.clamp(k.co, 0, 1.05);
@@ -223,7 +247,7 @@ function World({ u, q, light, frozen, slow, ready, labels, fx, veil, onDpr }: {
     u.uStretch.value = THREE.MathUtils.clamp(st.vel * 0.05, -0.12, 0.12);
     if (!frozen) st.fall += (st.vel * 3.4 + 0.15) * dt;
     u.uFall.value = st.fall;
-    u.uExposure.value = Math.max(0.05, k.ex) * ie; u.uOrg.value = THREE.MathUtils.clamp(k.og, 0, 1);
+    u.uExposure.value = Math.max(0.05, k.ex) * ie; u.uOrg.value = THREE.MathUtils.clamp(k.og, 0, 1) * THREE.MathUtils.smoothstep(ip, 0.12, 0.62);   // the organelles arrive after the membrane
     if (veil.current) veil.current.style.opacity = String(THREE.MathUtils.clamp(k.vl, 0, 1));
     u.uFocus.value = k.fo; u.uBokeh.value = Math.max(0, k.bk);
 
@@ -250,6 +274,10 @@ function World({ u, q, light, frozen, slow, ready, labels, fx, veil, onDpr }: {
       const vis = tmp.v.z < 1 && tmp.v.z > -1 && Math.abs(tmp.v.x) < 1.15 && Math.abs(tmp.v.y) < 1.15 ? 1 : 0;
       el.style.opacity = String(bump * vis * (1 - Math.min(1, Math.abs(st.vel) * 0.35)));
       el.style.transform = `translate3d(${(tmp.v.x * 0.5 + 0.5) * w}px, ${(-tmp.v.y * 0.5 + 0.5) * h}px, 0)`;
+      // the leader line draws out from the dot and the label follows it
+      const e = bump * bump * (3 - 2 * bump), sign = c.side === 'l' ? 1 : -1;
+      (el.children[1] as HTMLElement).style.transform = `scaleX(${e.toFixed(3)})`;
+      (el.children[2] as HTMLElement).style.transform = `translate3d(${((1 - e) * 12 * sign).toFixed(1)}px, 0, 0)`;
     }
   });
 
@@ -290,7 +318,7 @@ function Callouts({ labels }: { labels: React.MutableRefObject<(HTMLDivElement |
       {CALLOUTS.map((c, i) => (
         <div key={i} ref={(el) => { labels.current[i] = el; }} className="cs-callout" style={{ position: 'absolute', left: 0, top: 0, opacity: 0, willChange: 'transform, opacity' }}>
           <i className="cs-callout-dot" style={{ background: c.color, boxShadow: `0 0 0 4px ${c.color}33, 0 0 18px ${c.color}` }} />
-          <span className="cs-callout-line" style={{ background: `linear-gradient(${c.side === 'l' ? 270 : 90}deg, ${c.color}, transparent)`, [c.side === 'l' ? 'right' : 'left']: 6 }} />
+          <span className="cs-callout-line" style={{ background: `linear-gradient(${c.side === 'l' ? 270 : 90}deg, ${c.color}, transparent)`, [c.side === 'l' ? 'right' : 'left']: 6, transformOrigin: c.side === 'l' ? 'right' : 'left' }} />
           <div className="cs-callout-label" style={{ [c.side === 'l' ? 'right' : 'left']: 46, borderColor: `${c.color}66` }}>
             <b style={{ color: c.color }}>{c.title}</b>
             <small>{c.sub}</small>

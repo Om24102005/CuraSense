@@ -136,3 +136,30 @@ test('switching tabs keeps the one WebGL canvas instead of making a new context'
   expect(await page.locator('[data-page-scene] canvas').evaluate((el) => el === (window as any).__sceneCanvas)).toBe(true);
   expect(errorsOf(page).filter(noise)).toEqual([]);
 });
+
+/* The landing story: a scene may hold its blocks back until they are on screen, but never after, and never under reduced motion. */
+const STORY = '.narrative-reel .reel-rise, .narrative-reel .reel-eyebrow, .narrative-reel .reel-lede, .approach-node, .nlp-tag, .lab-row, .img-box';
+const heldBack = (page: Page) => page.evaluate((sel) => [...document.querySelectorAll(sel)].filter((el) => +getComputedStyle(el).opacity < 0.99).length, STORY);
+const counters = (page: Page) => page.evaluate(() => [...document.querySelectorAll('.problem-counter')].map((el) => el.textContent!.trim()).join(','));
+
+test('the story holds blocks back only until they are seen, and its figures end on the real numbers', async ({ page }) => {
+  trackErrors(page);
+  await page.addInitScript(() => sessionStorage.setItem('cs_booted', '1'));
+  await page.goto('/');
+  await expect(page.locator('#reel-problem')).toBeAttached({ timeout: 30_000 });
+  expect(await heldBack(page)).toBeGreaterThan(0);   // below the fold: the entrance is armed
+  await page.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += innerHeight * 0.6) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 100)); } });
+  await expect.poll(() => heldBack(page), { timeout: 8_000 }).toBe(0);
+  await expect.poll(() => counters(page)).toBe('12,1,7,33');
+  expect(errorsOf(page).filter(noise)).toEqual([]);
+});
+
+test('reduced motion: the whole story is readable without scrolling to it', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => sessionStorage.setItem('cs_booted', '1'));
+  await page.goto('/');
+  await expect(page.locator('#reel-problem')).toBeAttached({ timeout: 30_000 });
+  expect(await heldBack(page)).toBe(0);
+  expect(await counters(page)).toBe('12,1,7,33');
+  expect(await page.locator('.narrative-reel .reel-line').first().evaluate((el) => getComputedStyle(el).transform)).toBe('none');
+});

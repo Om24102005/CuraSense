@@ -15,18 +15,16 @@
      • Backgrounds live in a single fixed manager. Active scene is
        picked by IntersectionObserver, others fade out. This avoids
        per-section absolute layers stacking and gives smooth swaps.
-     • Content uses GSAP ScrollTrigger with scrub for tight coupling
-       between scroll position and animation progress.
+     • Each scene has one entrance: its head plays as a single timeline
+       (eyebrow, masked headline, lede) and every block below comes in
+       when it is itself on screen. See useEntrance.
      • CSS scroll-snap-type: y proximity gives the "page locks" feel
        without fighting Lenis hard.
    ═══════════════════════════════════════════════════════════════════ */
 
-import { useEffect, useRef, useState, ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Brain, Microscope, FlaskConical, ArrowRight, Sparkles, ChevronDown } from 'lucide-react';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type SceneKey = 'problem' | 'approach' | 'symptoms' | 'imaging' | 'labs' | 'finale';
 
@@ -42,6 +40,71 @@ const I = "var(--font-body)";
 const DEEP: Record<string, string> = { '#22d3ee': '#0e7490', '#a855f7': '#7e22ce', '#ec4899': '#be185d', '#ef4444': '#b91c1c' };
 const ink = (c: string, isDark: boolean) => (isDark ? c : DEEP[c] ?? c);
 const bodyInk = (isDark: boolean) => (isDark ? 'rgba(255,255,255,0.84)' : 'rgba(10,10,26,0.82)');
+
+/* ─────────────────────────────────────────────────────────────────────
+   ENTRANCES
+   ───────────────────────────────────────────────────────────────────── */
+
+const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Runs once per element, the first time any of it is inside the viewport (less `inset` at the bottom). An observer reads the
+    real layout, so a late reflow can never leave a block waiting on a stale scroll position. */
+function onSeen(els: Element[], inset: string, run: (els: Element[]) => void) {
+  const io = new IntersectionObserver((entries) => {
+    const hit = entries.filter((e) => e.isIntersecting).map((e) => e.target);
+    hit.forEach((el) => io.unobserve(el));
+    if (hit.length) run(hit);
+  }, { rootMargin: `0px 0px -${inset} 0px` });
+  els.forEach((el) => io.observe(el));
+  return () => io.disconnect();
+}
+
+/** Builds a paused timeline inside `ref` and plays it the first time that element is on screen.
+    Reduced motion builds nothing, so nothing is ever held hidden. */
+function usePlayOnSeen(ref: RefObject<HTMLElement | null>, build: (tl: gsap.core.Timeline) => void, inset = '28%') {
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root || still()) return;
+    let off = () => {};
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ paused: true, defaults: { ease: 'expo.out' } });
+      build(tl);
+      off = onSeen([root], inset, () => tl.play());
+    }, root);
+    return () => { off(); ctx.revert(); };
+  }, []);   // built once: `build` only names elements of this scene
+}
+
+function countUp(el: HTMLElement) {
+  const to = parseFloat(el.dataset.to || '0'), o = { v: 0 };
+  gsap.to(o, { v: to, duration: 1.6, ease: 'expo.out', onUpdate: () => { el.textContent = to % 1 ? o.v.toFixed(1) : String(Math.round(o.v)); } });
+}
+
+/** A scene's entrance. The head is one timeline: eyebrow, then the headline line by line from behind its masks, then the lede.
+    Every `.reel-rise` block below comes in when it is itself on screen, so a tall scene on a phone never plays out of sight. */
+function useEntrance(ref: RefObject<HTMLElement | null>) {
+  usePlayOnSeen(ref, (tl) => tl
+    .from('.reel-eyebrow', { y: 14, opacity: 0, duration: 0.5 })
+    .from('.reel-line', { yPercent: 112, duration: 0.9, stagger: 0.1 }, 0.08)
+    .from('.reel-lede', { y: 22, opacity: 0, duration: 0.7 }, 0.34));
+
+  useLayoutEffect(() => {
+    const root = ref.current;
+    if (!root || still()) return;
+    const rise = Array.from(root.querySelectorAll<HTMLElement>('.reel-rise'));
+    gsap.set(rise, { y: 28, opacity: 0 });
+    const off = onSeen(rise, '8%', (els) => {
+      gsap.to(els, { y: 0, opacity: 1, duration: 0.7, ease: 'expo.out', stagger: 0.07, overwrite: true, clearProps: 'transform,opacity' });
+      els.forEach((el) => el.querySelectorAll<HTMLElement>('[data-to]').forEach(countUp));
+    });
+    return () => { off(); gsap.killTweensOf(rise); gsap.set(rise, { clearProps: 'transform,opacity' }); };
+  }, [ref]);
+}
+
+/** One line of a headline, behind its own mask (index.css). */
+function Line({ children }: { children: ReactNode }) {
+  return <span className="reel-mask"><span className="reel-line">{children}</span></span>;
+}
 
 /* ─────────────────────────────────────────────────────────────────────
    BACKDROP COMPONENTS — one per scene, CSS/SVG only.
@@ -427,54 +490,13 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
   const textClr = bodyInk(isDark);
   const eyeClr = ink('#ef4444', isDark);
 
-  useEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.from('.problem-eyebrow', {
-        scrollTrigger: { trigger: ref.current, start: 'top 70%', once: true },
-        y: 24, opacity: 0, duration: 0.8, ease: 'expo.out',
-      });
-      gsap.from('.problem-headline > *', {
-        scrollTrigger: { trigger: ref.current, start: 'top 65%', once: true },
-        y: 60, opacity: 0, duration: 1.1, stagger: 0.08, ease: 'expo.out',
-      });
-      gsap.from('.problem-stat', {
-        scrollTrigger: { trigger: ref.current, start: 'top 55%', once: true },
-        y: 80, opacity: 0, scale: 0.92, duration: 1, stagger: 0.15, ease: 'power3.out',
-      });
-      gsap.from('.problem-fact', {
-        scrollTrigger: { trigger: ref.current, start: 'top 50%', once: true },
-        y: 30, opacity: 0, duration: 0.7, stagger: 0.07, ease: 'power3.out',
-      });
-      gsap.from('.problem-quote', {
-        scrollTrigger: { trigger: ref.current, start: 'top 45%', once: true },
-        y: 30, opacity: 0, duration: 0.9, ease: 'power3.out',
-      });
-
-      // Animated counters
-      document.querySelectorAll<HTMLElement>('.problem-counter').forEach((el) => {
-        const to = parseFloat(el.dataset.to || '0');
-        const obj = { v: 0 };
-        gsap.to(obj, {
-          v: to,
-          duration: 2,
-          ease: 'expo.out',
-          scrollTrigger: { trigger: el, start: 'top 75%', once: true },
-          onUpdate: () => {
-            const isFloat = to % 1 !== 0;
-            el.textContent = isFloat ? obj.v.toFixed(1) : Math.round(obj.v).toString();
-          },
-        });
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  useEntrance(ref);
 
   return (
     <div ref={ref} className="text-center">
       <div
         data-lg="plate"
-        className="problem-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
+        className="reel-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
         style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: eyeClr }}
       >
         <span className="w-1.5 h-1.5 rounded-full" style={{ background: eyeClr, animation: 'errorPulse 2s ease-in-out infinite' }} />
@@ -483,14 +505,14 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
 
       <div className="problem-headline mb-4">
         <h2 style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 6vw, 5rem)', fontWeight: 900, color: titleClr, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
-          Diagnosis is slow.
+          <Line>Diagnosis is slow.</Line>
         </h2>
         <h2 style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 6vw, 5rem)', fontWeight: 900, color: titleClr, lineHeight: 1.05, letterSpacing: '-0.02em', opacity: 0.6 }}>
-          Errors are routine.
+          <Line>Errors are routine.</Line>
         </h2>
       </div>
 
-      <p data-lg="plate" className="mt-8 mb-16 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
+      <p data-lg="plate" className="reel-lede mt-8 mb-16 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
         Clinicians work with incomplete signal. Reports sit in queues, scans get under-read,
         labs go uncorrelated. Patients wait — and the picture stays partial.
       </p>
@@ -501,16 +523,16 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
           { num: '1', sep: 'in', secondary: '7', label: 'diagnoses contain errors' },
           { num: '33', unit: '%', label: 'relevant data missed' },
         ].map((s, i) => (
-          <div key={i} data-lg="plate" className="problem-stat p-8 rounded-2xl">
+          <div key={i} data-lg="plate" className="reel-rise p-8 rounded-2xl">
             <div className="flex items-baseline gap-3 justify-center" style={{ fontFamily: S, fontWeight: 900, color: titleClr, lineHeight: 1 }}>
               <span className="problem-counter" data-to={s.num} style={{ fontSize: 'clamp(3rem, 7vw, 5rem)', background: `linear-gradient(135deg, ${eyeClr}, #f59e0b)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                0
+                {s.num}
               </span>
               {s.unit && <span style={{ fontSize: '1.6rem', color: textClr }}>{s.unit}</span>}
               {s.sep && (
                 <>
                   <span style={{ fontSize: '1.2rem', color: textClr, fontFamily: I, fontWeight: 500, alignSelf: 'center' }}>{s.sep}</span>
-                  <span className="problem-counter" data-to={s.secondary} style={{ fontSize: 'clamp(3rem, 7vw, 5rem)', background: `linear-gradient(135deg, ${eyeClr}, #f59e0b)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>0</span>
+                  <span className="problem-counter" data-to={s.secondary} style={{ fontSize: 'clamp(3rem, 7vw, 5rem)', background: `linear-gradient(135deg, ${eyeClr}, #f59e0b)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{s.secondary}</span>
                 </>
               )}
             </div>
@@ -529,7 +551,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
           { v: '×4',     k: 'mortality on delayed sepsis recognition' },
           { v: 'Top-5',  k: 'WHO-listed source of patient harm' },
         ].map((f, i) => (
-          <div key={i} data-lg="plate" className="problem-fact text-left p-4 rounded-xl">
+          <div key={i} data-lg="plate" className="reel-rise text-left p-4 rounded-xl">
             <div style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: '#fb923c', lineHeight: 1, marginBottom: '0.55rem' }}>{f.v}</div>
             <div style={{ fontFamily: I, fontSize: '0.78rem', color: textClr, lineHeight: 1.5 }}>{f.k}</div>
           </div>
@@ -537,7 +559,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
       </div>
 
       {/* ── Pull quote ───────────────────────────────────────────── */}
-      <blockquote data-lg="plate" className="problem-quote mx-auto mt-14 max-w-3xl text-left p-6 pl-8 rounded-2xl">
+      <blockquote data-lg="plate" className="reel-rise mx-auto mt-14 max-w-3xl text-left p-6 pl-8 rounded-2xl">
         <span aria-hidden className="absolute left-3 top-5 bottom-5 w-[3px] rounded-full" style={{ background: eyeClr }} />
         <p style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.3vw, 1.15rem)', color: titleClr, lineHeight: 1.7, fontStyle: 'italic', marginBottom: '0.75rem' }}>
           "Misdiagnosis remains the single largest source of preventable harm in modern medicine — yet
@@ -549,7 +571,7 @@ function SceneProblem({ isDark }: { isDark: boolean }) {
         </footer>
       </blockquote>
 
-      <div data-lg="plate" className="mt-16 mx-auto w-fit flex flex-col items-center gap-2 px-6 py-3 rounded-full" style={{ color: textClr }}>
+      <div data-lg="plate" className="reel-rise mt-16 mx-auto w-fit flex flex-col items-center gap-2 px-6 py-3 rounded-full" style={{ color: textClr }}>
         <span style={{ fontFamily: S, fontSize: '0.65rem', letterSpacing: '0.4em', textTransform: 'uppercase' }}>Scroll · the approach</span>
         <ChevronDown className="w-5 h-5 animate-bounce" />
       </div>
@@ -566,40 +588,12 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
   const titleClr = isDark ? '#ffffff' : '#0a0a1a';
   const textClr = bodyInk(isDark);
 
-  useEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.from('.approach-eyebrow', {
-        scrollTrigger: { trigger: ref.current, start: 'top 70%', once: true },
-        y: 24, opacity: 0, duration: 0.8, ease: 'expo.out',
-      });
-      gsap.from('.approach-headline', {
-        scrollTrigger: { trigger: ref.current, start: 'top 65%', once: true },
-        y: 60, opacity: 0, duration: 1.1, ease: 'expo.out',
-      });
-      gsap.from('.approach-sub', {
-        scrollTrigger: { trigger: ref.current, start: 'top 60%', once: true },
-        y: 30, opacity: 0, duration: 1, delay: 0.2, ease: 'power3.out',
-      });
-      gsap.from('.approach-node', {
-        scrollTrigger: { trigger: ref.current, start: 'top 55%', once: true },
-        y: 40, opacity: 0, scale: 0.9, duration: 1, stagger: 0.18, ease: 'back.out(1.4)',
-      });
-      gsap.from('.approach-line', {
-        scrollTrigger: { trigger: ref.current, start: 'top 55%', once: true },
-        scaleX: 0, duration: 1.2, stagger: 0.18, ease: 'power3.inOut',
-      });
-      gsap.from('.approach-panel', {
-        scrollTrigger: { trigger: ref.current, start: 'top 45%', once: true },
-        y: 50, opacity: 0, duration: 1, ease: 'power3.out',
-      });
-      gsap.from('.approach-bullet', {
-        scrollTrigger: { trigger: ref.current, start: 'top 40%', once: true },
-        y: 18, opacity: 0, duration: 0.7, stagger: 0.08, ease: 'power3.out',
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  const lensRow = useRef<HTMLDivElement>(null);
+  useEntrance(ref);
+  // the three lenses arrive in reading order, then the lines between them draw across
+  usePlayOnSeen(lensRow, (tl) => tl
+    .from('.approach-node', { y: 32, opacity: 0, scale: 0.94, duration: 0.8, stagger: 0.14 })
+    .from('.approach-line', { scaleX: 0, duration: 0.7, stagger: 0.14, ease: 'power3.inOut' }, 0.35), '12%');
 
   const accents = {
     cyan: '#22d3ee',
@@ -617,27 +611,29 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
     <div ref={ref} className="text-center">
       <div
         data-lg="plate"
-        className="approach-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
+        className="reel-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
         style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: cyanInk }}
       >
         <Sparkles className="w-3 h-3" />
         Our approach
       </div>
 
-      <h2 className="approach-headline" style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 6vw, 5rem)', fontWeight: 900, color: titleClr, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
-        Three signals.<br />
-        <span style={{ background: 'linear-gradient(135deg, #22d3ee, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-          One synthesis.
-        </span>
+      <h2 style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 6vw, 5rem)', fontWeight: 900, color: titleClr, lineHeight: 1.05, letterSpacing: '-0.02em' }}>
+        <Line>Three signals.</Line>
+        <Line>
+          <span style={{ background: 'linear-gradient(135deg, #22d3ee, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            One synthesis.
+          </span>
+        </Line>
       </h2>
 
-      <p data-lg="plate" className="approach-sub mt-8 mb-20 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
+      <p data-lg="plate" className="reel-lede mt-8 mb-20 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
         Symptoms, imaging, and labs each tell a slice of the story. CuraSense
         reads all three and resolves them into one coherent assessment.
       </p>
 
       {/* Three lenses */}
-      <div className="relative grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-6 max-w-4xl mx-auto">
+      <div ref={lensRow} className="relative grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-6 max-w-4xl mx-auto">
         {lenses.map((l, i) => {
           const Ic = l.icon;
           return (
@@ -690,7 +686,7 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
       </div>
 
       {/* ── How it differs panel ──────────────────────────────────── */}
-      <div data-lg="plate" className="approach-panel mt-20 mx-auto max-w-5xl text-left p-7 md:p-9 rounded-2xl">
+      <div data-lg="plate" className="reel-rise mt-20 mx-auto max-w-5xl text-left p-7 md:p-9 rounded-2xl">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
           <div className="md:max-w-md">
             <div style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: cyanInk, marginBottom: '0.5rem' }}>
@@ -712,7 +708,7 @@ function SceneApproach({ isDark }: { isDark: boolean }) {
               { t: 'Temporal aware',  d: 'reads patient timeline as context, not a snapshot' },
               { t: 'Reversible',      d: 'edit any input, watch the assessment update live' },
             ].map((b, i) => (
-              <li key={i} data-lg="inset" className="approach-bullet p-3.5 rounded-xl">
+              <li key={i} data-lg="inset" className="reel-rise p-3.5 rounded-xl">
                 <div style={{ fontFamily: S, fontSize: '0.78rem', fontWeight: 800, color: titleClr, letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
                   {b.t}
                 </div>
@@ -739,7 +735,7 @@ function SceneSymptoms({ isDark }: { isDark: boolean }) {
       number="01"
       eyebrow="Symptoms · Natural language"
       eyebrowClr="#22d3ee"
-      title={<>Read the patient.<br /><span style={{ color: ink('#22d3ee', isDark) }}>Word by word.</span></>}
+      lines={['Read the patient.', <span style={{ color: ink('#22d3ee', isDark) }}>Word by word.</span>]}
       desc={
         <>
           <p>
@@ -771,16 +767,10 @@ function SceneSymptoms({ isDark }: { isDark: boolean }) {
 
 function DemoNLP() {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.from('.nlp-tag', {
-        scrollTrigger: { trigger: ref.current, start: 'top 75%', once: true },
-        opacity: 0, y: 14, duration: 0.6, stagger: 0.12, ease: 'power3.out', delay: 0.4,
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  // read word by word: each phrase lights up in the sentence, and its entity lands below a beat later
+  usePlayOnSeen(ref, (tl) => tl
+    .from('.nlp-mark', { opacity: 0.28, duration: 0.45, stagger: 0.16, ease: 'power2.out' }, 0.3)
+    .from('.nlp-tag', { opacity: 0, y: 12, duration: 0.5, stagger: 0.16 }, 0.42), '20%');
 
   return (
     <div ref={ref} className="rounded-2xl p-6 backdrop-blur-md" style={{ background: '#0a0e1a', border: '1px solid rgba(34, 211, 238, 0.18)', fontFamily: I }}>
@@ -818,6 +808,7 @@ function DemoNLP() {
 function Tag({ children, color }: { children: ReactNode; color: string }) {
   return (
     <span
+      className="nlp-mark"
       style={{
         background: `${color}22`,
         borderBottom: `1px solid ${color}88`,
@@ -843,7 +834,7 @@ function SceneImaging({ isDark }: { isDark: boolean }) {
       number="02"
       eyebrow="Imaging · Vision"
       eyebrowClr="#a855f7"
-      title={<>See what radiologists see.<br /><span style={{ color: ink('#a855f7', isDark) }}>Surface what they might miss.</span></>}
+      lines={['See what radiologists see.', <span style={{ color: ink('#a855f7', isDark) }}>Surface what they might miss.</span>]}
       desc={
         <>
           <p>
@@ -875,8 +866,18 @@ function SceneImaging({ isDark }: { isDark: boolean }) {
 }
 
 function DemoImaging() {
+  const ref = useRef<HTMLDivElement>(null);
+  // one pass of the scanner, then the finding: heat, the box locks on, its score, and the read-out below
+  usePlayOnSeen(ref, (tl) => tl
+    .fromTo('.img-scan', { yPercent: -100, opacity: 1 }, { yPercent: 340, duration: 1.3, ease: 'power1.inOut' }, 0.2)
+    .set('.img-scan', { opacity: 0 })
+    .from('.img-heat', { opacity: 0, duration: 0.6, ease: 'power2.out' }, 0.8)
+    .from('.img-box', { opacity: 0, scale: 1.35, duration: 0.6 }, 1.0)
+    .from('.img-roi', { opacity: 0, y: 6, duration: 0.4 }, 1.3)
+    .from('.img-chip', { opacity: 0, y: 10, duration: 0.5, stagger: 0.1 }, 1.4), '20%');
+
   return (
-    <div className="rounded-2xl p-6 backdrop-blur-md" style={{ background: '#0e0a1a', border: '1px solid rgba(168, 85, 247, 0.18)', fontFamily: I }}>
+    <div ref={ref} className="rounded-2xl p-6 backdrop-blur-md" style={{ background: '#0e0a1a', border: '1px solid rgba(168, 85, 247, 0.18)', fontFamily: I }}>
       <div className="flex items-center justify-between mb-3">
         <span style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
           Chest X-ray · PA view
@@ -894,20 +895,25 @@ function DemoImaging() {
           <ellipse cx="160" cy="160" rx="65" ry="90" stroke="#a8a8c8" strokeWidth="1.5" fill="none" opacity="0.5" />
           <ellipse cx="240" cy="160" rx="65" ry="90" stroke="#a8a8c8" strokeWidth="1.5" fill="none" opacity="0.5" />
         </svg>
-        {/* Heatmap region */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '38%', left: '52%',
-            width: 80, height: 80,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.6), rgba(236, 72, 153, 0.2) 40%, transparent 70%)',
-            filter: 'blur(8px)',
-            animation: 'heatmapPulse 2.6s ease-in-out infinite',
-          }}
-        />
+        {/* Scanner pass: drawn only by the entrance, so it starts hidden */}
+        <div className="img-scan" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: '30%', opacity: 0, background: 'linear-gradient(180deg, transparent, rgba(168, 85, 247, 0.28) 70%, rgba(216, 180, 254, 0.75) 98%, transparent)' }} />
+        {/* Heatmap region (the wrapper fades in; the pulse inside owns its own opacity) */}
+        <div className="img-heat" style={{ position: 'absolute', inset: 0 }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: '38%', left: '52%',
+              width: 80, height: 80,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(236, 72, 153, 0.6), rgba(236, 72, 153, 0.2) 40%, transparent 70%)',
+              filter: 'blur(8px)',
+              animation: 'heatmapPulse 2.6s ease-in-out infinite',
+            }}
+          />
+        </div>
         {/* Bounding box */}
         <div
+          className="img-box"
           style={{
             position: 'absolute',
             top: '36%', left: '50%',
@@ -918,6 +924,7 @@ function DemoImaging() {
           }}
         />
         <div
+          className="img-roi"
           style={{
             position: 'absolute',
             top: 'calc(36% + 92px)', left: '50%',
@@ -934,7 +941,7 @@ function DemoImaging() {
           { t: 'consider · pneumonia r/o', c: '#a855f7' },
           { t: 'no acute cardiomegaly', c: '#10b981' },
         ].map((x, i) => (
-          <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-md" style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em', color: x.c, background: `${x.c}15`, border: `1px solid ${x.c}44` }}>
+          <span key={i} className="img-chip inline-flex items-center px-2.5 py-1 rounded-md" style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em', color: x.c, background: `${x.c}15`, border: `1px solid ${x.c}44` }}>
             {x.t}
           </span>
         ))}
@@ -954,7 +961,7 @@ function SceneLabs({ isDark }: { isDark: boolean }) {
       number="03"
       eyebrow="Labs · Biomarker patterns"
       eyebrowClr="#ec4899"
-      title={<>Numbers. In context.<br /><span style={{ color: ink('#ec4899', isDark) }}>Across panels.</span></>}
+      lines={['Numbers. In context.', <span style={{ color: ink('#ec4899', isDark) }}>Across panels.</span>]}
       desc={
         <>
           <p>
@@ -987,16 +994,11 @@ function SceneLabs({ isDark }: { isDark: boolean }) {
 
 function DemoLabs() {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.from('.lab-row', {
-        scrollTrigger: { trigger: ref.current, start: 'top 75%', once: true },
-        opacity: 0, x: -20, duration: 0.7, stagger: 0.1, ease: 'expo.out', delay: 0.3,
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  // each value is placed against its range, row by row; the pattern across them is named last
+  usePlayOnSeen(ref, (tl) => tl
+    .from('.lab-row', { opacity: 0, x: -18, duration: 0.6, stagger: 0.08 }, 0.15)
+    .from('.lab-dot', { scale: 0, duration: 0.5, stagger: 0.08 }, 0.4)
+    .from('.lab-flag', { opacity: 0, scale: 0.92, duration: 0.5 }, 1.0), '20%');
 
   const rows = [
     { name: 'HbA1c',          val: 8.2, unit: '%',     min: 4.0, max: 5.6, status: 'high'   as const, clr: '#ef4444' },
@@ -1012,7 +1014,7 @@ function DemoLabs() {
         <span style={{ fontFamily: S, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
           Lab panel · 5 of 14 markers
         </span>
-        <span className="px-2 py-0.5 rounded-md" style={{ fontFamily: S, fontSize: '0.6rem', fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }}>
+        <span className="lab-flag px-2 py-0.5 rounded-md" style={{ fontFamily: S, fontSize: '0.6rem', fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)' }}>
           PATTERN: PRE-DIABETIC + DYSLIPIDEMIA
         </span>
       </div>
@@ -1033,7 +1035,7 @@ function DemoLabs() {
               <div className="relative h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
                 <div className="absolute h-full rounded-full" style={{ left: `${nMin}%`, width: `${nMax - nMin}%`, background: 'rgba(16,185,129,0.35)' }} />
                 <div
-                  className="absolute top-1/2 w-2.5 h-2.5 rounded-full -translate-y-1/2"
+                  className="lab-dot absolute top-1/2 w-2.5 h-2.5 rounded-full -translate-y-1/2"
                   style={{ left: `${pct}%`, background: r.clr, boxShadow: `0 0 10px ${r.clr}, 0 0 0 2px rgba(0,0,0,0.5)` }}
                 />
               </div>
@@ -1053,10 +1055,10 @@ interface TplBullet { t: string; d: string; }
 interface TplStat   { v: string; k: string; }
 
 function SceneTemplate({
-  isDark, number, eyebrow, eyebrowClr, title, desc, demo, reverse, bullets, stats,
+  isDark, number, eyebrow, eyebrowClr, lines, desc, demo, reverse, bullets, stats,
 }: {
   isDark: boolean; number: string; eyebrow: string; eyebrowClr: string;
-  title: ReactNode; desc: ReactNode; demo: ReactNode; reverse?: boolean;
+  lines: ReactNode[]; desc: ReactNode; demo: ReactNode; reverse?: boolean;
   bullets?: TplBullet[]; stats?: TplStat[];
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -1064,36 +1066,25 @@ function SceneTemplate({
   const textClr = bodyInk(isDark);
   const accent = ink(eyebrowClr, isDark);
 
-  useEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.from('.tpl-number', { scrollTrigger: { trigger: ref.current, start: 'top 70%', once: true }, opacity: 0, x: -40, duration: 0.9, ease: 'expo.out', delay: 0.1 });
-      gsap.from('.tpl-title', { scrollTrigger: { trigger: ref.current, start: 'top 65%', once: true }, opacity: 0, y: 50, duration: 1, ease: 'expo.out', delay: 0.2 });
-      gsap.from('.tpl-desc', { scrollTrigger: { trigger: ref.current, start: 'top 60%', once: true }, opacity: 0, y: 30, duration: 0.9, ease: 'power3.out', delay: 0.35 });
-      gsap.from('.tpl-demo', { scrollTrigger: { trigger: ref.current, start: 'top 60%', once: true }, opacity: 0, y: 50, scale: 0.96, duration: 1.1, ease: 'expo.out', delay: 0.4 });
-      gsap.from('.tpl-bullet', { scrollTrigger: { trigger: ref.current, start: 'top 55%', once: true }, opacity: 0, y: 18, duration: 0.7, stagger: 0.07, ease: 'power3.out', delay: 0.5 });
-      gsap.from('.tpl-stat',   { scrollTrigger: { trigger: ref.current, start: 'top 50%', once: true }, opacity: 0, y: 20, duration: 0.7, stagger: 0.08, ease: 'power3.out', delay: 0.55 });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  useEntrance(ref);
 
   return (
     <div ref={ref} className={`grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center ${reverse ? 'lg:grid-flow-col-dense' : ''}`}>
       <div className={reverse ? 'lg:col-start-2' : ''}>
-        <div data-lg="plate" className="tpl-number mb-4 w-fit px-4 py-1.5 rounded-full" style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.5em', color: accent }}>
+        <div data-lg="plate" className="reel-eyebrow mb-4 w-fit px-4 py-1.5 rounded-full" style={{ fontFamily: S, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.5em', color: accent }}>
           {number} ·  {eyebrow}
         </div>
-        <h2 className="tpl-title" style={{ fontFamily: S, fontSize: 'clamp(2rem, 4.5vw, 3.6rem)', fontWeight: 900, color: titleClr, lineHeight: 1.1, letterSpacing: '-0.015em', marginBottom: '1.5rem' }}>
-          {title}
+        <h2 style={{ fontFamily: S, fontSize: 'clamp(2rem, 4.5vw, 3.6rem)', fontWeight: 900, color: titleClr, lineHeight: 1.1, letterSpacing: '-0.015em', marginBottom: '1.5rem' }}>
+          {lines.map((l, i) => <Line key={i}>{l}</Line>)}
         </h2>
-        <div data-lg="plate" className="tpl-desc px-6 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(0.95rem, 1.2vw, 1.1rem)', color: textClr, lineHeight: 1.75, maxWidth: 540 }}>
+        <div data-lg="plate" className="reel-lede px-6 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(0.95rem, 1.2vw, 1.1rem)', color: textClr, lineHeight: 1.75, maxWidth: 540 }}>
           {desc}
         </div>
 
         {bullets && bullets.length > 0 && (
           <ul className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-xl">
             {bullets.map((b, i) => (
-              <li key={i} data-lg="plate" className="tpl-bullet p-3 rounded-xl">
+              <li key={i} data-lg="plate" className="reel-rise p-3 rounded-xl">
                 <div style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 800, color: titleClr, letterSpacing: '0.08em', marginBottom: '0.2rem' }}>
                   {b.t}
                 </div>
@@ -1106,9 +1097,9 @@ function SceneTemplate({
         )}
 
         {stats && stats.length > 0 && (
-          <div data-lg="plate" className="mt-7 flex flex-wrap gap-x-7 gap-y-3 w-fit px-6 py-4 rounded-2xl">
+          <div data-lg="plate" className="reel-rise mt-7 flex flex-wrap gap-x-7 gap-y-3 w-fit px-6 py-4 rounded-2xl">
             {stats.map((s, i) => (
-              <div key={i} className="tpl-stat">
+              <div key={i}>
                 <div style={{ fontFamily: S, fontSize: '1.4rem', fontWeight: 800, color: accent, lineHeight: 1 }}>
                   {s.v}
                 </div>
@@ -1120,7 +1111,7 @@ function SceneTemplate({
           </div>
         )}
       </div>
-      <div className={`tpl-demo ${reverse ? 'lg:col-start-1 lg:row-start-1' : ''}`}>
+      <div className={`reel-rise ${reverse ? 'lg:col-start-1 lg:row-start-1' : ''}`}>
         {demo}
       </div>
     </div>
@@ -1137,19 +1128,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
   const textClr = bodyInk(isDark);
   const cyanInk = ink('#22d3ee', isDark);
 
-  useEffect(() => {
-    if (!ref.current) return;
-    const ctx = gsap.context(() => {
-      gsap.from('.fin-eyebrow', { scrollTrigger: { trigger: ref.current, start: 'top 70%', once: true }, opacity: 0, y: 16, duration: 0.7, ease: 'expo.out' });
-      gsap.from('.fin-title > *', { scrollTrigger: { trigger: ref.current, start: 'top 65%', once: true }, opacity: 0, y: 60, duration: 1.1, stagger: 0.08, ease: 'expo.out' });
-      gsap.from('.fin-desc', { scrollTrigger: { trigger: ref.current, start: 'top 60%', once: true }, opacity: 0, y: 30, duration: 0.9, ease: 'power3.out', delay: 0.4 });
-      gsap.from('.fin-step', { scrollTrigger: { trigger: ref.current, start: 'top 55%', once: true }, opacity: 0, y: 40, duration: 0.9, stagger: 0.13, ease: 'power3.out', delay: 0.4 });
-      gsap.from('.fin-pillar', { scrollTrigger: { trigger: ref.current, start: 'top 50%', once: true }, opacity: 0, y: 24, duration: 0.7, stagger: 0.06, ease: 'power3.out', delay: 0.55 });
-      gsap.from('.fin-stat', { scrollTrigger: { trigger: ref.current, start: 'top 45%', once: true }, opacity: 0, y: 30, duration: 0.9, stagger: 0.12, ease: 'power3.out', delay: 0.6 });
-      gsap.from('.fin-cta', { scrollTrigger: { trigger: ref.current, start: 'top 55%', once: true }, opacity: 0, y: 40, scale: 0.95, duration: 1.1, ease: 'back.out(1.4)', delay: 0.7 });
-    }, ref);
-    return () => ctx.revert();
-  }, []);
+  useEntrance(ref);
 
   const stats = [
     { val: 'seconds', label: 'time-to-assessment' },
@@ -1161,7 +1140,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
     <div ref={ref} className="text-center">
       <div
         data-lg="plate"
-        className="fin-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
+        className="reel-eyebrow inline-flex items-center gap-2 mb-8 px-4 py-1.5 rounded-full"
         style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', color: cyanInk }}
       >
         <Sparkles className="w-3 h-3" />
@@ -1170,16 +1149,18 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
 
       <div className="fin-title">
         <h2 style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 7vw, 5.5rem)', fontWeight: 900, color: titleClr, lineHeight: 1.0, letterSpacing: '-0.02em' }}>
-          From signal to
+          <Line>From signal to</Line>
         </h2>
         <h2 style={{ fontFamily: S, fontSize: 'clamp(2.5rem, 7vw, 5.5rem)', fontWeight: 900, lineHeight: 1.0, letterSpacing: '-0.02em' }}>
-          <span style={{ background: 'linear-gradient(135deg, #22d3ee, #a855f7, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            clinical clarity.
-          </span>
+          <Line>
+            <span style={{ background: 'linear-gradient(135deg, #22d3ee, #a855f7, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              clinical clarity.
+            </span>
+          </Line>
         </h2>
       </div>
 
-      <p data-lg="plate" className="fin-desc mt-8 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
+      <p data-lg="plate" className="reel-lede mt-8 mx-auto max-w-2xl px-7 py-5 rounded-2xl" style={{ fontFamily: I, fontSize: 'clamp(1rem, 1.4vw, 1.2rem)', color: textClr, lineHeight: 1.7 }}>
         Three signals reasoned together — written history, imaging, and labs —
         resolved into a single citation-backed assessment a clinician can audit
         line by line. Built as an educational demo, not a medical device.
@@ -1192,7 +1173,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
           { n: '02', t: 'Cross-modal read',  d: 'Each modality conditions the others. Reasoning is joint, not parallel.' },
           { n: '03', t: 'Auditable output',  d: 'Plain-language summary, every claim cited to source, exportable.' },
         ].map((s, i) => (
-          <div key={i} data-lg="plate" className="fin-step text-left p-5 rounded-2xl">
+          <div key={i} data-lg="plate" className="reel-rise text-left p-5 rounded-2xl">
             <div style={{ fontFamily: S, fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.4em', color: cyanInk, marginBottom: '0.5rem' }}>{s.n}</div>
             <div style={{ fontFamily: S, fontSize: '1.1rem', fontWeight: 800, color: titleClr, lineHeight: 1.2, marginBottom: '0.5rem' }}>{s.t}</div>
             <div style={{ fontFamily: I, fontSize: '0.85rem', color: textClr, lineHeight: 1.6 }}>{s.d}</div>
@@ -1208,7 +1189,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
           { t: 'Multilingual', d: '40+ languages of free-text intake' },
           { t: 'Exportable',  d: 'JSON · PDF · FHIR R4 bundle' },
         ].map((p, i) => (
-          <div key={i} data-lg="plate" className="fin-pillar text-left p-3.5 rounded-xl">
+          <div key={i} data-lg="plate" className="reel-rise text-left p-3.5 rounded-xl">
             <div style={{ fontFamily: S, fontSize: '0.78rem', fontWeight: 800, color: titleClr, letterSpacing: '0.08em', marginBottom: '0.25rem' }}>
               {p.t}
             </div>
@@ -1220,9 +1201,9 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
       </div>
 
       {/* ── Original key stats row ─────────────────────────────────── */}
-      <div data-lg="plate" className="grid grid-cols-3 gap-6 mb-14 max-w-2xl mx-auto px-6 py-5 rounded-2xl">
+      <div data-lg="plate" className="reel-rise grid grid-cols-3 gap-6 mb-14 max-w-2xl mx-auto px-6 py-5 rounded-2xl">
         {stats.map((s, i) => (
-          <div key={i} className="fin-stat text-center">
+          <div key={i} className="text-center">
             <div style={{ fontFamily: S, fontSize: 'clamp(1.2rem, 2vw, 1.6rem)', fontWeight: 800, color: titleClr, letterSpacing: '0.02em' }}>
               {s.val}
             </div>
@@ -1233,9 +1214,11 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
         ))}
       </div>
 
+      {/* The button has its own CSS transition on transform and opacity, so the entrance moves this wrapper and the two never fight. */}
+      <div className="reel-rise">
       <button
         onClick={onPrimaryCta}
-        className="fin-cta group relative inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold transition hover:scale-[1.03] active:scale-[0.97]"
+        className="group relative inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold transition hover:scale-[1.03] active:scale-[0.97]"
         style={{
           fontFamily: I, fontSize: '1rem',
           background: 'linear-gradient(135deg, #22d3ee, #a855f7)',
@@ -1248,6 +1231,7 @@ function SceneFinale({ isDark, onPrimaryCta }: { isDark: boolean; onPrimaryCta?:
         Sign in to try the demo
         <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
       </button>
+      </div>
 
       <div data-lg="plate" className="mt-6 mx-auto w-fit px-6 py-3 rounded-2xl text-center" style={{ fontFamily: I, fontSize: '0.78rem', color: textClr, lineHeight: 1.7 }}>
         Not a medical device · educational preview only · all output for research and discussion<br />
@@ -1272,12 +1256,6 @@ export default function NarrativeReel({ onPrimaryCta, isDark }: NarrativeReelPro
     const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting), { rootMargin: '0px 0px -40% 0px' });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
-
-  // Refresh ScrollTrigger on mount + after layout settles
-  useEffect(() => {
-    const t = setTimeout(() => ScrollTrigger.refresh(), 80);
-    return () => clearTimeout(t);
   }, []);
 
   return (

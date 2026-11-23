@@ -33,6 +33,28 @@
     radial-gradient(circle at 50% 50%, rgba(0, 229, 255, 0.4), rgba(148, 56, 255, 0.34) 55%, rgba(255, 31, 209, 0.3) 72%, transparent 74%);
   box-shadow: inset 0 0 70px rgba(0, 229, 255, 0.6), 0 0 80px rgba(0, 229, 255, 0.45), 0 0 150px rgba(255, 31, 209, 0.3);
 }
+/* The Home caption under the cell. Each line rises from behind a mask, from the side the reader is scrolling toward. */
+.cs-narr {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  width: min(680px, calc(100vw - 32px)); padding: 12px 18px; border-radius: 18px; pointer-events: none;
+  opacity: 0; transform: translate(-50%, 16px);
+  transition: opacity 0.3s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(10, 16, 32, 0.55); border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(14px) saturate(1.8); backdrop-filter: blur(14px) saturate(1.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 18px 40px -16px rgba(0, 0, 0, 0.6);
+}
+.cs-narr[data-show] { opacity: 1; transform: translate(-50%, 0); }
+.cs-narr-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.cs-narr-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: #7dd3fc; }
+.cs-narr-rail { flex: 1; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+.cs-narr-rail > span { display: block; height: 100%; background: linear-gradient(90deg, #22d3ee, #a855f7, #ec4899); transform-origin: left; transform: scaleX(0.143); }
+.cs-narr-mask { overflow: hidden; }
+.cs-narr-text { margin: 0; font-size: 14px; line-height: 1.45; color: #e6eefb; animation: cs-narr-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.cs-narr-text[data-dir="-1"] { animation-name: cs-narr-down; }
+@keyframes cs-narr-up { from { opacity: 0; transform: translateY(100%); } }
+@keyframes cs-narr-down { from { opacity: 0; transform: translateY(-100%); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .cs-callout-dot, .cs-cell-fallback { animation: none; }
+  .cs-callout-dot, .cs-cell-fallback, .cs-narr-text { animation: none; }
+  .cs-narr { transition: none; }
 }

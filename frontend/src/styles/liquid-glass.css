@@ -70,7 +70,7 @@
 :root[data-fx="2"] { --lg-plate: rgba(8, 12, 26, 0.9); }
 :root[data-fx="2"][data-theme="light"] { --lg-plate: rgba(255, 255, 255, 0.92); }
 :root[data-fx="2"] [data-lg="clear"][data-lg] { background: var(--bg-card, var(--lg-plate)) !important; }
-:root[data-fx="2"] [data-narrator] { background: rgba(10, 16, 32, 0.92) !important; }   /* the Home caption: inline 55% tint */
+:root[data-fx="2"] [data-narrator] { background: rgba(10, 16, 32, 0.97) !important; }   /* the Home caption: a 55% tint otherwise, and at 92% page text still read through it */
 :root[data-fx="2"] [data-drawer] { background-color: var(--bg-base, #05070f) !important; }   /* the signed-in menu: the gradient stays on top of a solid base */
 [data-lg="plate"][data-lg],
 :root.lg-refract [data-lg="plate"][data-lg] {

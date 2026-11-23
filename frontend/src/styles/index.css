@@ -652,6 +652,10 @@ select:focus {
   z-index: 0;
 }
 
+/* A headline line rises from behind its own mask. The padding keeps descenders inside the mask; the margin gives the space back. */
+.reel-mask { display: block; overflow: hidden; padding: 0 0.05em 0.14em; margin: 0 -0.05em -0.14em; }
+.reel-line { display: block; }
+
 /* Ensure scene content always reads above its backdrop. */
 .reel-scene > * {
   position: relative;
